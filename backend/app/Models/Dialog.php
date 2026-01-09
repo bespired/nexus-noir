@@ -17,4 +17,9 @@ class Dialog extends Model
     protected $casts = [
         'tree' => 'array',
     ];
+
+    public function media(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Media::class, 'imageable');
+    }
 }

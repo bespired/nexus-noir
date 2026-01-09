@@ -11,7 +11,7 @@ class CharacterController extends Controller
      */
     public function index()
     {
-        return \App\Models\Character::all();
+        return \App\Models\Character::with('media')->get();
     }
 
     /**

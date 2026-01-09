@@ -19,6 +19,13 @@
             "notes": "Notes",
             "about": "About",
             "help": "Help"
+        },
+        "sorting": {
+            "title": "Sort By",
+            "alphabetical": "Alphabetical",
+            "date": "Date",
+            "id": "ID",
+            "sector": "Sector"
         }
     }
 }

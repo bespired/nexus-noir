@@ -3,8 +3,8 @@
     "welcome": "Welkom bij Nexus Noir Creator",
     "change_language": "Taal wijzigen",
     "about": {
-        "trying":"Poging 2 tot een game creator",
-        "of_the":"van de"
+        "trying": "Poging 2 tot een game creator",
+        "of_the": "van de"
     },
     "common": {
         "sidebar": {
@@ -19,6 +19,13 @@
             "notes": "Notities",
             "about": "Over",
             "help": "Help"
+        },
+        "sorting": {
+            "title": "Sorteer op",
+            "alphabetical": "Alfabetisch",
+            "date": "Datum",
+            "id": "ID",
+            "sector": "Sector"
         }
     }
 }

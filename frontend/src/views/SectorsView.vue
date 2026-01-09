@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import SectorThumb from '../components/thumbs/SectorThumb.vue';
 
 const sectors = ref([]);
 const loading = ref(true);
@@ -28,14 +27,14 @@ onMounted(() => {
             <h1 class="view-title">SECTORS</h1>
             <Button label="+ new" severity="warning" class="new-btn" />
         </div>
-        
+
         <div class="sectors-grid">
             <div v-if="loading" class="loading-state">Loading sectors...</div>
-            <SectorThumb 
+            <SectorThumb
                 v-else
-                v-for="sector in sectors" 
-                :key="sector.id" 
-                :sector="sector" 
+                v-for="sector in sectors"
+                :key="sector.id"
+                :sector="sector"
             />
         </div>
     </div>
@@ -55,7 +54,7 @@ onMounted(() => {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1rem;
     overflow-y: auto;
-    padding-right: 0.5rem; 
+    padding-right: 0.5rem;
 }
 
 .loading-state {

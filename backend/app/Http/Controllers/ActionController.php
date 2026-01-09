@@ -11,7 +11,7 @@ class ActionController extends Controller
      */
     public function index()
     {
-        return \App\Models\Action::all();
+        return \App\Models\Action::with('media')->get();
     }
 
     /**

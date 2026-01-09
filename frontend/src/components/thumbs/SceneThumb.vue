@@ -10,23 +10,18 @@ const props = defineProps({
 
 const thumbUrl = computed(() => {
     if (props.scene.media && props.scene.media.length > 0) {
-        // Adjust based on how filepad is stored (relative or absolute)
-        // Assuming filepad is stored as 'storage/...' or relative to public/storage
-        // If filepad starts with 'http', return as is.
-        // Otherwise, prepend '/storage/' if not present, or handled by the backend 'url' accessor if available.
-        // For now, assuming raw path from import: 'glb/filename.glb' or similar.
-        // But media is usually images. GLBs are media too.
-        // Let's check for an image type if possible, or just take the first one.
-        const file = props.scene.media[0].filepad;
+        const file = props.scene.media.find(m => m.type === '2d')?.filepad || props.scene.media[0].filepad;
         if(file.startsWith('http')) return file;
-        
-        // If it's a glb, we might not have a thumb unless generated. 
-        // For this task, we display whatever we have.
-        // The proxy handles /storage -> localhost:8000/storage
-        // Ensure path logic matches backend storage linking.
-        return `/storage/${file}`; 
+        return `/storage/${file}`;
     }
     return null;
+});
+
+const has3dModel = computed(() => {
+    // Check if any media has type '3d'
+    // Also check scene.type for 'walkable-area' which often implies 3D, 
+    // but the user specifically asked for "when a 3d model exists".
+    return props.scene.media && props.scene.media.some(m => m.type === '3d');
 });
 </script>
 
@@ -41,12 +36,18 @@ const thumbUrl = computed(() => {
 
         <div class="scene-thumb__content">
             <h3 class="scene-thumb__title">{{ scene.title }}</h3>
-            <span class="scene-thumb__type">{ {{ scene.type }} }</span>
+            <div class="scene-thumb__tags">
+                <Badge v-if="scene.sector" :value="scene.sector.name" severity="secondary" class="scene-thumb__tag-badge" />
+                <Badge :value="scene.type" severity="secondary" class="scene-thumb__tag-badge" />
+            </div>
             <p class="scene-thumb__description">{{ scene.description }}</p>
             
             <div class="scene-thumb__footer">
                 <span class="scene-thumb__id">id: {{ scene.id }}</span>
-                <Button label="EDIT >" size="small" severity="warning" outlined class="scene-thumb__edit-btn" />
+                <div class="scene-thumb__actions">
+                    <Badge v-if="has3dModel" value="3D" severity="contrast" class="scene-thumb__badge-3d" />
+                    <Button label="EDIT >" size="small" severity="warning" outlined class="scene-thumb__edit-btn" />
+                </div>
             </div>
         </div>
     </div>
@@ -99,10 +100,18 @@ const thumbUrl = computed(() => {
     font-weight: normal;
 }
 
-.scene-thumb__type {
-    font-size: 0.875rem;
-    color: var(--color-noir-muted);
+.scene-thumb__tags {
+    display: flex;
+    gap: 0.5rem;
     margin-bottom: 0.5rem;
+}
+
+.scene-thumb__tag-badge {
+    font-size: 0.7rem !important;
+    font-weight: normal;
+    background-color: var(--color-noir-dark) !important;
+    border: 1px solid var(--color-noir-dark) !important;
+    color: var(--color-noir-muted) !important;
 }
 
 .scene-thumb__description {
@@ -124,6 +133,17 @@ const thumbUrl = computed(() => {
     margin-top: 1rem;
     border-top: 1px solid var(--color-noir-dark);
     padding-top: 0.5rem;
+}
+
+.scene-thumb__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.scene-thumb__badge-3d {
+    font-size: 0.65rem !important;
+    font-weight: bold;
 }
 
 .scene-thumb__id {

@@ -11,7 +11,7 @@ class ClueController extends Controller
      */
     public function index()
     {
-        return \App\Models\Clue::all();
+        return \App\Models\Clue::with('media')->get();
     }
 
     /**

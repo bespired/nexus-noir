@@ -23,4 +23,9 @@ class Character extends Model
         'is_playable' => 'boolean',
         'is_system' => 'boolean',
     ];
+
+    public function media(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Media::class, 'imageable');
+    }
 }

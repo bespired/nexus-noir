@@ -1,0 +1,171 @@
+<script setup>
+import { computed } from 'vue';
+
+const props = defineProps({
+    character: {
+        type: Object,
+        required: true
+    }
+});
+
+const thumbUrl = computed(() => {
+    if (props.character.media && props.character.media.length > 0) {
+        const file = props.character.media.find(m => m.type === '2d')?.filepad || props.character.media[0].filepad;
+        if(file.startsWith('http')) return file;
+        return `/storage/${file}`;
+    }
+    return null;
+});
+
+const has3dModel = computed(() => {
+    return props.character.media && props.character.media.some(m => m.type === '3d');
+});
+
+const isPlayable = computed(() => props.character.is_playable);
+</script>
+
+<template>
+    <div class="character-thumb" :class="[{ 'is-playable': isPlayable}, character.type ]">
+        <div class="character-thumb__image-wrapper">
+             <img v-if="thumbUrl" :src="thumbUrl" alt="Character Image" class="character-thumb__image" />
+             <div v-else class="character-thumb__placeholder">
+                { portrait }
+             </div>
+             <div v-if="isPlayable" class="character-thumb__badge">PLAYABLE</div>
+        </div>
+
+        <div class="character-thumb__content">
+            <h3 class="character-thumb__name">{{ character.name }}</h3>
+            <span class="character-thumb__role">{{ character.role }}</span>
+            <p class="character-thumb__description">{{ character.description }}</p>
+
+            <div class="character-thumb__footer">
+                <span class="character-thumb__id">id: {{ character.id }}</span>
+                <div class="character-thumb__actions">
+                    <Badge v-if="has3dModel" value="3D" severity="contrast" class="character-thumb__badge-3d" />
+                    <Button label="EDIT >" size="small" severity="warning" outlined class="character-thumb__edit-btn" />
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<style scoped>
+.character-thumb {
+    background-color: var(--color-noir-panel);
+    border: 1px solid var(--color-noir-panel);
+    border-radius: 4px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    flex-direction: row;
+    gap: 1rem;
+    color: var(--color-noir-text);
+    height: 100%;
+}
+
+.character-thumb > div {
+    width: 50%;
+}
+
+.character-thumb.is-playable {
+    border-color: var(--color-noir-accent);
+}
+
+.character-thumb__image-wrapper {
+    background-color: #374151;
+    aspect-ratio: 3 / 4;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 2px;
+    position: relative;
+}
+
+.character-thumb__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.character-thumb__placeholder {
+    color: var(--color-noir-muted);
+    font-family: monospace;
+}
+
+.character-thumb__badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--color-noir-accent);
+    color: #000;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 20% 100%);
+    padding-left: 1rem;
+}
+
+.character-thumb__content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.character-thumb__name {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: normal;
+}
+
+.character-thumb__role {
+    font-size: 0.875rem;
+    color: var(--color-noir-muted);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.character-thumb__description {
+    font-size: 0.875rem;
+    color: var(--color-noir-text);
+    margin: 0;
+    margin-bottom: auto;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.character-thumb__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    border-top: 1px solid var(--color-noir-dark);
+    padding-top: 0.5rem;
+}
+
+.character-thumb__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.character-thumb__badge-3d {
+    font-size: 0.65rem !important;
+    font-weight: bold;
+}
+
+.character-thumb__id {
+    font-size: 0.75rem;
+    color: var(--color-noir-muted);
+}
+
+.character-thumb__edit-btn {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+}
+</style>

@@ -11,7 +11,7 @@ class DialogController extends Controller
      */
     public function index()
     {
-        return \App\Models\Dialog::all();
+        return \App\Models\Dialog::with('media')->get();
     }
 
     /**

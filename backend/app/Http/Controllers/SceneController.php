@@ -11,7 +11,7 @@ class SceneController extends Controller
      */
     public function index()
     {
-        return \App\Models\Scene::with('media')->get();
+        return \App\Models\Scene::with(['media', 'sector'])->get();
     }
 
     /**

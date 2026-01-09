@@ -18,4 +18,9 @@ class Action extends Model
     protected $casts = [
         'actions' => 'array',
     ];
+
+    public function media(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Media::class, 'imageable');
+    }
 }
