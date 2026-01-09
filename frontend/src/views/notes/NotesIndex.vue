@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import NoteThumb from '@components/thumbs/NoteThumb.vue';
 
 const notes = ref([]);
 const loading = ref(true);

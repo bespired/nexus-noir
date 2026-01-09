@@ -2,13 +2,13 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
-import ActionThumb from '../components/thumbs/ActionThumb.vue';
+import DialogThumb from '@components/thumbs/DialogThumb.vue';
 
 const { t } = useI18n();
 
-const actions = ref([]);
+const dialogs = ref([]);
 const loading = ref(true);
-const sortBy = ref(sessionStorage.getItem('actions_sort_by') || 'alphabetical');
+const sortBy = ref(sessionStorage.getItem('dialogs_sort_by') || 'alphabetical');
 
 const sortOptions = computed(() => [
     { label: t('common.sorting.alphabetical'), value: 'alphabetical' },
@@ -17,14 +17,14 @@ const sortOptions = computed(() => [
 ]);
 
 watch(sortBy, (newVal) => {
-    sessionStorage.setItem('actions_sort_by', newVal);
+    sessionStorage.setItem('dialogs_sort_by', newVal);
 });
 
-const fetchActions = async () => {
+const fetchDialogs = async () => {
     try {
-        const response = await fetch('/api/actions');
-        if (!response.ok) throw new Error('Failed to fetch actions');
-        actions.value = await response.json();
+        const response = await fetch('/api/dialogs');
+        if (!response.ok) throw new Error('Failed to fetch dialogs');
+        dialogs.value = await response.json();
     } catch (error) {
         console.error(error);
     } finally {
@@ -32,12 +32,12 @@ const fetchActions = async () => {
     }
 };
 
-const filteredActions = computed(() => {
-    let result = [...actions.value];
+const filteredDialogs = computed(() => {
+    let result = [...dialogs.value];
 
     return result.sort((a, b) => {
         if (sortBy.value === 'alphabetical') {
-            return a.name.localeCompare(b.name);
+            return a.title.localeCompare(b.title);
         } else if (sortBy.value === 'date') {
             return new Date(b.created_at) - new Date(a.created_at);
         } else if (sortBy.value === 'id') {
@@ -48,14 +48,14 @@ const filteredActions = computed(() => {
 });
 
 onMounted(() => {
-    fetchActions();
+    fetchDialogs();
 });
 </script>
 
 <template>
-    <div class="actions-view">
+    <div class="dialogs-view">
         <div class="view-header">
-            <h1 class="view-title">ACTIONS</h1>
+            <h1 class="view-title">DIALOGS</h1>
             <Button label="+ new" severity="warning" class="new-btn" />
             <Select
                 v-model="sortBy"
@@ -67,27 +67,27 @@ onMounted(() => {
             />
         </div>
 
-        <div class="actions-grid">
-            <div v-if="loading" class="loading-state">Loading actions...</div>
-            <ActionThumb
+        <div class="dialogs-grid">
+            <div v-if="loading" class="loading-state">Loading dialogs...</div>
+            <DialogThumb
                 v-else
-                v-for="action in filteredActions"
-                :key="action.id"
-                :action="action"
+                v-for="dialog in filteredDialogs"
+                :key="dialog.id"
+                :dialog="dialog"
             />
         </div>
     </div>
 </template>
 
 <style scoped>
-.actions-view {
+.dialogs-view {
     display: flex;
     flex-direction: column;
     height: 100%;
     color: var(--color-noir-text);
 }
 
-.actions-grid {
+.dialogs-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1rem;

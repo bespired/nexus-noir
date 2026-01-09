@@ -2,13 +2,13 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
-import ClueThumb from '../components/thumbs/ClueThumb.vue';
+import VehicleThumb from '@components/thumbs/VehicleThumb.vue';
 
 const { t } = useI18n();
 
-const clues = ref([]);
+const vehicles = ref([]);
 const loading = ref(true);
-const sortBy = ref(sessionStorage.getItem('clues_sort_by') || 'alphabetical');
+const sortBy = ref(sessionStorage.getItem('vehicles_sort_by') || 'alphabetical');
 
 const sortOptions = computed(() => [
     { label: t('common.sorting.alphabetical'), value: 'alphabetical' },
@@ -17,14 +17,17 @@ const sortOptions = computed(() => [
 ]);
 
 watch(sortBy, (newVal) => {
-    sessionStorage.setItem('clues_sort_by', newVal);
+    sessionStorage.setItem('vehicles_sort_by', newVal);
 });
 
-const fetchClues = async () => {
+const fetchVehicles = async () => {
     try {
-        const response = await fetch('/api/clues');
-        if (!response.ok) throw new Error('Failed to fetch clues');
-        clues.value = await response.json();
+        const response = await fetch('/api/characters');
+        if (!response.ok) throw new Error('Failed to fetch vehicles');
+        const allCharacters = await response.json();
+
+        // Filter only "vehicle" type
+        vehicles.value = allCharacters.filter(c => c.type === 'vehicle');
     } catch (error) {
         console.error(error);
     } finally {
@@ -32,12 +35,12 @@ const fetchClues = async () => {
     }
 };
 
-const filteredClues = computed(() => {
-    let result = [...clues.value];
+const filteredVehicles = computed(() => {
+    let result = [...vehicles.value];
 
     return result.sort((a, b) => {
         if (sortBy.value === 'alphabetical') {
-            return a.title.localeCompare(b.title);
+            return a.name.localeCompare(b.name);
         } else if (sortBy.value === 'date') {
             return new Date(b.created_at) - new Date(a.created_at);
         } else if (sortBy.value === 'id') {
@@ -48,14 +51,14 @@ const filteredClues = computed(() => {
 });
 
 onMounted(() => {
-    fetchClues();
+    fetchVehicles();
 });
 </script>
 
 <template>
-    <div class="clues-view">
-        <div class="view-header">
-            <h1 class="view-title">CLUES</h1>
+    <div class="vehicles-view">
+        <div class="view-header ">
+            <h1 class="view-title">VEHICLES</h1>
             <Button label="+ new" severity="warning" class="new-btn" />
             <Select
                 v-model="sortBy"
@@ -67,29 +70,29 @@ onMounted(() => {
             />
         </div>
 
-        <div class="clues-grid">
-            <div v-if="loading" class="loading-state">Loading clues...</div>
-            <ClueThumb
+        <div class="vehicles-grid">
+            <div v-if="loading" class="loading-state">Loading vehicles...</div>
+            <VehicleThumb
                 v-else
-                v-for="clue in filteredClues"
-                :key="clue.id"
-                :clue="clue"
+                v-for="vehicle in filteredVehicles"
+                :key="vehicle.id"
+                :vehicle="vehicle"
             />
         </div>
     </div>
 </template>
 
 <style scoped>
-.clues-view {
+.vehicles-view {
     display: flex;
     flex-direction: column;
     height: 100%;
     color: var(--color-noir-text);
 }
 
-.clues-grid {
+.vehicles-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1rem;
     overflow-y: auto;
     padding-right: 0.5rem;

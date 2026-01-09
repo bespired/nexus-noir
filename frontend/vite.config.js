@@ -1,3 +1,4 @@
+import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import Components from 'unplugin-vue-components/vite'
@@ -16,6 +17,11 @@ export default defineConfig({
       ]
     })
   ],
+  resolve: {
+    alias: {
+      '@components': fileURLToPath(new URL('./src/components', import.meta.url))
+    }
+  },
   server: {
     port: 3500,
     proxy: {

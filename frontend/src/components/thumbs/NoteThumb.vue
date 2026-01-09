@@ -28,15 +28,15 @@ const formatDate = (dateString) => {
         <div class="note-header">
             <h3 class="note-title">{{ note.title }}</h3>
             <div class="note-actions">
-                <button 
-                    class="action-btn done-btn" 
+                <button
+                    class="action-btn done-btn"
                     @click="$emit('toggle-done', note)"
                     :title="isDone ? 'Mark as Undone' : 'Mark as Done'"
                 >
                     <i class="pi" :class="isDone ? 'pi-check-circle' : 'pi-check'"></i>
                 </button>
-                <button 
-                    class="action-btn delete-btn" 
+                <button
+                    class="action-btn delete-btn"
                     @click="$emit('delete', note)"
                     title="Delete Note"
                 >
@@ -44,7 +44,7 @@ const formatDate = (dateString) => {
                 </button>
             </div>
         </div>
-        
+
         <div class="note-content custom-scrollbar">
             {{ note.content }}
         </div>
@@ -69,11 +69,13 @@ const formatDate = (dateString) => {
     overflow: hidden;
 }
 
+/*
 .note-thumb:hover {
     border-color: var(--color-noir-accent);
     transform: translateY(-2px);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
 }
+*/
 
 .note-thumb.is-done {
     opacity: 0.7;
@@ -156,14 +158,14 @@ const formatDate = (dateString) => {
     width: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: #111827; 
+    background: #111827;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #4b5563; 
+    background: #4b5563;
     border-radius: 2px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #6b7280; 
+    background: #6b7280;
 }
 
 .note-footer {

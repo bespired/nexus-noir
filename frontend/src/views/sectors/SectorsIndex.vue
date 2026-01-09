@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import SectorThumb from '@components/thumbs/SectorThumb.vue';
 
 const sectors = ref([]);
 const loading = ref(true);

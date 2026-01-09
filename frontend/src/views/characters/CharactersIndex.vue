@@ -2,7 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
-import CharacterThumb from '../components/thumbs/CharacterThumb.vue';
+import CharacterThumb from '@components/thumbs/CharacterThumb.vue';
 
 const { t } = useI18n();
 
@@ -92,7 +92,7 @@ onMounted(() => {
 
 .characters-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1rem;
     overflow-y: auto;
     padding-right: 0.5rem;

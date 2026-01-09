@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import SceneThumb from '../components/thumbs/SceneThumb.vue';
+import SceneThumb from '@components/thumbs/SceneThumb.vue';
 import Select from 'primevue/select';
 
 const scenes = ref([]);

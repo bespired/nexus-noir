@@ -17,6 +17,9 @@ const toggleLanguage = () => {
     <div class="main-wrapper">
       <!-- Top Bar (Optional, for language toggle or user info) -->
       <header class="top-bar">
+
+        <nexus-font label="Nexus Noir" class="red-font"/>
+
         <Button
             :label="locale.toUpperCase()"
             @click="toggleLanguage"
@@ -28,6 +31,7 @@ const toggleLanguage = () => {
 
       <!-- Content Router View -->
       <main class="main-content">
+
          <!-- This slot or router-view will be populated by the router -->
          <!-- For now, showing the welcome card as a placeholder -->
          <div class="content-center">

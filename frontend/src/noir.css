@@ -1,4 +1,9 @@
 /* Global View Header Styles */
+
+.red-font {
+    color: red;
+}
+
 .view-header {
     display: flex;
     align-items: center;

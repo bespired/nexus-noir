@@ -2,13 +2,13 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
-import DialogThumb from '../components/thumbs/DialogThumb.vue';
+import ClueThumb from '@components/thumbs/ClueThumb.vue';
 
 const { t } = useI18n();
 
-const dialogs = ref([]);
+const clues = ref([]);
 const loading = ref(true);
-const sortBy = ref(sessionStorage.getItem('dialogs_sort_by') || 'alphabetical');
+const sortBy = ref(sessionStorage.getItem('clues_sort_by') || 'alphabetical');
 
 const sortOptions = computed(() => [
     { label: t('common.sorting.alphabetical'), value: 'alphabetical' },
@@ -17,14 +17,14 @@ const sortOptions = computed(() => [
 ]);
 
 watch(sortBy, (newVal) => {
-    sessionStorage.setItem('dialogs_sort_by', newVal);
+    sessionStorage.setItem('clues_sort_by', newVal);
 });
 
-const fetchDialogs = async () => {
+const fetchClues = async () => {
     try {
-        const response = await fetch('/api/dialogs');
-        if (!response.ok) throw new Error('Failed to fetch dialogs');
-        dialogs.value = await response.json();
+        const response = await fetch('/api/clues');
+        if (!response.ok) throw new Error('Failed to fetch clues');
+        clues.value = await response.json();
     } catch (error) {
         console.error(error);
     } finally {
@@ -32,8 +32,8 @@ const fetchDialogs = async () => {
     }
 };
 
-const filteredDialogs = computed(() => {
-    let result = [...dialogs.value];
+const filteredClues = computed(() => {
+    let result = [...clues.value];
 
     return result.sort((a, b) => {
         if (sortBy.value === 'alphabetical') {
@@ -48,14 +48,14 @@ const filteredDialogs = computed(() => {
 });
 
 onMounted(() => {
-    fetchDialogs();
+    fetchClues();
 });
 </script>
 
 <template>
-    <div class="dialogs-view">
+    <div class="clues-view">
         <div class="view-header">
-            <h1 class="view-title">DIALOGS</h1>
+            <h1 class="view-title">CLUES</h1>
             <Button label="+ new" severity="warning" class="new-btn" />
             <Select
                 v-model="sortBy"
@@ -67,27 +67,27 @@ onMounted(() => {
             />
         </div>
 
-        <div class="dialogs-grid">
-            <div v-if="loading" class="loading-state">Loading dialogs...</div>
-            <DialogThumb
+        <div class="clues-grid">
+            <div v-if="loading" class="loading-state">Loading clues...</div>
+            <ClueThumb
                 v-else
-                v-for="dialog in filteredDialogs"
-                :key="dialog.id"
-                :dialog="dialog"
+                v-for="clue in filteredClues"
+                :key="clue.id"
+                :clue="clue"
             />
         </div>
     </div>
 </template>
 
 <style scoped>
-.dialogs-view {
+.clues-view {
     display: flex;
     flex-direction: column;
     height: 100%;
     color: var(--color-noir-text);
 }
 
-.dialogs-grid {
+.clues-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1rem;

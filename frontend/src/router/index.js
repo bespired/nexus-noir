@@ -16,42 +16,42 @@ const routes = [
     {
         path: '/scenes',
         name: 'scenes',
-        component: () => import('../views/ScenesView.vue')
+        component: () => import('../views/scenes/ScenesIndex.vue')
     },
     {
         path: '/sectors',
         name: 'sectors',
-        component: () => import('../views/SectorsView.vue')
+        component: () => import('../views/sectors/SectorsIndex.vue')
     },
     {
         path: '/actions',
         name: 'actions',
-        component: () => import('../views/ActionsView.vue')
+        component: () => import('../views/actions/ActionsIndex.vue')
     },
     {
         path: '/dialogs',
         name: 'dialogs',
-        component: () => import('../views/DialogsView.vue')
+        component: () => import('../views/dialogs/DialogsIndex.vue')
     },
     {
         path: '/characters',
         name: 'characters',
-        component: () => import('../views/CharactersView.vue')
+        component: () => import('../views/characters/CharactersIndex.vue')
     },
     {
         path: '/vehicles',
         name: 'vehicles',
-        component: () => import('../views/VehiclesView.vue')
+        component: () => import('../views/characters/VehiclesIndex.vue')
     },
     {
         path: '/clues',
         name: 'clues',
-        component: () => import('../views/CluesView.vue')
+        component: () => import('../views/clues/CluesIndex.vue')
     },
     {
         path: '/notes',
         name: 'notes',
-        component: () => import('../views/NotesView.vue'),
+        component: () => import('../views/notes/NotesIndex.vue'),
     },
     { path: '/help', name: 'help', component: { template: '<div class="p-4"><h1>Help - Coming Soon</h1></div>' } },
 ]

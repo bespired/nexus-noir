@@ -2,13 +2,13 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
-import VehicleThumb from '../components/thumbs/VehicleThumb.vue';
+import ActionThumb from '@components/thumbs/ActionThumb.vue';
 
 const { t } = useI18n();
 
-const vehicles = ref([]);
+const actions = ref([]);
 const loading = ref(true);
-const sortBy = ref(sessionStorage.getItem('vehicles_sort_by') || 'alphabetical');
+const sortBy = ref(sessionStorage.getItem('actions_sort_by') || 'alphabetical');
 
 const sortOptions = computed(() => [
     { label: t('common.sorting.alphabetical'), value: 'alphabetical' },
@@ -17,17 +17,14 @@ const sortOptions = computed(() => [
 ]);
 
 watch(sortBy, (newVal) => {
-    sessionStorage.setItem('vehicles_sort_by', newVal);
+    sessionStorage.setItem('actions_sort_by', newVal);
 });
 
-const fetchVehicles = async () => {
+const fetchActions = async () => {
     try {
-        const response = await fetch('/api/characters');
-        if (!response.ok) throw new Error('Failed to fetch vehicles');
-        const allCharacters = await response.json();
-
-        // Filter only "vehicle" type
-        vehicles.value = allCharacters.filter(c => c.type === 'vehicle');
+        const response = await fetch('/api/actions');
+        if (!response.ok) throw new Error('Failed to fetch actions');
+        actions.value = await response.json();
     } catch (error) {
         console.error(error);
     } finally {
@@ -35,8 +32,8 @@ const fetchVehicles = async () => {
     }
 };
 
-const filteredVehicles = computed(() => {
-    let result = [...vehicles.value];
+const filteredActions = computed(() => {
+    let result = [...actions.value];
 
     return result.sort((a, b) => {
         if (sortBy.value === 'alphabetical') {
@@ -51,14 +48,14 @@ const filteredVehicles = computed(() => {
 });
 
 onMounted(() => {
-    fetchVehicles();
+    fetchActions();
 });
 </script>
 
 <template>
-    <div class="vehicles-view">
-        <div class="view-header ">
-            <h1 class="view-title">VEHICLES</h1>
+    <div class="actions-view">
+        <div class="view-header">
+            <h1 class="view-title">ACTIONS</h1>
             <Button label="+ new" severity="warning" class="new-btn" />
             <Select
                 v-model="sortBy"
@@ -70,27 +67,27 @@ onMounted(() => {
             />
         </div>
 
-        <div class="vehicles-grid">
-            <div v-if="loading" class="loading-state">Loading vehicles...</div>
-            <VehicleThumb
+        <div class="actions-grid">
+            <div v-if="loading" class="loading-state">Loading actions...</div>
+            <ActionThumb
                 v-else
-                v-for="vehicle in filteredVehicles"
-                :key="vehicle.id"
-                :vehicle="vehicle"
+                v-for="action in filteredActions"
+                :key="action.id"
+                :action="action"
             />
         </div>
     </div>
 </template>
 
 <style scoped>
-.vehicles-view {
+.actions-view {
     display: flex;
     flex-direction: column;
     height: 100%;
     color: var(--color-noir-text);
 }
 
-.vehicles-grid {
+.actions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1rem;
