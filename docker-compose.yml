@@ -1,0 +1,91 @@
+services:
+    #    frontend:
+    #        build:
+    #            context: ./frontend
+    #            dockerfile: Dockerfile
+    #        ports:
+    #            - "3000:3000"
+    #        volumes:
+    #            - ./frontend:/app
+    #            - /app/node_modules
+    #        tty: true
+    #        environment:
+    #            - CHOKIDAR_USEPOLLING=true
+    #            - VITE_PROXY_TARGET=http://nginx:80
+
+    backend:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        env_file:
+            - ./backend/.env.docker
+        image: nexus-noir-backend
+        environment:
+            APP_SERVICE: backend
+        volumes:
+            - ./backend:/var/www/html
+            - ./electron:/var/www/electron
+            - ./frontend:/var/www/frontend
+            - ./backup:/var/www/backup
+        networks:
+            - nexus-noir-network
+
+    nginx:
+        image: nginx:alpine
+        ports:
+            - "8000:80"
+        volumes:
+            - ./backend:/var/www/html
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+        depends_on:
+            - backend
+        networks:
+            - nexus-noir-network
+
+    mysql:
+        image: mysql:8.0
+        ports:
+            - "3306:3306"
+        environment:
+            MYSQL_DATABASE: ${DB_DATABASE:-nexus_noir}
+            MYSQL_USER: ${DB_USERNAME:-user}
+            MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+        volumes:
+            - db-data:/var/lib/mysql
+            - ./docker/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh
+        networks:
+            - nexus-noir-network
+        healthcheck:
+            test: [ "CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}" ]
+            retries: 3
+            timeout: 5s
+
+    redis:
+        image: redis:alpine
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis-data:/data
+        networks:
+            - nexus-noir-network
+        healthcheck:
+            test: [ "CMD", "redis-cli", "ping" ]
+            retries: 3
+            timeout: 5s
+
+    mailpit:
+        image: axllent/mailpit
+        ports:
+            - "1025:1025"
+            - "8025:8025"
+        networks:
+            - nexus-noir-network
+
+networks:
+    nexus-noir-network:
+        driver: bridge
+
+volumes:
+    db-data:
+    redis-data:

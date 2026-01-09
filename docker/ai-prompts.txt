@@ -1,0 +1,76 @@
+Good morning.
+
+Can you have a look at this boilerplate project for me.
+
+
+I would like to add a vue/vite project in the frontend folder, please include https://primevue.org/ to the frontend that I will be running local on my machine.
+=
+
+Can you adjust the vite.config.js to make it autoloading components, and serve the project from port 3500
+result: " ➜  Local:   http://localhost:3500/ "
+
+==
+
+Next, I would like you to add a laravel 12 on php8.4 project in the backend folder that will run from docker.
+There is a docker-compose file to have a look at.
+
+it includes:
+- backend
+- nginx
+- mysql
+- redis
+- mailpit
+
+== antigravity crashed... so tried again...
+
+I've added an install.sh
+The idea is to have symlinks to the folders backup and electron so laravel can access them.
+
+Can you have a look at that?
+
+== reached quota... today is not a good day.
+== gemimi 3 pro (high)
+
+can you check the laravel migration and models will work with json files in nexus-noir-creator/backup/json ?
+
+I want you to create an artisan that imports the JSON data into the Database.
+
+== -> fix for glb not being in database.
+
+I've got these .glb files in
+nexus-noir-creator/backend/storage/app/public/glb
+
+elia-spindex.glb                               character
+food-court--de-food-court.glb                  scene: De Food Court
+food-court--de-rosse-buurt.glb                 scene: De Rosse Buurt
+geheugen-centrum--stelline-trap.glb            scene: Stelline trap
+nexus-runner-k.glb                             character
+nt-politie--ntpd-hoofdkantoor.glb              scene: NTPD Hoofdkantoor
+nt-politie--ntpd-landing-platform.glb          scene: NTPD Landing Platform
+radiation-markt--radiation-street.glb          scene: Radiation straat
+regina-d.glb                                   character
+sapper--sapper-buiten.glb                      scene: Sapper landing
+sapper--sapper-kamer.glb                       scene: Sapper kamer
+sapper--sapper-veld.glb                        scene: Sapper veld
+sapper.glb                                     character
+thuis--thuis-buiten.glb                        scene: Thuis buiten
+thuis--thuis-kamer.glb                         scene: Thuis kamer
+vehicle--spinner-2049.glb                      character: vehicle
+afval--crashlocatie-combat.glb                 scene: Crashlocatie combat
+afval--crashlocatie.glb                        scene: Crashlocatie
+wallace-hoofdkantoor--wallace-archief.glb      scene: Wallace
+wallace-hoofdkantoor--wallace-bibliotheek.glb  scene: Wallace bibliotheek
+wallace-hoofdkantoor--wallace-buiten.glb       scene: Wallace buiten
+wallace-hoofdkantoor--wallace-kantoor-luv.glb  scene: Wallace kantoor Luv
+wallace-hoofdkantoor--wallace-kantoor.glb      scene: Wallace kantoor
+wallace-hoofdkantoor--wallace-lab.glb          scene: Wallace lab
+
+can you create DB entries for them in mediax?
+
+Maybe just add them to the mediax.json and then run the new app:import-json artisan.
+
+Before the -- is the sector slug, and after the -- is the scene name slug (i think).  I added "character" and scene info behind the names
+
+==
+
+can you add i18n in the frontend. or something multi language that works with primevue.

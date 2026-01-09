@@ -1,0 +1,24 @@
+{
+    "hello": "Hello world",
+    "welcome": "Welcome to Nexus Noir Creator",
+    "change_language": "Change Language",
+    "about": {
+        "trying":"Attempt 2 for a creator game",
+        "of_the":"of the"
+    },
+    "common": {
+        "sidebar": {
+            "dashboard": "Dashboard",
+            "sectors": "Sectors",
+            "scenes": "Scenes",
+            "behavior": "Actions",
+            "dialogues": "Dialogues",
+            "characters": "Characters",
+            "vehicles": "Vehicles",
+            "clues": "Clues",
+            "notes": "Notes",
+            "about": "About",
+            "help": "Help"
+        }
+    }
+}

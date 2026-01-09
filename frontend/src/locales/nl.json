@@ -1,0 +1,24 @@
+{
+    "hello": "Hallo wereld",
+    "welcome": "Welkom bij Nexus Noir Creator",
+    "change_language": "Taal wijzigen",
+    "about": {
+        "trying":"Poging 2 tot een game creator",
+        "of_the":"van de"
+    },
+    "common": {
+        "sidebar": {
+            "dashboard": "Dashboard",
+            "sectors": "Sectoren",
+            "scenes": "Scenes",
+            "behavior": "Gedrag",
+            "dialogues": "Dialogen",
+            "characters": "Personages",
+            "vehicles": "Voertuigen",
+            "clues": "Aanwijzingen",
+            "notes": "Notities",
+            "about": "Over",
+            "help": "Help"
+        }
+    }
+}

@@ -1,0 +1,58 @@
+/* Global View Header Styles */
+.view-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--color-noir-accent);
+    margin-bottom: 1rem;
+    border-bottom-color: black;
+}
+
+.view-title {
+    font-size: 1.5rem;
+    text-transform: uppercase;
+    margin: 0;
+    font-weight: normal;
+    color: var(--color-noir-text);
+}
+
+.filters {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 1rem;
+}
+
+.noir-select {
+    width: 200px;
+    background: black !important;
+    border: 1px solid #1f2937 !important;
+}
+
+.noir-select span{
+    color: white;
+}
+
+.new-btn {
+    margin-left: auto;
+    font-weight: bold;
+    color: #000 !important;
+}
+
+/* Ensure the clear icon is visible and styled if needed */
+:deep(.p-select-clear-icon) {
+    color: #ffffff !important;
+    /* Force white for maximum visibility against black */
+    font-size: 0.85rem !important;
+    right: 2.2rem !important;
+    /* Adjusted position */
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10 !important;
+    /* Ensure it's on top */
+}
+
+:deep(.p-select-clear-icon:hover) {
+    color: var(--color-noir-accent) !important;
+}
