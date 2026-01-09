@@ -34,7 +34,7 @@
     border: 1px solid #1f2937 !important;
 }
 
-.noir-select span{
+.noir-select span {
     color: white;
 }
 
@@ -60,4 +60,92 @@
 
 :deep(.p-select-clear-icon:hover) {
     color: var(--color-noir-accent) !important;
+}
+
+/* Modal / Dialog Styles */
+.p-dialog-mask {
+    backdrop-filter: blur(4px);
+    background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+.noir-modal {
+    background-color: var(--color-noir-panel) !important;
+    border: 1px solid #1f2937 !important;
+    color: var(--color-noir-text) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7) !important;
+}
+
+.noir-modal .p-dialog-header {
+    background: black !important;
+    color: var(--color-noir-text) !important;
+    padding: 1rem !important;
+    border-bottom: 2px solid #111827 !important;
+    font-family: inherit;
+    text-transform: uppercase;
+}
+
+.noir-modal .p-dialog-title {
+    font-weight: normal !important;
+    font-size: 1.1rem !important;
+    letter-spacing: 1px;
+}
+
+.noir-modal .p-dialog-content {
+    background: var(--color-noir-panel) !important;
+    color: var(--color-noir-text) !important;
+    padding: 1.5rem !important;
+}
+
+.noir-modal .p-dialog-footer {
+    background: #111827 !important;
+    padding: 1rem !important;
+    border-top: 1px solid #1f2937 !important;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+/* Toast Styles */
+.p-toast {
+    opacity: 0.95;
+}
+
+.p-toast-message {
+    background: var(--color-noir-panel) !important;
+    color: var(--color-noir-text) !important;
+    border: 1px solid;
+    /* Base border for all messages */
+}
+
+.p-toast-message-success {
+    border-color: var(--color-noir-success) !important;
+}
+
+.p-toast-message-error {
+    border-color: var(--color-noir-danger) !important;
+}
+
+.p-toast-message-info {
+    border-color: var(--color-noir-accent) !important;
+}
+
+.p-toast-message-warn {
+    border-color: var(--color-noir-warning) !important;
+}
+
+.p-toast-message-success .p-toast-message-icon {
+    color: var(--color-noir-success) !important;
+}
+
+.p-toast-message-error .p-toast-message-icon {
+    color: var(--color-noir-danger) !important;
+}
+
+.p-toast-message-info .p-toast-message-icon {
+    color: var(--color-noir-accent) !important;
+}
+
+.p-toast-message-warn .p-toast-message-icon {
+    color: var(--color-noir-warning) !important;
 }

@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
     note: {
@@ -10,12 +11,13 @@ const props = defineProps({
 
 const emit = defineEmits(['toggle-done', 'delete']);
 
+const { t, locale } = useI18n();
 const isDone = computed(() => props.note.is_done);
 
 const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleDateString('nl-NL', { // Assuming generic locale preference or keeping similar to user screenshot
+    return date.toLocaleDateString(locale.value, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric'
@@ -51,7 +53,7 @@ const formatDate = (dateString) => {
 
         <div class="note-footer">
             <span class="note-date">{{ formatDate(note.created_at) }}</span>
-            <span class="note-status">{{ isDone ? 'DONE' : 'ACTIVE' }}</span>
+            <span class="note-status">{{ isDone ? t('notes.status_done') : t('notes.status_active') }}</span>
         </div>
     </div>
 </template>
@@ -99,6 +101,7 @@ const formatDate = (dateString) => {
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     line-height: 1.3;
 }

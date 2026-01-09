@@ -2,6 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
+import Button from 'primevue/button';
 import CharacterThumb from '@components/thumbs/CharacterThumb.vue';
 
 const { t } = useI18n();
@@ -58,8 +59,8 @@ onMounted(() => {
 <template>
     <div class="characters-view">
         <div class="view-header">
-            <h1 class="view-title">CHARACTERS</h1>
-            <Button label="+ new" severity="warning" class="new-btn" />
+            <h1 class="view-title">{{ t('common.views.characters.title') }}</h1>
+            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" />
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -71,7 +72,7 @@ onMounted(() => {
         </div>
 
         <div class="characters-grid">
-            <div v-if="loading" class="loading-state">Loading characters...</div>
+            <div v-if="loading" class="loading-state">{{ t('common.views.characters.loading') }}</div>
             <CharacterThumb
                 v-else
                 v-for="character in filteredCharacters"
@@ -87,12 +88,11 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--color-noir-text);
 }
 
 .characters-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1rem;
     overflow-y: auto;
     padding-right: 0.5rem;

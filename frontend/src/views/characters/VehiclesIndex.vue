@@ -1,11 +1,11 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
+import Button from 'primevue/button';
 import VehicleThumb from '@components/thumbs/VehicleThumb.vue';
 
 const { t } = useI18n();
-
 const vehicles = ref([]);
 const loading = ref(true);
 const sortBy = ref(sessionStorage.getItem('vehicles_sort_by') || 'alphabetical');
@@ -16,18 +16,11 @@ const sortOptions = computed(() => [
     { label: t('common.sorting.id'), value: 'id' }
 ]);
 
-watch(sortBy, (newVal) => {
-    sessionStorage.setItem('vehicles_sort_by', newVal);
-});
-
 const fetchVehicles = async () => {
     try {
-        const response = await fetch('/api/characters');
+        const response = await fetch('/api/characters?type=vehicle');
         if (!response.ok) throw new Error('Failed to fetch vehicles');
-        const allCharacters = await response.json();
-
-        // Filter only "vehicle" type
-        vehicles.value = allCharacters.filter(c => c.type === 'vehicle');
+        vehicles.value = await response.json();
     } catch (error) {
         console.error(error);
     } finally {
@@ -50,6 +43,10 @@ const filteredVehicles = computed(() => {
     });
 });
 
+watch(sortBy, (newVal) => {
+    sessionStorage.setItem('vehicles_sort_by', newVal);
+});
+
 onMounted(() => {
     fetchVehicles();
 });
@@ -57,9 +54,9 @@ onMounted(() => {
 
 <template>
     <div class="vehicles-view">
-        <div class="view-header ">
-            <h1 class="view-title">VEHICLES</h1>
-            <Button label="+ new" severity="warning" class="new-btn" />
+        <div class="view-header">
+            <h1 class="view-title">{{ t('common.views.vehicles.title') }}</h1>
+            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" />
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -71,7 +68,7 @@ onMounted(() => {
         </div>
 
         <div class="vehicles-grid">
-            <div v-if="loading" class="loading-state">Loading vehicles...</div>
+            <div v-if="loading" class="loading-state">{{ t('common.views.vehicles.loading') }}</div>
             <VehicleThumb
                 v-else
                 v-for="vehicle in filteredVehicles"
@@ -87,13 +84,12 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--color-noir-text);
 }
 
 .vehicles-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
+    gap: 1.5rem;
     overflow-y: auto;
     padding-right: 0.5rem;
 }

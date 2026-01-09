@@ -1,11 +1,11 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
+import Button from 'primevue/button';
 import ClueThumb from '@components/thumbs/ClueThumb.vue';
 
 const { t } = useI18n();
-
 const clues = ref([]);
 const loading = ref(true);
 const sortBy = ref(sessionStorage.getItem('clues_sort_by') || 'alphabetical');
@@ -15,10 +15,6 @@ const sortOptions = computed(() => [
     { label: t('common.sorting.date'), value: 'date' },
     { label: t('common.sorting.id'), value: 'id' }
 ]);
-
-watch(sortBy, (newVal) => {
-    sessionStorage.setItem('clues_sort_by', newVal);
-});
 
 const fetchClues = async () => {
     try {
@@ -47,6 +43,10 @@ const filteredClues = computed(() => {
     });
 });
 
+watch(sortBy, (newVal) => {
+    sessionStorage.setItem('clues_sort_by', newVal);
+});
+
 onMounted(() => {
     fetchClues();
 });
@@ -55,8 +55,8 @@ onMounted(() => {
 <template>
     <div class="clues-view">
         <div class="view-header">
-            <h1 class="view-title">CLUES</h1>
-            <Button label="+ new" severity="warning" class="new-btn" />
+            <h1 class="view-title">{{ t('common.views.clues.title') }}</h1>
+            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" />
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -68,7 +68,7 @@ onMounted(() => {
         </div>
 
         <div class="clues-grid">
-            <div v-if="loading" class="loading-state">Loading clues...</div>
+            <div v-if="loading" class="loading-state">{{ t('common.views.clues.loading') }}</div>
             <ClueThumb
                 v-else
                 v-for="clue in filteredClues"
@@ -84,13 +84,12 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--color-noir-text);
 }
 
 .clues-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
     overflow-y: auto;
     padding-right: 0.5rem;
 }

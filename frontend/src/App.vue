@@ -10,6 +10,7 @@ const toggleLanguage = () => {
 
 <template>
   <div class="app-layout">
+    <Toast />
     <!-- Sidebar -->
     <Sidebar />
 

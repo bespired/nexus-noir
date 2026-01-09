@@ -1,16 +1,22 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useToast } from 'primevue/usetoast';
 import NoteThumb from '@components/thumbs/NoteThumb.vue';
+import Button from 'primevue/button';
+import CreateNoteModal from '@components/modals/CreateNoteModal.vue';
 
+const { t } = useI18n();
+const toast = useToast();
 const notes = ref([]);
 const loading = ref(true);
+const showCreateModal = ref(false);
 
 const fetchNotes = async () => {
     try {
         const response = await fetch('/api/notes');
         if (!response.ok) throw new Error('Failed to fetch notes');
         notes.value = await response.json();
-        // Sort: Active first, then by date desc
         sortNotes();
     } catch (error) {
         console.error(error);
@@ -27,6 +33,12 @@ const sortNotes = () => {
         return a.is_done ? 1 : -1;
     });
 };
+
+const onNoteCreated = (newNote) => {
+    notes.value.push(newNote);
+    sortNotes();
+};
+
 
 const handleToggleDone = async (note) => {
     // Optimistic update
@@ -52,11 +64,14 @@ const handleToggleDone = async (note) => {
         if (!response.ok) {
             // Revert on failure
             note.is_done = originalStatus;
-            console.error('Failed to update note status');
+            toast.add({ severity: 'error', summary: t('notes.messages.error_summary'), detail: t('notes.messages.error_save'), life: 3000 });
+        } else {
+            toast.add({ severity: 'success', summary: t('notes.messages.success_summary'), detail: t('notes.messages.success_update'), life: 3000 });
         }
     } catch (error) {
         note.is_done = originalStatus;
         console.error(error);
+        toast.add({ severity: 'error', summary: t('notes.messages.error_summary'), detail: 'Failed to update note', life: 3000 });
     }
 };
 
@@ -80,11 +95,14 @@ const handleDelete = async (note) => {
         if (!response.ok) {
             // Revert (fetch all again to be safe)
             fetchNotes();
-            console.error('Failed to delete note');
+            toast.add({ severity: 'error', summary: t('notes.messages.error_summary'), detail: t('notes.messages.error_save'), life: 3000 });
+        } else {
+            toast.add({ severity: 'success', summary: t('notes.messages.success_summary'), detail: t('notes.messages.success_delete'), life: 3000 });
         }
     } catch (error) {
         fetchNotes();
         console.error(error);
+        toast.add({ severity: 'error', summary: t('notes.messages.error_summary'), detail: 'Failed to delete note', life: 3000 });
     }
 };
 
@@ -96,12 +114,18 @@ onMounted(() => {
 <template>
     <div class="notes-view">
         <div class="view-header">
-            <h1 class="view-title">NOTES</h1>
-            <Button label="+ new" severity="warning" class="new-btn" />
+            <h1 class="view-title">{{ t('notes.title') }}</h1>
+            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
         </div>
 
+        <!-- NEW NOTE MODAL -->
+        <CreateNoteModal
+            v-model:visible="showCreateModal"
+            @created="onNoteCreated"
+        />
+
         <div class="notes-grid">
-            <div v-if="loading" class="loading-state">Loading notes...</div>
+            <div v-if="loading" class="loading-state">{{ t('notes.loading') }}</div>
             <NoteThumb
                 v-else
                 v-for="note in notes"

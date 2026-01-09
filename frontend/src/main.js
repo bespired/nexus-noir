@@ -7,6 +7,8 @@ import './noir.css'
 import 'primeicons/primeicons.css'
 import i18n from './i18n'
 import ToastService from 'primevue/toastservice';
+import Toast from 'primevue/toast';
+import Badge from 'primevue/badge';
 import App from './App.vue'
 
 import router from './router'
@@ -14,6 +16,8 @@ import store from './store'
 
 const app = createApp(App)
 app.use(ToastService);
+app.component('Toast', Toast);
+app.component('Badge', Badge);
 
 const NoirPreset = definePreset(Aura, {
     components: {

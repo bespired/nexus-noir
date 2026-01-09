@@ -20,12 +20,70 @@
             "about": "Over",
             "help": "Help"
         },
+        "actions": {
+            "new": "+ nieuw"
+        },
         "sorting": {
             "title": "Sorteer op",
             "alphabetical": "Alfabetisch",
             "date": "Datum",
             "id": "ID",
             "sector": "Sector"
+        },
+        "views": {
+            "scenes": {
+                "title": "Scenes",
+                "loading": "Scenes laden..."
+            },
+            "sectors": {
+                "title": "Sectoren",
+                "loading": "Sectoren laden..."
+            },
+            "actions": {
+                "title": "Gedrag",
+                "loading": "Gedrag laden..."
+            },
+            "dialogs": {
+                "title": "Dialogen",
+                "loading": "Dialogen laden..."
+            },
+            "characters": {
+                "title": "Personages",
+                "loading": "Personages laden..."
+            },
+            "vehicles": {
+                "title": "Voertuigen",
+                "loading": "Voertuigen laden..."
+            },
+            "clues": {
+                "title": "Aanwijzingen",
+                "loading": "Aanwijzingen laden..."
+            }
+        }
+    },
+    "notes": {
+        "title": "Notities",
+        "new_note": "+ nieuw",
+        "loading": "Notities laden...",
+        "status_done": "VOLTOOID",
+        "status_active": "ACTIEF",
+        "modal": {
+            "title": "NIEUWE NOTITIE",
+            "label_title": "TITEL",
+            "label_content": "INHOUD",
+            "placeholder_title": "bijv. Bewijs bij Deckard's",
+            "placeholder_content": "Voer notitiedetails in...",
+            "btn_cancel": "NEE DOE MAAR NIET",
+            "btn_save": "JA BEWAREN"
+        },
+        "messages": {
+            "success_summary": "Succes",
+            "success_detail": "Notitie succesvol aangemaakt",
+            "success_update": "Notitie bijgewerkt",
+            "success_delete": "Notitie verwijderd",
+            "error_summary": "Fout",
+            "error_fill_fields": "Vul alle velden in",
+            "error_save": "Kon notitie niet opslaan"
         }
     }
 }

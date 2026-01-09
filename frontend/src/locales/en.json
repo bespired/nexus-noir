@@ -3,8 +3,8 @@
     "welcome": "Welcome to Nexus Noir Creator",
     "change_language": "Change Language",
     "about": {
-        "trying":"Attempt 2 for a creator game",
-        "of_the":"of the"
+        "trying": "Attempt 2 for a creator game",
+        "of_the": "of the"
     },
     "common": {
         "sidebar": {
@@ -20,12 +20,70 @@
             "about": "About",
             "help": "Help"
         },
+        "actions": {
+            "new": "+ new"
+        },
         "sorting": {
             "title": "Sort By",
             "alphabetical": "Alphabetical",
             "date": "Date",
             "id": "ID",
             "sector": "Sector"
+        },
+        "views": {
+            "scenes": {
+                "title": "Scenes",
+                "loading": "Loading scenes..."
+            },
+            "sectors": {
+                "title": "Sectors",
+                "loading": "Loading sectors..."
+            },
+            "actions": {
+                "title": "Actions",
+                "loading": "Loading actions..."
+            },
+            "dialogs": {
+                "title": "Dialogues",
+                "loading": "Loading dialogs..."
+            },
+            "characters": {
+                "title": "Characters",
+                "loading": "Loading characters..."
+            },
+            "vehicles": {
+                "title": "Vehicles",
+                "loading": "Loading vehicles..."
+            },
+            "clues": {
+                "title": "Clues",
+                "loading": "Loading clues..."
+            }
+        }
+    },
+    "notes": {
+        "title": "Notes",
+        "new_note": "+ new",
+        "loading": "Loading notes...",
+        "status_done": "DONE",
+        "status_active": "ACTIVE",
+        "modal": {
+            "title": "NEW NOTE",
+            "label_title": "TITLE",
+            "label_content": "CONTENT",
+            "placeholder_title": "e.g. Evidence at Deckard's",
+            "placeholder_content": "Enter note details...",
+            "btn_cancel": "NO THANK YOU",
+            "btn_save": "YES SAVE"
+        },
+        "messages": {
+            "success_summary": "Success",
+            "success_detail": "Note created successfully",
+            "success_update": "Note updated",
+            "success_delete": "Note deleted",
+            "error_summary": "Error",
+            "error_fill_fields": "Please fill in all fields",
+            "error_save": "Could not save note"
         }
     }
 }

@@ -3,12 +3,13 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import SceneThumb from '@components/thumbs/SceneThumb.vue';
 import Select from 'primevue/select';
+import Button from 'primevue/button';
+
+const { t } = useI18n();
 
 const scenes = ref([]);
 const sectors = ref([]);
 const loading = ref(true);
-
-const { t } = useI18n();
 
 // Initialize from sessionStorage or null
 const selectedSector = ref(Number(sessionStorage.getItem('scenes_filter_sector')) || null);
@@ -95,7 +96,7 @@ onMounted(() => {
 <template>
     <div class="scenes-view">
         <div class="view-header">
-            <h1 class="view-title">SCENES</h1>
+            <h1 class="view-title">{{ t('common.views.scenes.title') }}</h1>
             <div class="filters">
                 <Select
                     v-model="selectedSector"
@@ -114,7 +115,7 @@ onMounted(() => {
                     class="noir-select"
                 />
             </div>
-            <Button label="+ new" severity="warning" class="new-btn" />
+            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" />
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -126,7 +127,7 @@ onMounted(() => {
         </div>
 
         <div class="scenes-grid">
-            <div v-if="loading" class="loading-state">Loading scenes...</div>
+            <div v-if="loading" class="loading-state">{{ t('common.views.scenes.loading') }}</div>
             <SceneThumb
                 v-else
                 v-for="scene in filteredScenes"
@@ -142,17 +143,15 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--color-noir-text);
 }
 
 .scenes-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
+    gap: 1.5rem;
     overflow-y: auto;
     padding-right: 0.5rem;
 }
-
 
 .loading-state {
     color: var(--color-noir-muted);
@@ -166,5 +165,4 @@ onMounted(() => {
     width: 155px !important;
     margin-left: 0.5rem;
 }
-
 </style>

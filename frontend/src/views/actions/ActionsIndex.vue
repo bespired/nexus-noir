@@ -1,11 +1,11 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
+import Button from 'primevue/button';
 import ActionThumb from '@components/thumbs/ActionThumb.vue';
 
 const { t } = useI18n();
-
 const actions = ref([]);
 const loading = ref(true);
 const sortBy = ref(sessionStorage.getItem('actions_sort_by') || 'alphabetical');
@@ -15,10 +15,6 @@ const sortOptions = computed(() => [
     { label: t('common.sorting.date'), value: 'date' },
     { label: t('common.sorting.id'), value: 'id' }
 ]);
-
-watch(sortBy, (newVal) => {
-    sessionStorage.setItem('actions_sort_by', newVal);
-});
 
 const fetchActions = async () => {
     try {
@@ -47,6 +43,10 @@ const filteredActions = computed(() => {
     });
 });
 
+watch(sortBy, (newVal) => {
+    sessionStorage.setItem('actions_sort_by', newVal);
+});
+
 onMounted(() => {
     fetchActions();
 });
@@ -55,8 +55,8 @@ onMounted(() => {
 <template>
     <div class="actions-view">
         <div class="view-header">
-            <h1 class="view-title">ACTIONS</h1>
-            <Button label="+ new" severity="warning" class="new-btn" />
+            <h1 class="view-title">{{ t('common.views.actions.title') }}</h1>
+            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" />
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -68,7 +68,7 @@ onMounted(() => {
         </div>
 
         <div class="actions-grid">
-            <div v-if="loading" class="loading-state">Loading actions...</div>
+            <div v-if="loading" class="loading-state">{{ t('common.views.actions.loading') }}</div>
             <ActionThumb
                 v-else
                 v-for="action in filteredActions"
@@ -84,13 +84,12 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--color-noir-text);
 }
 
 .actions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
+    gap: 1.5rem;
     overflow-y: auto;
     padding-right: 0.5rem;
 }
