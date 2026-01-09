@@ -219,7 +219,7 @@ class ImportJsonData extends Command
                 'id' => $item['id'],
                 'filepad' => $item['filepad'] ?? $item['bestandspad'], // Mapping bestandspad -> filepad
                 'title' => $item['title'] ?? $item['titel'] ?? null,
-                'type' => $this->determineMediaType($item['bestandspad']),
+                'type' => $this->determineMediaType($item['filepad'] ?? $item['bestandspad']),
                 'imageable_type' => $item['imageable_type'],
                 'imageable_id' => $item['imageable_id'],
                 'created_at' => $item['created_at'] ?? now(),

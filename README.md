@@ -26,8 +26,18 @@ gives you
 #### Get Laravel
 `docker compose exec backend composer install`
 
-#### Install Cyber Noir
+#### Install Nexus Noir
 `docker compose exec backend php artisan migrate:refresh --seed`
+
+#### Install Nexus Noir assets
+
+Download zip.  
+https://drive.google.com/file/d/1UAjpfpLSRqrPFmFSICH7Fc7iskbYc5Q_/view?usp=sharing
+
+Put it in the backup folder.  
+Then run  
+
+`docker compose exec backend php artisan app:install`    
 
 
 #### Install Vue
