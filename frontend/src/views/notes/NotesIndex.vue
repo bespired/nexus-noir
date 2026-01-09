@@ -11,6 +11,8 @@ const toast = useToast();
 const notes = ref([]);
 const loading = ref(true);
 const showCreateModal = ref(false);
+const showDeleteConfirm = ref(false);
+const noteToDelete = ref(null);
 
 const fetchNotes = async () => {
     try {
@@ -75,8 +77,14 @@ const handleToggleDone = async (note) => {
     }
 };
 
-const handleDelete = async (note) => {
-    if (!confirm('Are you sure you want to delete this note?')) return;
+const handleDelete = (note) => {
+    noteToDelete.value = note;
+    showDeleteConfirm.value = true;
+};
+
+const confirmDelete = async () => {
+    if (!noteToDelete.value) return;
+    const note = noteToDelete.value;
 
     // Optimistic remove
     const index = notes.value.findIndex(n => n.id === note.id);
@@ -103,6 +111,8 @@ const handleDelete = async (note) => {
         fetchNotes();
         console.error(error);
         toast.add({ severity: 'error', summary: t('notes.messages.error_summary'), detail: 'Failed to delete note', life: 3000 });
+    } finally {
+        noteToDelete.value = null;
     }
 };
 
@@ -117,6 +127,13 @@ onMounted(() => {
             <h1 class="view-title">{{ t('notes.title') }}</h1>
             <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
         </div>
+
+        <ConfirmationModal
+            v-model:visible="showDeleteConfirm"
+            :title="t('common.confirm.default_title')"
+            :message="t('notes.messages.confirm_delete')"
+            @accept="confirmDelete"
+        />
 
         <!-- NEW NOTE MODAL -->
         <CreateNoteModal

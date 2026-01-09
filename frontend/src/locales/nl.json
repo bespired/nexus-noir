@@ -23,6 +23,11 @@
         "actions": {
             "new": "+ nieuw"
         },
+        "confirm": {
+            "default_title": "BEVESTIG ACTIE",
+            "btn_yes": "JA, DOORGAAN",
+            "btn_no": "NEE, ANNULEREN"
+        },
         "sorting": {
             "title": "Sorteer op",
             "alphabetical": "Alfabetisch",
@@ -71,7 +76,7 @@
             "title": "NIEUWE NOTITIE",
             "label_title": "TITEL",
             "label_content": "INHOUD",
-            "placeholder_title": "bijv. Bewijs bij Deckard's",
+            "placeholder_title": "bijv. Dingen die je niet wil vergeten.",
             "placeholder_content": "Voer notitiedetails in...",
             "btn_cancel": "NEE DOE MAAR NIET",
             "btn_save": "JA BEWAREN"
@@ -81,6 +86,7 @@
             "success_detail": "Notitie succesvol aangemaakt",
             "success_update": "Notitie bijgewerkt",
             "success_delete": "Notitie verwijderd",
+            "confirm_delete": "Weet je zeker dat je deze notitie wilt verwijderen?",
             "error_summary": "Fout",
             "error_fill_fields": "Vul alle velden in",
             "error_save": "Kon notitie niet opslaan"
