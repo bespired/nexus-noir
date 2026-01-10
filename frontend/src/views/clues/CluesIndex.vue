@@ -1,9 +1,6 @@
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import Select from 'primevue/select';
-import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
 import ClueThumb from '@components/thumbs/ClueThumb.vue';
 import CreateClueModal from '@components/modals/CreateClueModal.vue';
 import MediaUpload from '@components/customs/MediaUpload.vue';
@@ -93,7 +90,7 @@ onMounted(() => {
             />
         </div>
 
-        <CreateClueModal 
+        <CreateClueModal
             v-model:visible="showCreateModal"
             @created="onClueCreated"
         />
@@ -109,10 +106,13 @@ onMounted(() => {
             />
         </div>
 
-        <Dialog v-model:visible="showUploadDialog" modal header="Upload Thumbnail" :style="{ width: '50vw' }" class="noir-dialog">
-            <MediaUpload 
+        <Dialog v-model:visible="showUploadDialog"
+            modal header="Upload Thumbnail"
+            class="noir-dialog"
+        >
+            <MediaUpload
                 v-if="selectedClueForUpload"
-                :modelId="selectedClueForUpload.id" 
+                :modelId="selectedClueForUpload.id"
                 modelType="App\Models\Clue"
                 accept="image/*"
                 label="UPLOAD THUMBNAIL"
@@ -120,6 +120,7 @@ onMounted(() => {
                 @close="showUploadDialog = false"
             />
         </Dialog>
+
     </div>
 </template>
 

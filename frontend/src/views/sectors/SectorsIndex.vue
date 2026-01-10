@@ -1,8 +1,6 @@
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import Select from 'primevue/select';
-import Button from 'primevue/button';
 import SectorThumb from '@components/thumbs/SectorThumb.vue';
 
 const { t } = useI18n();

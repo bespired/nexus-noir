@@ -1,8 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import Select from 'primevue/select';
-import Button from 'primevue/button';
 import DialogThumb from '@components/thumbs/DialogThumb.vue';
 
 const { t } = useI18n();

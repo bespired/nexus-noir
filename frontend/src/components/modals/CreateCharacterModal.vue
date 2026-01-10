@@ -2,11 +2,6 @@
 import { ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
-import Dialog from 'primevue/dialog';
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
-import Checkbox from 'primevue/checkbox';
 
 const props = defineProps({
     visible: {

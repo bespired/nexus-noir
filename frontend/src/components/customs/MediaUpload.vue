@@ -1,7 +1,5 @@
 <script setup>
 import { ref } from 'vue';
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
 import { useToast } from 'primevue/usetoast';
 
 const props = defineProps({
@@ -61,22 +59,22 @@ const handleUpload = async () => {
         if (!response.ok) throw new Error('Upload failed');
 
         const data = await response.json();
-        toast.add({ 
-            severity: 'success', 
-            summary: 'Upload Successful', 
-            detail: 'Media has been attached.', 
-            life: 3000 
+        toast.add({
+            severity: 'success',
+            summary: 'Upload Successful',
+            detail: 'Media has been attached.',
+            life: 3000
         });
-        
+
         emit('uploaded', data);
         reset();
     } catch (error) {
         console.error(error);
-        toast.add({ 
-            severity: 'error', 
-            summary: 'Upload Error', 
-            detail: 'Could not upload file.', 
-            life: 3000 
+        toast.add({
+            severity: 'error',
+            summary: 'Upload Error',
+            detail: 'Could not upload file.',
+            life: 3000
         });
     } finally {
         uploading.value = false;
@@ -98,46 +96,45 @@ const handleClose = () => {
 <template>
     <div class="media-upload-container">
         <div class="media-upload-header">
-            <span class="no-visual-data">NO_VISUAL_DATA_AVAILABLE</span>
-            <Button 
-                label="CLOSE UPLOAD" 
-                class="close-upload-btn" 
+            <Button
+                label="CLOSE UPLOAD"
+                class="close-upload-btn"
                 @click="handleClose"
             />
         </div>
 
         <div class="upload-panel">
             <h4 class="upload-panel-title">{{ label }}</h4>
-            
+
             <div class="upload-controls">
-                <input 
-                    type="file" 
-                    ref="fileInput" 
-                    class="hidden-input" 
-                    :accept="accept" 
-                    @change="onFileSelect" 
+                <input
+                    type="file"
+                    ref="fileInput"
+                    class="hidden-input"
+                    :accept="accept"
+                    @change="onFileSelect"
                 />
-                <Button 
-                    label="Choose file" 
-                    severity="primary" 
-                    class="choose-btn" 
+                <Button
+                    label="Choose file"
+                    severity="primary"
+                    class="choose-btn"
                     @click="triggerFileInput"
                 />
                 <span class="filename-display">{{ selectedFile ? selectedFile.name : 'No file chosen' }}</span>
             </div>
 
             <div class="field">
-                <InputText 
-                    v-model="fileTitle" 
-                    placeholder="OPTIONAL_TITLE" 
+                <InputText
+                    v-model="fileTitle"
+                    placeholder="OPTIONAL_TITLE"
                     class="noir-input"
                 />
             </div>
 
-            <Button 
-                label="UPLOAD_MEDIA" 
-                severity="success" 
-                class="confirm-upload-btn" 
+            <Button
+                label="UPLOAD_MEDIA"
+                severity="success"
+                class="confirm-upload-btn"
                 :disabled="!selectedFile"
                 :loading="uploading"
                 @click="handleUpload"

@@ -43,7 +43,11 @@ const conditionCount = computed(() => {
 
             <div class="sector-thumb__footer">
                 <span class="sector-thumb__id">id: {{ sector.id }}</span>
-                <Button label="EDIT >" size="small" severity="warning" outlined class="sector-thumb__edit-btn" />
+                <Button label="EDIT >"
+                    severity="warning"
+                    outlined
+                    class="global-thumb__edit-btn"
+                />
             </div>
         </div>
     </div>
@@ -128,8 +132,4 @@ const conditionCount = computed(() => {
     color: var(--color-noir-muted);
 }
 
-.sector-thumb__edit-btn {
-    font-size: 0.75rem !important;
-    padding: 0.25rem 0.5rem !important;
-}
 </style>

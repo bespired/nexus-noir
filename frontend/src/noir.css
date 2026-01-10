@@ -149,3 +149,62 @@
 .p-toast-message-warn .p-toast-message-icon {
     color: var(--color-noir-warning) !important;
 }
+
+
+
+#app {
+
+    [class*="global-thumb__"] {
+        font-size: 12px;
+        padding: 6px 10px;
+        min-height: 28px;
+    }
+
+    .global-thumb__edit-btn {
+        background-image: none;
+        /* Clears the PrimeVue default gradient */
+        background-color: rgba(0, 255, 0, 0.1);
+        border-color: rgba(0, 255, 0, 0.2);
+        color: #10b981;
+
+        &:hover {
+            background-color: rgba(0, 255, 0, 0.2);
+        }
+
+        &:active {
+            background-color: rgba(0, 255, 0, 0.0);
+        }
+    }
+
+    .global-thumb__upload-btn {
+        background-image: none;
+        /* Clears the PrimeVue default gradient */
+        background-color: rgba(0, 0, 255, 0.1);
+        border-color: rgba(62, 113, 186, .5);
+        color: #3d71ba;
+
+        &:hover {
+            background-color: rgba(0, 0, 64, 0.5);
+        }
+
+        &:active {
+            background-color: rgba(0, 0, 255, 0.0);
+        }
+    }
+
+}
+
+body .noir-dialog {
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    width: 50vw;
+    border: 1px solid #393939;
+    background-color: black;
+    background: var(--color-noir-panel);
+    color: var(--color-noir-text);
+
+    .p-dialog-title {
+        color: var(--color-noir-text);
+    }
+}

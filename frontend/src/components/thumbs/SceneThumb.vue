@@ -45,8 +45,16 @@ const has3dModel = computed(() => {
             <div class="scene-thumb__footer">
                 <span class="scene-thumb__id">id: {{ scene.id }}</span>
                 <div class="scene-thumb__actions">
-                    <Badge v-if="has3dModel" value="3D" severity="contrast" class="scene-thumb__badge-3d" />
-                    <Button label="EDIT >" size="small" severity="warning" outlined class="scene-thumb__edit-btn" />
+                    <Badge v-if="has3dModel"
+                        value="3D"
+                        severity="contrast"
+                        class="global-thumb__badge-3d"
+                    />
+                    <Button label="EDIT >"
+                        severity="warning"
+                        outlined
+                        class="global-thumb__edit-btn"
+                    />
                 </div>
             </div>
         </div>
@@ -160,8 +168,4 @@ const has3dModel = computed(() => {
     color: var(--color-noir-muted);
 }
 
-.scene-thumb__edit-btn {
-    font-size: 0.75rem !important;
-    padding: 0.25rem 0.5rem !important;
-}
 </style>

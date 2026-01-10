@@ -1,7 +1,5 @@
 <script setup>
 import { computed } from 'vue';
-import Button from 'primevue/button';
-import Badge from 'primevue/badge';
 
 const props = defineProps({
     clue: {
@@ -17,7 +15,7 @@ const thumbUrl = computed(() => {
         // Specifically look for 2D media for the thumbnail
         const found = props.clue.media.find(m => m.type === '2d');
         if (!found) return null;
-        
+
         const file = found.filepad;
         if(file.startsWith('http')) return file;
         return `/storage/${file}`;
@@ -43,26 +41,29 @@ const has3dModel = computed(() => {
             <h3 class="clue-thumb__title">{{ clue.title }}</h3>
             <span class="clue-thumb__type">{{ clue.type }}</span>
             <p class="clue-thumb__description">{{ clue.description }}</p>
-            
+
             <div class="clue-thumb__footer">
                 <span class="clue-thumb__id">id: {{ clue.id }}</span>
                 <div class="clue-thumb__actions">
-                    <Badge v-if="has3dModel" value="3D" severity="contrast" class="clue-thumb__badge-3d" />
-                    <Button 
+                    <Badge
+                        v-if="has3dModel"
+                        value="3D"
+                        severity="contrast"
+                        class="global-thumb__badge-3d"
+                    />
+                    <Button
                         v-if="!thumbUrl"
-                        label="UPLOAD THUMB" 
-                        size="small" 
-                        severity="info" 
-                        outlined 
-                        class="clue-thumb__upload-btn" 
+                        label="UPLOAD THUMB"
+                        severity="info"
+                        outlined
+                        class="global-thumb__upload-btn"
                         @click="emit('request-upload', clue)"
                     />
-                    <Button 
-                        label="EDIT >" 
-                        size="small" 
-                        severity="warning" 
-                        outlined 
-                        class="clue-thumb__edit-btn" 
+                    <Button
+                        label="EDIT >"
+                        severity="warning"
+                        outlined
+                        class="global-thumb__edit-btn"
                         @click="$router.push(`/clues/${clue.id}`)"
                     />
                 </div>
@@ -168,8 +169,4 @@ const has3dModel = computed(() => {
     padding: 0.2rem 0.4rem !important;
 }
 
-.clue-thumb__edit-btn {
-    font-size: 0.75rem !important;
-    padding: 0.25rem 0.5rem !important;
-}
 </style>

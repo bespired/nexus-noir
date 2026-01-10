@@ -2,8 +2,6 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import SceneThumb from '@components/thumbs/SceneThumb.vue';
-import Select from 'primevue/select';
-import Button from 'primevue/button';
 
 const { t } = useI18n();
 

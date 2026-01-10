@@ -35,12 +35,20 @@ const has3dModel = computed(() => {
             <h3 class="vehicle-thumb__name">{{ vehicle.name }}</h3>
             <span class="vehicle-thumb__role">{{ vehicle.role }}</span>
             <p class="vehicle-thumb__description">{{ vehicle.description }}</p>
-            
+
             <div class="vehicle-thumb__footer">
                 <span class="vehicle-thumb__id">id: {{ vehicle.id }}</span>
                 <div class="vehicle-thumb__actions">
-                    <Badge v-if="has3dModel" value="3D" severity="contrast" class="vehicle-thumb__badge-3d" />
-                    <Button label="EDIT >" size="small" severity="warning" outlined class="vehicle-thumb__edit-btn" />
+                    <Badge v-if="has3dModel"
+                        value="3D"
+                        severity="contrast"
+                        class="global-thumb__badge-3d"
+                    />
+                    <Button label="EDIT >"
+                        severity="warning"
+                        outlined
+                        class="global-thumb__edit-btn"
+                    />
                 </div>
             </div>
         </div>
@@ -138,8 +146,4 @@ const has3dModel = computed(() => {
     color: var(--color-noir-muted);
 }
 
-.vehicle-thumb__edit-btn {
-    font-size: 0.75rem !important;
-    padding: 0.25rem 0.5rem !important;
-}
 </style>

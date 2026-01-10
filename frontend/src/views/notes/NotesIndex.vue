@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import NoteThumb from '@components/thumbs/NoteThumb.vue';
-import Button from 'primevue/button';
 import CreateNoteModal from '@components/modals/CreateNoteModal.vue';
 
 const { t } = useI18n();

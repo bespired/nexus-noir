@@ -6,16 +6,6 @@ import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/customs/EditViewHeader.vue';
 import MediaUpload from '@components/customs/MediaUpload.vue';
 import ThreePreview from '@components/customs/ThreePreview.vue';
-import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
-import Checkbox from 'primevue/checkbox';
-import Select from 'primevue/select';
-import Button from 'primevue/button';
-import Tabs from 'primevue/tabs';
-import TabList from 'primevue/tablist';
-import Tab from 'primevue/tab';
-import TabPanels from 'primevue/tabpanels';
-import TabPanel from 'primevue/tabpanel';
 
 const route = useRoute();
 const router = useRouter();

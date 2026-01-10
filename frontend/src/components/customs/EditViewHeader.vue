@@ -1,6 +1,5 @@
 <script setup>
 import { useRouter } from 'vue-router';
-import Button from 'primevue/button';
 
 const props = defineProps({
     backRoute: {
