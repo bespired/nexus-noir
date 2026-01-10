@@ -85,11 +85,165 @@
             "success_summary": "Success",
             "success_detail": "Note created successfully",
             "success_update": "Note updated",
+            "success_detail_update": "Note updated successfully",
             "success_delete": "Note deleted",
             "confirm_delete": "Are you sure you want to delete this note?",
             "error_summary": "Error",
             "error_fill_fields": "Please fill in all fields",
             "error_save": "Could not save note"
+        }
+    },
+    "clues": {
+        "modal": {
+            "title": "LOG NEW EVIDENCE",
+            "label_title": "EVIDENCE",
+            "label_type": "TYPE",
+            "label_description": "DESCRIPTION",
+            "label_initial": "Initial in possession of player",
+            "placeholder_title": "e.g. Broken Glass",
+            "placeholder_description": "Enter clue details...",
+            "btn_cancel": "NO THANK YOU",
+            "btn_save": "YES SAVE"
+        },
+        "messages": {
+            "success_summary": "Success",
+            "success_detail": "Clue created successfully",
+            "error_summary": "Error",
+            "error_fill_fields": "Please fill in all fields",
+            "error_save": "Could not save clue"
+        },
+        "edit": {
+            "media": {
+                "header_2d": "THUMBNAIL_DATA",
+                "header_3d": "3D_EVIDENCE_SCAN",
+                "btn_add_2d": "ADD THUMB",
+                "btn_add_3d": "ADD 3D MODEL",
+                "no_2d": "NO_THUMBNAIL",
+                "tabs": {
+                    "visual": "VISUAL DATA (2D)",
+                    "neural": "NEURAL SCAN (3D)"
+                }
+            }
+        }
+    },
+    "dialogs": {
+        "modal": {
+            "title": "NEW DIALOGUE",
+            "label_title": "DIALOGUE TITLE",
+            "placeholder_title": "e.g. Conversation with Miller",
+            "btn_cancel": "NO THANK YOU",
+            "btn_save": "YES SAVE"
+        },
+        "messages": {
+            "success_summary": "Success",
+            "success_detail": "Dialogue created successfully",
+            "error_summary": "Error",
+            "error_fill_fields": "Please fill in all fields",
+            "error_save": "Could not save dialogue"
+        }
+    },
+    "actions": {
+        "modal": {
+            "title": "NEW ACTION",
+            "label_title": "ACTION TITLE",
+            "label_description": "DESCRIPTION",
+            "placeholder_title": "e.g. Scan evidence",
+            "placeholder_description": "Describe the action...",
+            "btn_cancel": "NO THANK YOU",
+            "btn_save": "YES SAVE"
+        },
+        "messages": {
+            "success_summary": "Success",
+            "success_detail": "Action created successfully",
+            "error_summary": "Error",
+            "error_fill_fields": "Please fill in all fields",
+            "error_save": "Could not save action"
+        }
+    },
+    "characters": {
+        "modal": {
+            "title": "NEW CHARACTER",
+            "label_name": "NAME",
+            "label_role": "ROLE",
+            "label_description": "DESCRIPTION",
+            "label_motive": "MOTIVE",
+            "label_is_playable": "Is playable character",
+            "placeholder_name": "e.g. Roy Batty",
+            "placeholder_role": "e.g. Nexus-6 Replicant",
+            "placeholder_description": "Describe the character...",
+            "placeholder_motive": "What drives them?",
+            "btn_cancel": "NO THANK YOU",
+            "btn_save": "YES SAVE"
+        },
+        "messages": {
+            "success_summary": "Success",
+            "success_detail": "Character created successfully",
+            "error_summary": "Error",
+            "error_fill_fields": "Please fill in all fields",
+            "error_save": "Could not save character"
+        }
+    },
+    "vehicles": {
+        "modal": {
+            "title": "NEW VEHICLE",
+            "label_name": "NAME",
+            "label_role": "ROLE",
+            "label_description": "DESCRIPTION",
+            "placeholder_name": "e.g. Spinner",
+            "placeholder_description": "Describe the vehicle...",
+            "role_decor": "Decor (Static)",
+            "role_animated": "Animated (Playable)",
+            "btn_cancel": "NO THANK YOU",
+            "btn_save": "YES SAVE"
+        },
+        "messages": {
+            "success_summary": "Success",
+            "success_detail": "Vehicle created successfully",
+            "error_summary": "Error",
+            "error_fill_fields": "Please fill in all fields",
+            "error_save": "Could not save vehicle"
+        }
+    },
+    "sectors": {
+        "modal": {
+            "title": "NEW SECTOR",
+            "label_name": "SECTOR NAME",
+            "label_description": "DESCRIPTION",
+            "placeholder_name": "e.g. Sector 7-G",
+            "placeholder_description": "Enter sector details...",
+            "btn_cancel": "NO THANK YOU",
+            "btn_save": "YES SAVE"
+        },
+        "messages": {
+            "success_summary": "Success",
+            "success_detail": "Sector created successfully",
+            "error_summary": "Error",
+            "error_fill_fields": "Please fill in all fields",
+            "error_save": "Could not save sector"
+        }
+    },
+    "scenes": {
+        "modal": {
+            "title": "NEW SCENE",
+            "label_title": "SCENE TITLE",
+            "label_description": "DESCRIPTION",
+            "label_sector": "SECTOR",
+            "label_type": "TYPE",
+            "placeholder_title": "e.g. Nightclub Interior",
+            "placeholder_description": "Describe the scene...",
+            "type_walkable": "Walkable Area",
+            "type_vue": "Vue Component",
+            "type_investigation": "Investigation",
+            "type_combat": "Combat",
+            "btn_cancel": "NO THANK YOU",
+            "btn_save": "YES SAVE"
+        },
+        "messages": {
+            "success_summary": "Success",
+            "success_detail": "Scene created successfully",
+            "error_summary": "Error",
+            "error_fill_fields": "Please fill in all fields",
+            "error_save": "Could not save scene"
         }
     }
 }

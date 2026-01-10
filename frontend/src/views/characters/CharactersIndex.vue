@@ -10,6 +10,7 @@ const { t } = useI18n();
 const characters = ref([]);
 const loading = ref(true);
 const sortBy = ref(sessionStorage.getItem('characters_sort_by') || 'alphabetical');
+const showCreateModal = ref(false);
 
 const sortOptions = computed(() => [
     { label: t('common.sorting.alphabetical'), value: 'alphabetical' },
@@ -23,17 +24,18 @@ watch(sortBy, (newVal) => {
 
 const fetchCharacters = async () => {
     try {
-        const response = await fetch('/api/characters');
+        const response = await fetch('/api/characters?type=person');
         if (!response.ok) throw new Error('Failed to fetch characters');
-        const allCharacters = await response.json();
-
-        // Filter only "person" type
-        characters.value = allCharacters.filter(c => c.type === 'person');
+        characters.value = await response.json();
     } catch (error) {
         console.error(error);
     } finally {
         loading.value = false;
     }
+};
+
+const onCharacterCreated = (newCharacter) => {
+    characters.value.push(newCharacter);
 };
 
 const filteredCharacters = computed(() => {
@@ -60,7 +62,7 @@ onMounted(() => {
     <div class="characters-view">
         <div class="view-header">
             <h1 class="view-title">{{ t('common.views.characters.title') }}</h1>
-            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" />
+            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -70,6 +72,11 @@ onMounted(() => {
                 class="noir-select sort-select"
             />
         </div>
+
+        <CreateCharacterModal 
+            v-model:visible="showCreateModal"
+            @created="onCharacterCreated"
+        />
 
         <div class="characters-grid">
             <div v-if="loading" class="loading-state">{{ t('common.views.characters.loading') }}</div>

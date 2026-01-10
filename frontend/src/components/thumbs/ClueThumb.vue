@@ -1,5 +1,7 @@
 <script setup>
 import { computed } from 'vue';
+import Button from 'primevue/button';
+import Badge from 'primevue/badge';
 
 const props = defineProps({
     clue: {
@@ -8,9 +10,15 @@ const props = defineProps({
     }
 });
 
+const emit = defineEmits(['request-upload']);
+
 const thumbUrl = computed(() => {
     if (props.clue.media && props.clue.media.length > 0) {
-        const file = props.clue.media.find(m => m.type === '2d')?.filepad || props.clue.media[0].filepad;
+        // Specifically look for 2D media for the thumbnail
+        const found = props.clue.media.find(m => m.type === '2d');
+        if (!found) return null;
+        
+        const file = found.filepad;
         if(file.startsWith('http')) return file;
         return `/storage/${file}`;
     }
@@ -27,7 +35,7 @@ const has3dModel = computed(() => {
         <div class="clue-thumb__image-wrapper">
              <img v-if="thumbUrl" :src="thumbUrl" alt="Clue Image" class="clue-thumb__image" />
              <div v-else class="clue-thumb__placeholder">
-                { clue image }
+                { No Thumbnail }
              </div>
         </div>
 
@@ -40,7 +48,23 @@ const has3dModel = computed(() => {
                 <span class="clue-thumb__id">id: {{ clue.id }}</span>
                 <div class="clue-thumb__actions">
                     <Badge v-if="has3dModel" value="3D" severity="contrast" class="clue-thumb__badge-3d" />
-                    <Button label="EDIT >" size="small" severity="warning" outlined class="clue-thumb__edit-btn" />
+                    <Button 
+                        v-if="!thumbUrl"
+                        label="UPLOAD THUMB" 
+                        size="small" 
+                        severity="info" 
+                        outlined 
+                        class="clue-thumb__upload-btn" 
+                        @click="emit('request-upload', clue)"
+                    />
+                    <Button 
+                        label="EDIT >" 
+                        size="small" 
+                        severity="warning" 
+                        outlined 
+                        class="clue-thumb__edit-btn" 
+                        @click="$router.push(`/clues/${clue.id}`)"
+                    />
                 </div>
             </div>
         </div>
@@ -62,7 +86,7 @@ const has3dModel = computed(() => {
 
 .clue-thumb__image-wrapper {
     background-color: #374151;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 16 / 9;
     width: 100%;
     display: flex;
     align-items: center;
@@ -80,6 +104,7 @@ const has3dModel = computed(() => {
 .clue-thumb__placeholder {
     color: var(--color-noir-muted);
     font-family: monospace;
+    font-size: 0.8rem;
 }
 
 .clue-thumb__content {
@@ -136,6 +161,11 @@ const has3dModel = computed(() => {
 .clue-thumb__id {
     font-size: 0.75rem;
     color: var(--color-noir-muted);
+}
+
+.clue-thumb__upload-btn {
+    font-size: 0.65rem !important;
+    padding: 0.2rem 0.4rem !important;
 }
 
 .clue-thumb__edit-btn {

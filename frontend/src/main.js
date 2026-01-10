@@ -24,12 +24,26 @@ app.component('ConfirmationModal', ConfirmationModal);
 const NoirPreset = definePreset(Aura, {
     components: {
         select: {
-            padding: {
-                y: '4px'
+            root: {
+                paddingY: '4px'
+            }
+        },
+        badge: {
+            root: {
+                height: '20px',
+                padding: '0 8px'
+            }
+        },
+        tabs: {
+            root: {
+                tablist: {
+                    background: 'transparant'
+                }
             }
         }
     }
 });
+
 
 app.use(PrimeVue, {
     theme: {

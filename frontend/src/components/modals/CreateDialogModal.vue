@@ -5,7 +5,6 @@ import { useI18n } from 'vue-i18n';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
 
 const props = defineProps({
     visible: {
@@ -19,22 +18,22 @@ const emit = defineEmits(['update:visible', 'created']);
 const { t } = useI18n();
 const toast = useToast();
 
-const newNote = ref({
-    title: '',
-    content: ''
+const newDialog = ref({
+    title: ''
 });
+
 const saving = ref(false);
 
 const handleClose = () => {
     emit('update:visible', false);
 };
 
-const handleSaveNote = async () => {
-    if (!newNote.value.title || !newNote.value.content) {
+const handleSaveDialog = async () => {
+    if (!newDialog.value.title) {
         toast.add({
             severity: 'error',
-            summary: t('notes.messages.error_summary'),
-            detail: t('notes.messages.error_fill_fields'),
+            summary: t('dialogs.messages.error_summary'),
+            detail: t('dialogs.messages.error_fill_fields'),
             life: 3000
         });
         return;
@@ -42,35 +41,35 @@ const handleSaveNote = async () => {
 
     saving.value = true;
     try {
-        const response = await fetch('/api/notes', {
+        const response = await fetch('/api/dialogs', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
             },
-            body: JSON.stringify(newNote.value)
+            body: JSON.stringify(newDialog.value)
         });
 
-        if (!response.ok) throw new Error('Failed to save note');
+        if (!response.ok) throw new Error('Failed to save dialogue');
 
-        const createdNote = await response.json();
+        const createdDialog = await response.json();
 
         toast.add({
             severity: 'success',
-            summary: t('notes.messages.success_summary'),
-            detail: t('notes.messages.success_detail'),
+            summary: t('dialogs.messages.success_summary'),
+            detail: t('dialogs.messages.success_detail'),
             life: 3000
         });
 
-        emit('created', createdNote);
+        emit('created', createdDialog);
         handleClose();
-        newNote.value = { title: '', content: '' };
+        newDialog.value = { title: '' };
     } catch (error) {
         console.error(error);
         toast.add({
             severity: 'error',
-            summary: t('notes.messages.error_summary'),
-            detail: t('notes.messages.error_save'),
+            summary: t('dialogs.messages.error_summary'),
+            detail: t('dialogs.messages.error_save'),
             life: 3000
         });
     } finally {
@@ -85,32 +84,32 @@ const handleSaveNote = async () => {
         @update:visible="emit('update:visible', $event)"
         modal
         dismissableMask
-        class="noir-modal"
-        style="width: 40rem"
+        class="noir-modal dialog-modal"
+        style="width: 30rem"
     >
         <template #header>
-            <div class="p-dialog-title">{{ t('notes.modal.title') }}</div>
+            <div class="p-dialog-title">{{ t('dialogs.modal.title') }}</div>
         </template>
 
-        <div class="note-form">
+        <div class="dialog-form">
             <div class="field">
-                <label for="title">{{ t('notes.modal.label_title') }}</label>
-                <InputText id="title" v-model="newNote.title" class="noir-input" :placeholder="t('notes.modal.placeholder_title')" />
-            </div>
-            <div class="field">
-                <label for="content">{{ t('notes.modal.label_content') }}</label>
-                <Textarea id="content" v-model="newNote.content" rows="5" class="noir-input" :placeholder="t('notes.modal.placeholder_content')" />
+                <label for="title">{{ t('dialogs.modal.label_title') }}</label>
+                <InputText id="title" v-model="newDialog.title" class="noir-input" :placeholder="t('dialogs.modal.placeholder_title')" autofocus />
             </div>
         </div>
 
         <template #footer>
-            <Button :label="t('notes.modal.btn_cancel')" text plain @click="handleClose" class="cancel-btn" />
-            <Button :label="t('notes.modal.btn_save')" severity="success" @click="handleSaveNote" :loading="saving" class="save-btn" />
+            <Button :label="t('dialogs.modal.btn_cancel')" text plain @click="handleClose" class="cancel-btn" />
+            <Button :label="t('dialogs.modal.btn_save')" severity="success" @click="handleSaveDialog" :loading="saving" class="save-btn" />
         </template>
     </Dialog>
 </template>
 
 <style scoped>
+.dialog-form {
+    padding-top: 0.5rem;
+}
+
 .noir-input {
     width: 100%;
     background: #000 !important;
@@ -118,15 +117,16 @@ const handleSaveNote = async () => {
     color: white !important;
 }
 
-.note-form .field {
+.dialog-form .field {
     margin-bottom: 1.5rem;
 }
 
-.note-form label {
+.dialog-form label {
     display: block;
     font-size: 0.75rem;
     color: var(--color-noir-muted);
     margin-bottom: 0.5rem;
+    text-transform: uppercase;
 }
 
 .cancel-btn {

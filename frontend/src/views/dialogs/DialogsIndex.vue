@@ -10,6 +10,7 @@ const { t } = useI18n();
 const dialogs = ref([]);
 const loading = ref(true);
 const sortBy = ref(sessionStorage.getItem('dialogs_sort_by') || 'alphabetical');
+const showCreateModal = ref(false);
 
 const sortOptions = computed(() => [
     { label: t('common.sorting.alphabetical'), value: 'alphabetical' },
@@ -31,6 +32,10 @@ const fetchDialogs = async () => {
     } finally {
         loading.value = false;
     }
+};
+
+const onDialogCreated = (newDialog) => {
+    dialogs.value.push(newDialog);
 };
 
 const filteredDialogs = computed(() => {
@@ -57,7 +62,7 @@ onMounted(() => {
     <div class="dialogs-view">
         <div class="view-header">
             <h1 class="view-title">{{ t('common.views.dialogs.title') }}</h1>
-            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" />
+            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -67,6 +72,11 @@ onMounted(() => {
                 class="noir-select sort-select"
             />
         </div>
+
+        <CreateDialogModal 
+            v-model:visible="showCreateModal"
+            @created="onDialogCreated"
+        />
 
         <div class="dialogs-grid">
             <div v-if="loading" class="loading-state">{{ t('common.views.dialogs.loading') }}</div>

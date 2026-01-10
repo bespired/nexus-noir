@@ -43,8 +43,13 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --p-select-padding-y: 4px !important;
+  /*--p-select-padding-y: 4px !important;*/
+  /*--p-badge-height: 20px !important;*/
+  /*--p-badge-padding: 0 8px !important;*/
+
 }
+
+
 
 body {
   margin: 0;

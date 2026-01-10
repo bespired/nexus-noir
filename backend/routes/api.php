@@ -10,6 +10,7 @@ use App\Http\Controllers\DialogController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\SceneController;
 use App\Http\Controllers\SectorController;
+use App\Http\Controllers\MediaController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -22,3 +23,4 @@ Route::apiResource('dialogs', DialogController::class);
 Route::apiResource('notes', NoteController::class);
 Route::apiResource('scenes', SceneController::class);
 Route::apiResource('sectors', SectorController::class);
+Route::apiResource('media', MediaController::class)->only(['store', 'destroy']);

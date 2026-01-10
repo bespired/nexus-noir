@@ -14,12 +14,18 @@ class SceneController extends Controller
         return \App\Models\Scene::with(['media', 'sector'])->get();
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'sector_id' => 'nullable|exists:sectors,id',
+            'type' => 'required|string|in:walkable-area,vue-component,investigation,combat',
+        ]);
+
+        $scene = \App\Models\Scene::create($validated);
+
+        return response()->json($scene, 201);
     }
 
     /**

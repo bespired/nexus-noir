@@ -19,22 +19,23 @@ const emit = defineEmits(['update:visible', 'created']);
 const { t } = useI18n();
 const toast = useToast();
 
-const newNote = ref({
-    title: '',
-    content: ''
+const newAction = ref({
+    name: '',
+    description: ''
 });
+
 const saving = ref(false);
 
 const handleClose = () => {
     emit('update:visible', false);
 };
 
-const handleSaveNote = async () => {
-    if (!newNote.value.title || !newNote.value.content) {
+const handleSaveAction = async () => {
+    if (!newAction.value.name || !newAction.value.description) {
         toast.add({
             severity: 'error',
-            summary: t('notes.messages.error_summary'),
-            detail: t('notes.messages.error_fill_fields'),
+            summary: t('actions.messages.error_summary'),
+            detail: t('actions.messages.error_fill_fields'),
             life: 3000
         });
         return;
@@ -42,35 +43,35 @@ const handleSaveNote = async () => {
 
     saving.value = true;
     try {
-        const response = await fetch('/api/notes', {
+        const response = await fetch('/api/actions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
             },
-            body: JSON.stringify(newNote.value)
+            body: JSON.stringify(newAction.value)
         });
 
-        if (!response.ok) throw new Error('Failed to save note');
+        if (!response.ok) throw new Error('Failed to save action');
 
-        const createdNote = await response.json();
+        const createdAction = await response.json();
 
         toast.add({
             severity: 'success',
-            summary: t('notes.messages.success_summary'),
-            detail: t('notes.messages.success_detail'),
+            summary: t('actions.messages.success_summary'),
+            detail: t('actions.messages.success_detail'),
             life: 3000
         });
 
-        emit('created', createdNote);
+        emit('created', createdAction);
         handleClose();
-        newNote.value = { title: '', content: '' };
+        newAction.value = { name: '', description: '' };
     } catch (error) {
         console.error(error);
         toast.add({
             severity: 'error',
-            summary: t('notes.messages.error_summary'),
-            detail: t('notes.messages.error_save'),
+            summary: t('actions.messages.error_summary'),
+            detail: t('actions.messages.error_save'),
             life: 3000
         });
     } finally {
@@ -85,32 +86,36 @@ const handleSaveNote = async () => {
         @update:visible="emit('update:visible', $event)"
         modal
         dismissableMask
-        class="noir-modal"
-        style="width: 40rem"
+        class="noir-modal action-modal"
+        style="width: 35rem"
     >
         <template #header>
-            <div class="p-dialog-title">{{ t('notes.modal.title') }}</div>
+            <div class="p-dialog-title">{{ t('actions.modal.title') }}</div>
         </template>
 
-        <div class="note-form">
+        <div class="action-form">
             <div class="field">
-                <label for="title">{{ t('notes.modal.label_title') }}</label>
-                <InputText id="title" v-model="newNote.title" class="noir-input" :placeholder="t('notes.modal.placeholder_title')" />
+                <label for="name">{{ t('actions.modal.label_title') }}</label>
+                <InputText id="name" v-model="newAction.name" class="noir-input" :placeholder="t('actions.modal.placeholder_title')" autofocus />
             </div>
             <div class="field">
-                <label for="content">{{ t('notes.modal.label_content') }}</label>
-                <Textarea id="content" v-model="newNote.content" rows="5" class="noir-input" :placeholder="t('notes.modal.placeholder_content')" />
+                <label for="description">{{ t('actions.modal.label_description') }}</label>
+                <Textarea id="description" v-model="newAction.description" rows="5" class="noir-input" :placeholder="t('actions.modal.placeholder_description')" />
             </div>
         </div>
 
         <template #footer>
-            <Button :label="t('notes.modal.btn_cancel')" text plain @click="handleClose" class="cancel-btn" />
-            <Button :label="t('notes.modal.btn_save')" severity="success" @click="handleSaveNote" :loading="saving" class="save-btn" />
+            <Button :label="t('actions.modal.btn_cancel')" text plain @click="handleClose" class="cancel-btn" />
+            <Button :label="t('actions.modal.btn_save')" severity="success" @click="handleSaveAction" :loading="saving" class="save-btn" />
         </template>
     </Dialog>
 </template>
 
 <style scoped>
+.action-form {
+    padding-top: 0.5rem;
+}
+
 .noir-input {
     width: 100%;
     background: #000 !important;
@@ -118,15 +123,16 @@ const handleSaveNote = async () => {
     color: white !important;
 }
 
-.note-form .field {
+.action-form .field {
     margin-bottom: 1.5rem;
 }
 
-.note-form label {
+.action-form label {
     display: block;
     font-size: 0.75rem;
     color: var(--color-noir-muted);
     margin-bottom: 0.5rem;
+    text-transform: uppercase;
 }
 
 .cancel-btn {

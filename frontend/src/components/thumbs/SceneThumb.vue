@@ -19,7 +19,7 @@ const thumbUrl = computed(() => {
 
 const has3dModel = computed(() => {
     // Check if any media has type '3d'
-    // Also check scene.type for 'walkable-area' which often implies 3D, 
+    // Also check scene.type for 'walkable-area' which often implies 3D,
     // but the user specifically asked for "when a 3d model exists".
     return props.scene.media && props.scene.media.some(m => m.type === '3d');
 });
@@ -37,11 +37,11 @@ const has3dModel = computed(() => {
         <div class="scene-thumb__content">
             <h3 class="scene-thumb__title">{{ scene.title }}</h3>
             <div class="scene-thumb__tags">
-                <Badge v-if="scene.sector" :value="scene.sector.name" severity="secondary" class="scene-thumb__tag-badge" />
-                <Badge :value="scene.type" severity="secondary" class="scene-thumb__tag-badge" />
+                <Badge :value="scene.type" severity="secondary" class="scene-thumb__tag-badge scene-thumb__tag-badge--type" />
+                <Badge v-if="scene.sector" :value="scene.sector.name" severity="info" class="scene-thumb__tag-badge scene-thumb__tag-badge--sector" />
             </div>
             <p class="scene-thumb__description">{{ scene.description }}</p>
-            
+
             <div class="scene-thumb__footer">
                 <span class="scene-thumb__id">id: {{ scene.id }}</span>
                 <div class="scene-thumb__actions">
@@ -109,6 +109,15 @@ const has3dModel = computed(() => {
 .scene-thumb__tag-badge {
     font-size: 0.7rem !important;
     font-weight: normal;
+}
+
+.scene-thumb__tag-badge--sector {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    /*border: 1px solid var(--color-noir-accent) !important;*/
+    color: var(--color-noir-accent) !important;
+}
+
+.scene-thumb__tag-badge--type {
     background-color: var(--color-noir-dark) !important;
     border: 1px solid var(--color-noir-dark) !important;
     color: var(--color-noir-muted) !important;

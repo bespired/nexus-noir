@@ -49,6 +49,11 @@ const routes = [
         component: () => import('../views/clues/CluesIndex.vue')
     },
     {
+        path: '/clues/:id',
+        name: 'clue-edit',
+        component: () => import('../views/clues/ClueEdit.vue')
+    },
+    {
         path: '/notes',
         name: 'notes',
         component: () => import('../views/notes/NotesIndex.vue'),

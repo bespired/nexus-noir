@@ -9,6 +9,7 @@ const { t } = useI18n();
 const actions = ref([]);
 const loading = ref(true);
 const sortBy = ref(sessionStorage.getItem('actions_sort_by') || 'alphabetical');
+const showCreateModal = ref(false);
 
 const sortOptions = computed(() => [
     { label: t('common.sorting.alphabetical'), value: 'alphabetical' },
@@ -26,6 +27,10 @@ const fetchActions = async () => {
     } finally {
         loading.value = false;
     }
+};
+
+const onActionCreated = (newAction) => {
+    actions.value.push(newAction);
 };
 
 const filteredActions = computed(() => {
@@ -56,7 +61,7 @@ onMounted(() => {
     <div class="actions-view">
         <div class="view-header">
             <h1 class="view-title">{{ t('common.views.actions.title') }}</h1>
-            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" />
+            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -66,6 +71,11 @@ onMounted(() => {
                 class="noir-select sort-select"
             />
         </div>
+
+        <CreateActionModal 
+            v-model:visible="showCreateModal"
+            @created="onActionCreated"
+        />
 
         <div class="actions-grid">
             <div v-if="loading" class="loading-state">{{ t('common.views.actions.loading') }}</div>

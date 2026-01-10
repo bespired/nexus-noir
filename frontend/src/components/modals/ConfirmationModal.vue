@@ -42,12 +42,12 @@ const handleReject = () => {
 </script>
 
 <template>
-    <Dialog 
-        :visible="visible" 
+    <Dialog
+        :visible="visible"
         @update:visible="emit('update:visible', $event)"
-        modal 
+        modal
         dismissableMask
-        class="noir-modal confirmation-modal" 
+        class="noir-modal confirmation-modal"
         style="width: 30rem"
     >
         <template #header>
@@ -60,18 +60,18 @@ const handleReject = () => {
         </div>
 
         <template #footer>
-            <Button 
-                :label="t('common.confirm.btn_no')" 
-                text 
-                plain 
-                @click="handleReject" 
-                class="cancel-btn" 
+            <Button
+                :label="t('common.confirm.btn_no')"
+                text
+                plain
+                @click="handleReject"
+                class="cancel-btn"
             />
-            <Button 
-                :label="t('common.confirm.btn_yes')" 
+            <Button
+                :label="t('common.confirm.btn_yes')"
                 :severity="severity"
-                @click="handleAccept" 
-                class="confirm-btn" 
+                @click="handleAccept"
+                class="confirm-btn"
             />
         </template>
     </Dialog>

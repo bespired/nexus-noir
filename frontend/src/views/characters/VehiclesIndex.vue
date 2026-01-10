@@ -9,6 +9,7 @@ const { t } = useI18n();
 const vehicles = ref([]);
 const loading = ref(true);
 const sortBy = ref(sessionStorage.getItem('vehicles_sort_by') || 'alphabetical');
+const showCreateModal = ref(false);
 
 const sortOptions = computed(() => [
     { label: t('common.sorting.alphabetical'), value: 'alphabetical' },
@@ -26,6 +27,10 @@ const fetchVehicles = async () => {
     } finally {
         loading.value = false;
     }
+};
+
+const onVehicleCreated = (newVehicle) => {
+    vehicles.value.push(newVehicle);
 };
 
 const filteredVehicles = computed(() => {
@@ -56,7 +61,7 @@ onMounted(() => {
     <div class="vehicles-view">
         <div class="view-header">
             <h1 class="view-title">{{ t('common.views.vehicles.title') }}</h1>
-            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" />
+            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -66,6 +71,11 @@ onMounted(() => {
                 class="noir-select sort-select"
             />
         </div>
+
+        <CreateVehicleModal 
+            v-model:visible="showCreateModal"
+            @created="onVehicleCreated"
+        />
 
         <div class="vehicles-grid">
             <div v-if="loading" class="loading-state">{{ t('common.views.vehicles.loading') }}</div>

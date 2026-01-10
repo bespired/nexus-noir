@@ -15,6 +15,7 @@ const loading = ref(true);
 const selectedSector = ref(Number(sessionStorage.getItem('scenes_filter_sector')) || null);
 const selectedType = ref(sessionStorage.getItem('scenes_filter_type') || null);
 const sortBy = ref(sessionStorage.getItem('scenes_sort_by') || 'alphabetical');
+const showCreateModal = ref(false);
 
 const sortOptions = computed(() => [
     { label: t('common.sorting.alphabetical'), value: 'alphabetical' },
@@ -55,6 +56,10 @@ const fetchScenes = async () => {
     } finally {
         loading.value = false;
     }
+};
+
+const onSceneCreated = (newScene) => {
+    scenes.value.push(newScene);
 };
 
 const uniqueTypes = computed(() => {
@@ -115,7 +120,7 @@ onMounted(() => {
                     class="noir-select"
                 />
             </div>
-            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" />
+            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -125,6 +130,11 @@ onMounted(() => {
                 class="noir-select sort-select"
             />
         </div>
+
+        <CreateSceneModal 
+            v-model:visible="showCreateModal"
+            @created="onSceneCreated"
+        />
 
         <div class="scenes-grid">
             <div v-if="loading" class="loading-state">{{ t('common.views.scenes.loading') }}</div>

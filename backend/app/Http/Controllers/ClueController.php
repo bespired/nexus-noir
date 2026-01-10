@@ -14,12 +14,18 @@ class ClueController extends Controller
         return \App\Models\Clue::with('media')->get();
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'type' => 'required|string',
+            'initial' => 'required|boolean',
+        ]);
+
+        $clue = \App\Models\Clue::create($validated);
+
+        return response()->json($clue, 201);
     }
 
     /**
@@ -27,7 +33,7 @@ class ClueController extends Controller
      */
     public function show(string $id)
     {
-        //
+        return \App\Models\Clue::with('media')->findOrFail($id);
     }
 
     /**
@@ -35,7 +41,18 @@ class ClueController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $clue = \App\Models\Clue::findOrFail($id);
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'type' => 'required|string',
+            'initial' => 'required|boolean',
+        ]);
+
+        $clue->update($validated);
+
+        return response()->json($clue);
     }
 
     /**
@@ -43,6 +60,9 @@ class ClueController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $clue = \App\Models\Clue::findOrFail($id);
+        $clue->delete();
+
+        return response()->json(null, 204);
     }
 }

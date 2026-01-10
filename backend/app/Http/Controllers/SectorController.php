@@ -14,12 +14,16 @@ class SectorController extends Controller
         return \App\Models\Sector::with('media')->get();
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
+
+        $sector = \App\Models\Sector::create($validated);
+
+        return response()->json($sector, 201);
     }
 
     /**

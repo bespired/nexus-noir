@@ -14,12 +14,15 @@ class DialogController extends Controller
         return \App\Models\Dialog::with('media')->get();
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+        ]);
+
+        $dialog = \App\Models\Dialog::create($validated);
+
+        return response()->json($dialog, 201);
     }
 
     /**

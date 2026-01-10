@@ -91,5 +91,158 @@
             "error_fill_fields": "Vul alle velden in",
             "error_save": "Kon notitie niet opslaan"
         }
+    },
+    "clues": {
+        "modal": {
+            "title": "NIEUW BEWIJS LOGGEN",
+            "label_title": "BEWIJS",
+            "label_type": "TYPE",
+            "label_description": "OMSCHRIJVING",
+            "label_initial": "In bezit van speler bij aanvang",
+            "placeholder_title": "bijv. Gebroken Glas",
+            "placeholder_description": "Voer details van het bewijs in...",
+            "btn_cancel": "NEE BEDANKT",
+            "btn_save": "JA OPSLAAN"
+        },
+        "messages": {
+            "success_summary": "Succes",
+            "success_detail": "Aanwijzing succesvol aangemaakt",
+            "error_summary": "Fout",
+            "error_fill_fields": "Vul alle velden in",
+            "error_save": "Kon aanwijzing niet opslaan"
+        },
+        "edit": {
+            "media": {
+                "header_2d": "THUMBNAIL_DATA",
+                "header_3d": "3D_BEWIJS_SCAN",
+                "btn_add_2d": "VOEG THUMB TOE",
+                "btn_add_3d": "VOEG 3D MODEL TOE",
+                "no_2d": "GEEN_THUMBNAIL",
+                "tabs": {
+                    "visual": "VISUELE DATA (2D)",
+                    "neural": "NEURALE SCAN (3D)"
+                }
+            }
+        }
+    },
+    "dialogs": {
+        "modal": {
+            "title": "NIEUWE DIALOOG",
+            "label_title": "DIALOOG TITEL",
+            "placeholder_title": "bijv. Gesprek met Miller",
+            "btn_cancel": "NEE BEDANKT",
+            "btn_save": "JA OPSLAAN"
+        },
+        "messages": {
+            "success_summary": "Succes",
+            "success_detail": "Dialoog succesvol aangemaakt",
+            "error_summary": "Fout",
+            "error_fill_fields": "Vul alle velden in",
+            "error_save": "Kon dialoog niet opslaan"
+        }
+    },
+    "actions": {
+        "modal": {
+            "title": "NIEUWE ACTIE",
+            "label_title": "ACTIE TITEL",
+            "label_description": "OMSCHRIJVING",
+            "placeholder_title": "bijv. Bewijs scannen",
+            "placeholder_description": "Beschrijf de actie...",
+            "btn_cancel": "NEE BEDANKT",
+            "btn_save": "JA OPSLAAN"
+        },
+        "messages": {
+            "success_summary": "Succes",
+            "success_detail": "Actie succesvol aangemaakt",
+            "error_summary": "Fout",
+            "error_fill_fields": "Vul alle velden in",
+            "error_save": "Kon actie niet opslaan"
+        }
+    },
+    "characters": {
+        "modal": {
+            "title": "NIEUW PERSONAGE",
+            "label_name": "NAAM",
+            "label_role": "ROL",
+            "label_description": "OMSCHRIJVING",
+            "label_motive": "MOTIEF",
+            "label_is_playable": "Is speelbaar personage",
+            "placeholder_name": "bijv. Roy Batty",
+            "placeholder_role": "bijv. Nexus-6 Replicant",
+            "placeholder_description": "Beschrijf het personage...",
+            "placeholder_motive": "Wat drijft hen?",
+            "btn_cancel": "NEE BEDANKT",
+            "btn_save": "JA OPSLAAN"
+        },
+        "messages": {
+            "success_summary": "Succes",
+            "success_detail": "Personage succesvol aangemaakt",
+            "error_summary": "Fout",
+            "error_fill_fields": "Vul alle velden in",
+            "error_save": "Kon personage niet opslaan"
+        }
+    },
+    "vehicles": {
+        "modal": {
+            "title": "NIEUW VOERTUIG",
+            "label_name": "NAAM",
+            "label_role": "ROL",
+            "label_description": "OMSCHRIJVING",
+            "placeholder_name": "bijv. Spinner",
+            "placeholder_description": "Beschrijf het voertuig...",
+            "role_decor": "Decor (Statisch)",
+            "role_animated": "Geanimeerd (Speelbaar)",
+            "btn_cancel": "NEE BEDANKT",
+            "btn_save": "JA OPSLAAN"
+        },
+        "messages": {
+            "success_summary": "Succes",
+            "success_detail": "Voertuig succesvol aangemaakt",
+            "error_summary": "Fout",
+            "error_fill_fields": "Vul alle velden in",
+            "error_save": "Kon voertuig niet opslaan"
+        }
+    },
+    "sectors": {
+        "modal": {
+            "title": "NIEUWE SECTOR",
+            "label_name": "SECTOR NAAM",
+            "label_description": "OMSCHRIJVING",
+            "placeholder_name": "bijv. Sector 7-G",
+            "placeholder_description": "Voer details van de sector in...",
+            "btn_cancel": "NEE BEDANKT",
+            "btn_save": "JA OPSLAAN"
+        },
+        "messages": {
+            "success_summary": "Succes",
+            "success_detail": "Sector succesvol aangemaakt",
+            "error_summary": "Fout",
+            "error_fill_fields": "Vul alle velden in",
+            "error_save": "Kon sector niet opslaan"
+        }
+    },
+    "scenes": {
+        "modal": {
+            "title": "NIEUWE SCENE",
+            "label_title": "SCENE TITEL",
+            "label_description": "OMSCHRIJVING",
+            "label_sector": "SECTOR",
+            "label_type": "TYPE",
+            "placeholder_title": "bijv. Nachtclub Interieur",
+            "placeholder_description": "Beschrijf de scene...",
+            "type_walkable": "Walkable Area",
+            "type_vue": "Vue Component",
+            "type_investigation": "Investigation",
+            "type_combat": "Combat",
+            "btn_cancel": "NEE BEDANKT",
+            "btn_save": "JA OPSLAAN"
+        },
+        "messages": {
+            "success_summary": "Succes",
+            "success_detail": "Scene succesvol aangemaakt",
+            "error_summary": "Fout",
+            "error_fill_fields": "Vul alle velden in",
+            "error_save": "Kon scene niet opslaan"
+        }
     }
 }

@@ -17,6 +17,6 @@ class Clue extends Model
 
     public function media(): \Illuminate\Database\Eloquent\Relations\MorphMany
     {
-        return $this->morphMany(Media::class, 'imageable');
+        return $this->morphMany(Media::class, 'imageable')->orderBy('id', 'desc');
     }
 }

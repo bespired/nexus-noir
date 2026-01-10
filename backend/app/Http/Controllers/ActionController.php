@@ -14,12 +14,16 @@ class ActionController extends Controller
         return \App\Models\Action::with('media')->get();
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+        ]);
+
+        $action = \App\Models\Action::create($validated);
+
+        return response()->json($action, 201);
     }
 
     /**
