@@ -24,6 +24,16 @@ const routes = [
         component: () => import('../views/sectors/SectorsIndex.vue')
     },
     {
+        path: '/sectors/:id',
+        name: 'sector-edit',
+        component: () => import('../views/sectors/SectorEdit.vue')
+    },
+    {
+        path: '/sectors/map',
+        name: 'sectors-map',
+        component: () => import('../views/sectors/SectorMapView.vue')
+    },
+    {
         path: '/actions',
         name: 'actions',
         component: () => import('../views/actions/ActionsIndex.vue')

@@ -19,6 +19,7 @@ class Sector extends Model
 
     protected $casts = [
         'visible_clue_conditions' => 'array',
+        'thumb_dimensions' => 'array',
     ];
 
     public function scenes(): HasMany

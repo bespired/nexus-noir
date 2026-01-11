@@ -41,7 +41,18 @@ class SceneController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $scene = \App\Models\Scene::findOrFail($id);
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'sector_id' => 'nullable|exists:sectors,id',
+            'type' => 'required|string|in:walkable-area,vue-component,investigation,combat',
+        ]);
+
+        $scene->update($validated);
+
+        return response()->json($scene);
     }
 
     /**

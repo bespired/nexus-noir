@@ -253,9 +253,29 @@
         "messages": {
             "success_summary": "Success",
             "success_detail": "Sector created successfully",
+            "success_update": "Sector updated successfully",
+            "success_delete": "Sector deleted successfully",
             "error_summary": "Error",
             "error_fill_fields": "Please fill in all fields",
-            "error_save": "Could not save sector"
+            "error_save": "Could not save sector",
+            "error_load": "Could not load sector",
+            "error_delete": "Could not delete sector"
+        },
+        "edit": {
+            "label_name": "SECTOR ID",
+            "label_description": "SECTOR DOSSIER",
+            "header_scenes": "SCENES IN SECTOR",
+            "header_clues": "CLUES NEEDED",
+            "btn_link_scene": "+ LINK EXISTING SCENE",
+            "btn_link_clue": "+ LINK EXISTING CLUE",
+            "confirm_delete": "Are you sure you want to delete this sector?",
+            "loading": "LOADING SECTOR DATA...",
+            "pickers": {
+                "scene_title": "LINK SCENE",
+                "clue_title": "LINK CLUE",
+                "no_scenes": "No available scenes to link.",
+                "no_clues": "No available clues to link."
+            }
         }
     },
     "scenes": {

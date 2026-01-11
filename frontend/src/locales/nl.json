@@ -252,9 +252,29 @@
         "messages": {
             "success_summary": "Succes",
             "success_detail": "Sector succesvol aangemaakt",
+            "success_update": "Sector succesvol bijgewerkt",
+            "success_delete": "Sector succesvol verwijderd",
             "error_summary": "Fout",
             "error_fill_fields": "Vul alle velden in",
-            "error_save": "Kon sector niet opslaan"
+            "error_save": "Kon sector niet opslaan",
+            "error_load": "Kon sector niet laden",
+            "error_delete": "Kon sector niet verwijderen"
+        },
+        "edit": {
+            "label_name": "SECTOR ID",
+            "label_description": "SECTOR DOSSIER",
+            "header_scenes": "SCENES IN SECTOR",
+            "header_clues": "BENODIGD AANWIJZING",
+            "btn_link_scene": "+ KOPPEL SCENE",
+            "btn_link_clue": "+ KOPPEL AANWIJZING",
+            "confirm_delete": "Weet je zeker dat je deze sector wilt verwijderen?",
+            "loading": "SECTOR DATA LADEN...",
+            "pickers": {
+                "scene_title": "SCENE KOPPELEN",
+                "clue_title": "BEWIJS KOPPELEN",
+                "no_scenes": "Geen beschikbare scenes om te koppelen.",
+                "no_clues": "Geen beschikbaar bewijs om te koppelen."
+            }
         }
     },
     "scenes": {

@@ -31,7 +31,16 @@ class SectorController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $sector = \App\Models\Sector::with(['media', 'scenes.media'])->findOrFail($id);
+
+        // Fetch clues for the conditions
+        $clueIds = $sector->visible_clue_conditions ?? [];
+        $clues = \App\Models\Clue::with('media')->whereIn('id', $clueIds)->get();
+
+        return response()->json([
+            'sector' => $sector,
+            'clues' => $clues
+        ]);
     }
 
     /**
@@ -39,7 +48,19 @@ class SectorController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $sector = \App\Models\Sector::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'visible_clue_conditions' => 'nullable|array',
+            'visible_clue_conditions.*' => 'integer|exists:clues,id',
+            'thumb_dimensions' => 'nullable|array',
+        ]);
+
+        $sector->update($validated);
+
+        return response()->json($sector);
     }
 
     /**
@@ -47,6 +68,13 @@ class SectorController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $sector = \App\Models\Sector::findOrFail($id);
+
+        // Unlink scenes first
+        \App\Models\Scene::where('sector_id', $sector->id)->update(['sector_id' => null]);
+
+        $sector->delete();
+
+        return response()->json(null, 204);
     }
 }

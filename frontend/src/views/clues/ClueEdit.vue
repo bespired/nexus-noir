@@ -188,7 +188,7 @@ const triggerUpload = (type) => {
 
 const handleCaptureScreenshot = async () => {
     if (!threePreview.value) return;
-    
+
     const dataUrl = threePreview.value.captureScreenshot();
     if (!dataUrl) return;
 
@@ -222,7 +222,7 @@ const handleCaptureScreenshot = async () => {
 
         const newMedia = await response.json();
         handleMediaUploaded(newMedia);
-        
+
         toast.add({
             severity: 'success',
             summary: 'Thumbnail Captured',
@@ -435,7 +435,7 @@ onMounted(() => {
 
 
 .clue-edit-view {
-    padding: 2rem;
+    padding: 0 1rem 0 0;
     height: 100%;
     overflow-y: auto;
 }

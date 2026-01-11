@@ -11,6 +11,7 @@ use App\Http\Controllers\NoteController;
 use App\Http\Controllers\SceneController;
 use App\Http\Controllers\SectorController;
 use App\Http\Controllers\MediaController;
+use App\Http\Controllers\ConfigController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -24,3 +25,7 @@ Route::apiResource('notes', NoteController::class);
 Route::apiResource('scenes', SceneController::class);
 Route::apiResource('sectors', SectorController::class);
 Route::apiResource('media', MediaController::class)->only(['store', 'destroy']);
+Route::get('configs', [ConfigController::class, 'index']);
+Route::get('configs/{key}', [ConfigController::class, 'show']);
+Route::put('configs/{key}', [ConfigController::class, 'update']);
+Route::post('configs/upload-backdrop', [ConfigController::class, 'uploadBackdrop']);

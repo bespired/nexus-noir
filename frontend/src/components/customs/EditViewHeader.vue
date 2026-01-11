@@ -46,22 +46,26 @@ const goBack = () => {
             </div>
         </div>
 
-        <div v-if="showButtons" class="edit-view-header__right">
+        <div class="edit-view-header__right">
             <slot name="extra-actions"></slot>
-            <Button 
-                label="SAVE" 
-                severity="success" 
-                class="header-btn save-btn" 
-                @click="emit('save')" 
-                :loading="saving"
-            />
-            <Button 
-                label="DELETE" 
-                severity="danger" 
-                class="header-btn delete-btn" 
-                @click="emit('delete')" 
-                :loading="deleting"
-            />
+            <template v-if="showButtons">
+                <Button
+                    v-if="saving"
+                    label="SAVE"
+                    severity="success"
+                    class="header-btn save-btn"
+                    @click="emit('save')"
+                    :loading="saving"
+                />
+                <Button
+                    v-if="deleting"
+                    label="DELETE"
+                    severity="danger"
+                    class="header-btn delete-btn"
+                    @click="emit('delete')"
+                    :loading="deleting"
+                />
+            </template>
         </div>
     </div>
 </template>
@@ -73,7 +77,7 @@ const goBack = () => {
     align-items: center;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--color-noir-panel);
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
 }
 
 .edit-view-header__left {

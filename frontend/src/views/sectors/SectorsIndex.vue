@@ -60,6 +60,7 @@ onMounted(() => {
         <div class="view-header">
             <h1 class="view-title">{{ t('common.views.sectors.title') }}</h1>
             <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
+            <Button icon="pi pi-map" severity="info" class="map-view-btn" @click="$router.push('/sectors/map')" />
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -112,6 +113,10 @@ onMounted(() => {
 
 .sort-select {
     width: 155px !important;
+    margin-left: 0.5rem;
+}
+
+.map-view-btn {
     margin-left: 0.5rem;
 }
 </style>
