@@ -142,7 +142,7 @@ const stopPan = () => {
 };
 
 const onDragging = (event) => {
-    if (!draggingSector.value || !mapContainer.value) return;
+    if (!draggingSector.value || !canvas.value) return;
 
     const deltaX = event.clientX - startPos.value.x;
     const deltaY = event.clientY - startPos.value.y;
@@ -151,22 +151,32 @@ const onDragging = (event) => {
         hasMoved.value = true;
     }
 
-    // Use WRAPPER (the image area) dimensions for responsive scaling
-    // This ensures coordinates are relative to the image pixels
-    const wrapper = document.querySelector('.map-wrapper');
-    if (!wrapper) return;
+    const rect = canvas.value.getBoundingClientRect();
 
-    const rect = wrapper.getBoundingClientRect();
-    const newX = ((event.clientX - rect.left - dragOffset.value.x) / rect.width) * 100;
-    const newY = ((event.clientY - rect.top - dragOffset.value.y) / rect.height) * 100;
+    let factorX = sizex.value / mapDimensions.value.width;
+    let factorY = sizey.value / mapDimensions.value.height;
+    let factor  = Math.max(factorX, factorY);
+
+    // We want the new (dims.x * factor) to be roughly (mouseX - canvasLeft - dragOffsetX + thumbWidth/2)
+    // Actually, since getSectorStyle uses transform: translate(-50%, -50%), dims.x * factor is the CENTER.
+    // In startDrag, dragOffset.x = mouseX - thumbLeft (where thumbLeft is center - halfWidth).
+
+    // Simpler: let's calculate new center in pixels relative to canvas
+    // We adjust by dragOffset to keep the thumb pinned where we clicked it.
+    // dragOffset was (mouseX - thumbLeft) in startDrag.
+    // thumbLeft = visualCenter.x - visualWidth/2
+    const visualWidth = (draggingSector.value.thumb_dimensions?.width || 150) * factor;
+    const visualHeight = (draggingSector.value.thumb_dimensions?.height || 100) * factor;
+
+    const targetCenterX = event.clientX - rect.left - dragOffset.value.x + (visualWidth / 2);
+    const targetCenterY = event.clientY - rect.top - dragOffset.value.y + (visualHeight / 2);
 
     if (!draggingSector.value.thumb_dimensions) {
         draggingSector.value.thumb_dimensions = { x: 0, y: 0, width: 150, height: 100 };
     }
 
-    // Clamp to 0-100 range and 2 decimal precision
-    draggingSector.value.thumb_dimensions.x = Math.max(0, Math.min(100, parseFloat(newX.toFixed(2))));
-    draggingSector.value.thumb_dimensions.y = Math.max(0, Math.min(100, parseFloat(newY.toFixed(2))));
+    draggingSector.value.thumb_dimensions.x = Math.round(targetCenterX / factor);
+    draggingSector.value.thumb_dimensions.y = Math.round(targetCenterY / factor);
 };
 
 const stopDrag = () => {
@@ -345,6 +355,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    stopDrag();
     window.removeEventListener('resize', updateWrapperSize);
 });
 
@@ -412,10 +423,8 @@ onUnmounted(() => {
                             class="thumb-img" draggable="false" />
                         <div v-else class="thumb-placeholder">{ NO DATA }</div>
                     </div>
-                    <div class="thumb-label">
-                        <span class="sector-id">SEC-{{ sector.id }}</span>
-                        <span class="sector-name">{{ sector.name }}</span>
-                    </div>
+                    <div class="sector-id">SEC-{{ sector.id }}</div>
+                    <div class="sector-name">{{ sector.name }}</div>
                 </div>
         </div>
 
@@ -433,7 +442,8 @@ onUnmounted(() => {
     background-color: #05070a;
     background-size: cover;
     border-radius: 10px;
-    overflow: hidden;
+    /*overflow: hidden;*/
+    overflow: auto;
 }
 
 .map-size {
@@ -531,8 +541,10 @@ onUnmounted(() => {
 }
 
 .sector-id {
+    margin-top: -0.5rem;
     font-size: 0.5rem;
     color: var(--color-noir-muted);
+    z-index: 2;
 }
 
 .sector-name {
