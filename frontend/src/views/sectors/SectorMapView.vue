@@ -414,7 +414,6 @@ onUnmounted(() => {
             class="map-sector-thumb"
             :style="getSectorStyle(sector)"
             @mousedown="startDrag($event, sector)"
-            @click="openSector(sector)"
         >
                 <div class="thumb-inner" draggable="false">
                     <div class="thumb-image-box" draggable="false">
@@ -424,7 +423,7 @@ onUnmounted(() => {
                         <div v-else class="thumb-placeholder">{ NO DATA }</div>
                     </div>
                     <div class="sector-id">SEC-{{ sector.id }}</div>
-                    <div class="sector-name">{{ sector.name }}</div>
+                    <div class="sector-name" @click="openSector(sector)">{{ sector.name }}</div>
                 </div>
         </div>
 
@@ -488,14 +487,14 @@ onUnmounted(() => {
 }
 
 .map-sector-thumb {
-    pointer-events: auto;
+    /*pointer-events: auto;*/
     user-select: none;
     transition: transform 0.2s, box-shadow 0.2s;
     z-index: 10;
 }
 
 .map-sector-thumb:hover {
-    transform: translate(0%, 0%) scale(1.05); /* Adjusted for center transform */
+    transform: translate(-50%, -50%) scale(1.05) !important; /* Adjusted for center transform */
     z-index: 50;
 }
 
@@ -555,6 +554,10 @@ onUnmounted(() => {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    &:hover {
+        color:  var(--p-button-info-background);
+        cursor: pointer;
+    }
 }
 
 .tech-dot {
