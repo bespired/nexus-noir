@@ -36,7 +36,10 @@ const init = () => {
     camera.position.set(2, 2, 5);
 
     // RENDERER
-    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer = new THREE.WebGLRenderer({ 
+        antialias: true,
+        preserveDrawingBuffer: true
+    });
     renderer.setSize(container.value.clientWidth, container.value.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     container.value.appendChild(renderer.domElement);
@@ -130,6 +133,15 @@ const animate = () => {
     if (mixer) mixer.update(delta);
     if (renderer && scene && camera) renderer.render(scene, camera);
 };
+
+const captureScreenshot = () => {
+    if (!renderer || !scene || !camera) return null;
+    return renderer.domElement.toDataURL('image/png');
+};
+
+defineExpose({
+    captureScreenshot
+});
 
 const handleResize = () => {
     if (!container.value || !renderer) return;

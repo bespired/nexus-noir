@@ -19,6 +19,7 @@ const saving = ref(false);
 const deleting = ref(false);
 const showDeleteConfirm = ref(false);
 const showUpload = ref(false);
+const threePreview = ref(null);
 
 const isVehicle = computed(() => route.path.includes('/vehicles/'));
 const i18nPrefix = computed(() => isVehicle.value ? 'vehicles' : 'characters');
@@ -182,6 +183,60 @@ const triggerUpload = (type) => {
     showUpload.value = true;
 };
 
+const handleCaptureScreenshot = async () => {
+    if (!threePreview.value) return;
+    
+    const dataUrl = threePreview.value.captureScreenshot();
+    if (!dataUrl) return;
+
+    // Convert base64 to blob
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const file = new File([blob], `thumb_${characterId}.png`, { type: 'image/png' });
+
+    // If existing 2D media exists, delete it first
+    if (current2dMedia.value) {
+        await deleteMedia(current2dMedia.value);
+    }
+
+    // Upload
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('imageable_id', characterId);
+    formData.append('imageable_type', isVehicle.value ? 'App\\Models\\Character' : 'App\\Models\\Character'); // Both use Character model in current DB
+    formData.append('title', '3D_SCAN_THUMB');
+
+    try {
+        const response = await fetch('/api/media', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) throw new Error('Upload failed');
+
+        const newMedia = await response.json();
+        handleMediaUploaded(newMedia);
+        
+        toast.add({
+            severity: 'success',
+            summary: 'Thumbnail Captured',
+            detail: 'New 2D preview generated from 3D view.',
+            life: 3000
+        });
+    } catch (error) {
+        console.error(error);
+        toast.add({
+            severity: 'error',
+            summary: 'Capture Error',
+            detail: 'Could not generate thumbnail.',
+            life: 3000
+        });
+    }
+};
+
 const activeTab = ref("0");
 
 onMounted(async () => {
@@ -238,7 +293,7 @@ onMounted(async () => {
                             <TabPanels>
                                 <TabPanel value="0">
                                     <div class="preview-section 3d-section">
-                                        <ThreePreview :modelUrl="mediaUrl3d" :title="t(`${i18nPrefix}.edit.media.header_3d`)">
+                                        <ThreePreview ref="threePreview" :modelUrl="mediaUrl3d" :title="t(`${i18nPrefix}.edit.media.header_3d`)">
                                             <template #header-actions>
                                                 <Button
                                                     v-if="!current3dMedia"
@@ -247,14 +302,23 @@ onMounted(async () => {
                                                     class="upload-trigger-btn"
                                                     @click="triggerUpload('3d')"
                                                 />
-                                                <Button
-                                                    v-else
-                                                    icon="pi pi-trash"
-                                                    severity="danger"
-                                                    text
-                                                    class="upload-trigger-btn"
-                                                    @click="deleteMedia(current3dMedia)"
-                                                />
+                                                <div v-else class="flex gap-2">
+                                                    <Button
+                                                        icon="pi pi-camera"
+                                                        severity="secondary"
+                                                        text
+                                                        class="upload-trigger-btn"
+                                                        v-tooltip.top="'CAPTURE_THUMB'"
+                                                        @click="handleCaptureScreenshot"
+                                                    />
+                                                    <Button
+                                                        icon="pi pi-trash"
+                                                        severity="danger"
+                                                        text
+                                                        class="upload-trigger-btn"
+                                                        @click="deleteMedia(current3dMedia)"
+                                                    />
+                                                </div>
                                             </template>
                                         </ThreePreview>
                                     </div>
@@ -341,44 +405,7 @@ onMounted(async () => {
     overflow-y: auto;
 }
 
-.edit-layout {
-    max-width: 1400px;
-    margin: 0 auto;
-}
-
-.edit-hero {
-    display: flex;
-    background-color: var(--color-noir-dark);
-    padding: 1rem 2rem;
-    margin-bottom: 2rem;
-    border-radius: 4px;
-    border-left: 4px solid var(--color-noir-accent);
-
-}
-
-.edit-hero__title {
-    margin: 0;
-    font-size: 2.5rem;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-}
-
-.edit-hero__id {
-    font-family: var(--font-mono);
-    color: var(--color-noir-muted);
-    font-size: 0.9rem;
-    margin-left: auto;
-}
-
-.edit-grid {
-    display: grid;
-    /*grid-template-columns: 1fr 2.5fr;*/
-    grid-template-columns: 400px 2fr;
-    gap: 2rem;
-    align-items: start;
-}
-
-/* Media Column */
+/* Media Column specific */
 .media-column {
     width: 100%;
 }
@@ -389,36 +416,8 @@ onMounted(async () => {
     gap: 1.5rem;
 }
 
-.card {
-    background-color: var(--color-noir-panel);
-    border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 4px;
-    overflow: hidden;
-    position: relative;
-}
-
 .image-wrapper {
     width: 100%;
-}
-
-.header-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    padding: 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
-    z-index: 10;
-}
-
-.header-title {
-    font-family: var(--font-mono);
-    color: var(--color-noir-muted);
-    font-size: 0.8rem;
-    letter-spacing: 2px;
 }
 
 .image-display {
@@ -459,91 +458,5 @@ onMounted(async () => {
     font-weight: bold !important;
     font-size: 0.8rem !important;
     color: var(--color-noir-accent) !important;
-}
-
-/* Form Column */
-.form-column {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-}
-
-.field label:not(.checkbox-label) {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--color-noir-muted);
-    margin-bottom: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.noir-input {
-    width: 100%;
-    background: #0b0f19 !important;
-    border: 1px solid #1f2937 !important;
-    color: white !important;
-    padding: 1rem !important;
-}
-
-.checkbox-field {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    background-color: rgba(255,255,255,0.02);
-    padding: 1rem;
-    border-radius: 4px;
-}
-
-.checkbox-label {
-    margin-bottom: 0 !important;
-    cursor: pointer;
-    font-size: 0.8rem !important;
-    color: var(--color-noir-muted) !important;
-}
-
-.loading-state {
-    text-align: center;
-    padding: 5rem;
-    color: var(--color-noir-muted);
-    font-size: 1.2rem;
-}
-
-/* Tabs Styling */
-.noir-tabs {
-    background: transparent !important;
-}
-
-:deep(.p-tablist-tab-list) {
-    background: transparent !important;
-    border: none !important;
-    border-bottom: 2px solid rgba(255,255,255,0.05) !important;
-}
-
-:deep(.p-tab) {
-    background: transparent !important;
-    color: var(--color-noir-muted) !important;
-    border: none !important;
-    font-family: var(--font-mono) !important;
-    font-size: 0.8rem !important;
-    letter-spacing: 1.5px !important;
-    padding: 0 2rem 1rem 2rem !important;
-    transition: all 0.3s ease;
-    border-bottom: 2px solid transparent !important;
-    margin-bottom: -2px;
-}
-
-:deep(.p-tab:not(.p-tab-active):hover) {
-    color: var(--color-noir-text) !important;
-}
-
-:deep(.p-tab-active) {
-    background: transparent !important;
-    color: var(--color-noir-accent) !important;
-    border-bottom: 2px solid var(--color-noir-accent) !important;
-}
-
-:deep(.p-tabpanels) {
-    background: transparent !important;
-    padding: 2rem 0 !important;
 }
 </style>
