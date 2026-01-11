@@ -41,7 +41,7 @@ class CharacterController extends Controller
      */
     public function show(string $id)
     {
-        //
+        return \App\Models\Character::with('media')->findOrFail($id);
     }
 
     /**
@@ -49,7 +49,20 @@ class CharacterController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $character = \App\Models\Character::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'role' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'motive' => 'nullable|string',
+            'is_playable' => 'required|boolean',
+            'type' => 'required|string|in:person,vehicle',
+        ]);
+
+        $character->update($validated);
+
+        return response()->json($character);
     }
 
     /**
@@ -57,6 +70,9 @@ class CharacterController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $character = \App\Models\Character::findOrFail($id);
+        $character->delete();
+
+        return response()->json(null, 204);
     }
 }

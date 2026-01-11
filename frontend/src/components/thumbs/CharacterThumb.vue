@@ -52,7 +52,7 @@ const isPlayable = computed(() => props.character.is_playable);
                         severity="warning"
                         outlined
                         class="global-thumb__edit-btn"
-                        @click="$router.push(`/characters/${action.id}`)"
+                        @click="$router.push(`/characters/${character.id}`)"
                     />
                 </div>
             </div>

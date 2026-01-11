@@ -39,9 +39,19 @@ const routes = [
         component: () => import('../views/characters/CharactersIndex.vue')
     },
     {
+        path: '/characters/:id',
+        name: 'character-edit',
+        component: () => import('../views/characters/CharacterEdit.vue')
+    },
+    {
         path: '/vehicles',
         name: 'vehicles',
         component: () => import('../views/characters/VehiclesIndex.vue')
+    },
+    {
+        path: '/vehicles/:id',
+        name: 'vehicle-edit',
+        component: () => import('../views/characters/CharacterEdit.vue')
     },
     {
         path: '/clues',

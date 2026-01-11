@@ -160,6 +160,15 @@
         min-height: 28px;
     }
 
+    div[class*="-thumb__footer"] > span {
+        margin-right: 4px;
+    }
+    div[class*="-thumb__footer"] > div > *,
+    div[class*="-thumb__footer"] > span {
+        white-space: nowrap;
+
+    }
+
     .global-thumb__edit-btn {
         background-image: none;
         /* Clears the PrimeVue default gradient */

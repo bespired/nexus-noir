@@ -162,11 +162,11 @@
     "characters": {
         "modal": {
             "title": "NIEUW PERSONAGE",
-            "label_name": "NAAM",
-            "label_role": "ROL",
-            "label_description": "OMSCHRIJVING",
+            "label_name": "IDENTIFICATIE",
+            "label_role": "OCCUPATIE",
+            "label_description": "DOSSIER",
             "label_motive": "MOTIEF",
-            "label_is_playable": "Is speelbaar personage",
+            "label_is_playable": "NETWERK_NODE_TOEGANG",
             "placeholder_name": "bijv. Roy Batty",
             "placeholder_role": "bijv. Nexus-6 Replicant",
             "placeholder_description": "Beschrijf het personage...",
@@ -177,17 +177,36 @@
         "messages": {
             "success_summary": "Succes",
             "success_detail": "Personage succesvol aangemaakt",
+            "success_update": "Personage succesvol bijgewerkt",
+            "success_delete": "Personage succesvol verwijderd",
             "error_summary": "Fout",
             "error_fill_fields": "Vul alle velden in",
-            "error_save": "Kon personage niet opslaan"
+            "error_save": "Kon personage niet opslaan",
+            "error_load": "Kon personage niet laden",
+            "error_delete": "Kon personage niet verwijderen"
+        },
+        "edit": {
+            "media": {
+                "header_2d": "PORTRET_GEGEVENS",
+                "header_3d": "NEURALE_SCAN_3D",
+                "btn_add_2d": "PORTRET TOEVOEGEN",
+                "btn_add_3d": "3D MODEL TOEVOEGEN",
+                "no_2d": "GEEN_PORTRET_GEGEVENS",
+                "tabs": {
+                    "visual": "VISUELE IDENT (2D)",
+                    "neural": "NEURALE SCAN (3D)"
+                }
+            }
         }
     },
     "vehicles": {
         "modal": {
             "title": "NIEUW VOERTUIG",
-            "label_name": "NAAM",
-            "label_role": "ROL",
-            "label_description": "OMSCHRIJVING",
+            "label_name": "REGISTRATIE",
+            "label_role": "CLASSIFICATIE",
+            "label_description": "TECHNISCHE_SPECS",
+            "label_motive": "DOEL",
+            "label_is_playable": "NETWERK_NODE_TOEGANG",
             "placeholder_name": "bijv. Spinner",
             "placeholder_description": "Beschrijf het voertuig...",
             "role_decor": "Decor (Statisch)",
@@ -198,9 +217,26 @@
         "messages": {
             "success_summary": "Succes",
             "success_detail": "Voertuig succesvol aangemaakt",
+            "success_update": "Voertuig succesvol bijgewerkt",
+            "success_delete": "Voertuig succesvol verwijderd",
             "error_summary": "Fout",
             "error_fill_fields": "Vul alle velden in",
-            "error_save": "Kon voertuig niet opslaan"
+            "error_save": "Kon voertuig niet opslaan",
+            "error_load": "Kon voertuig niet laden",
+            "error_delete": "Kon voertuig niet verwijderen"
+        },
+        "edit": {
+            "media": {
+                "header_2d": "VOERTUIG_VISUALS",
+                "header_3d": "VOERTUIG_SCAN_3D",
+                "btn_add_2d": "AFBEELDING TOEVOEGEN",
+                "btn_add_3d": "3D MODEL TOEVOEGEN",
+                "no_2d": "GEEN_VISUELE_GEGEVENS",
+                "tabs": {
+                    "visual": "VISUELE DATA (2D)",
+                    "neural": "NEURALE SCAN (3D)"
+                }
+            }
         }
     },
     "sectors": {

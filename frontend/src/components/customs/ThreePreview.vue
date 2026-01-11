@@ -19,7 +19,10 @@ const props = defineProps({
 const { t } = useI18n();
 
 const container = ref(null);
-let scene, camera, renderer, controls, loader;
+const animations = ref([]);
+const activeAnimation = ref(null);
+let scene, camera, renderer, controls, loader, mixer;
+const clock = new THREE.Clock();
 
 const init = () => {
     if (!container.value) return;
@@ -42,13 +45,23 @@ const init = () => {
     const ambientLight = new THREE.AmbientLight(0xffffff, 1);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
-    directionalLight.position.set(5, 5, 5);
-    scene.add(directionalLight);
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 3);
+    directionalLight1.position.set(5, 5, 5);
+    scene.add(directionalLight1);
+
+    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 3);
+    directionalLight2.position.set(-5, 5, 5);
+    scene.add(directionalLight2);
+
+    // OPTIONAL: GRID HELPER
+    const gridHelper = new THREE.GridHelper(10, 10, 0x1f2937, 0x111827);
+    scene.add(gridHelper);
 
     // CONTROLS
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 2.0;
 
     // LOADER
     loader = new GLTFLoader();
@@ -61,22 +74,40 @@ const loadModel = () => {
     if (!props.modelUrl) return;
 
     loader.load(props.modelUrl, (gltf) => {
-        // Clear existing models
+        // Clear existing models and stop animations
+        if (mixer) {
+            mixer.stopAllAction();
+            mixer = null;
+        }
+        activeAnimation.value = null;
+        animations.value = [];
+
         scene.children.forEach(child => {
-            if (child.type === 'Group' || child.type === 'Scene') {
-                scene.remove(child);
+            if (child.type === 'Group' || child.type === 'Scene' || child.type === 'Object3D') {
+                 // only remove if it's likely a loaded model
+                 if (child !== camera && !child.isLight && !(child instanceof THREE.GridHelper)) {
+                    scene.remove(child);
+                 }
             }
         });
 
         const model = gltf.scene;
-        
+
         // Center model
         const box = new THREE.Box3().setFromObject(model);
         const center = box.getCenter(new THREE.Vector3());
         model.position.sub(center);
-        
+
         scene.add(model);
-        
+
+        // Animations
+        if (gltf.animations && gltf.animations.length > 0) {
+            mixer = new THREE.AnimationMixer(model);
+            animations.value = gltf.animations;
+            // Play first animation by default
+            playAnimation(gltf.animations[0]);
+        }
+
         // Adjust camera to fit
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
@@ -84,9 +115,19 @@ const loadModel = () => {
     });
 };
 
+const playAnimation = (clip) => {
+    if (!mixer || !clip) return;
+    mixer.stopAllAction();
+    const action = mixer.clipAction(clip);
+    action.play();
+    activeAnimation.value = clip.name;
+};
+
 const animate = () => {
     requestAnimationFrame(animate);
+    const delta = clock.getDelta();
     if (controls) controls.update();
+    if (mixer) mixer.update(delta);
     if (renderer && scene && camera) renderer.render(scene, camera);
 };
 
@@ -118,9 +159,23 @@ watch(() => props.modelUrl, () => {
             <span class="header-title">{{ title || t('clues.edit.media.header_3d') }}</span>
             <slot name="header-actions"></slot>
         </div>
-        
+
         <div ref="container" class="renderer-container"></div>
-        
+
+        <div v-if="animations.length > 0" class="animations-overlay">
+            <div class="animations-list">
+                <Button 
+                    v-for="clip in animations" 
+                    :key="clip.name"
+                    :label="clip.name.toUpperCase()"
+                    :severity="activeAnimation === clip.name ? 'primary' : 'secondary'"
+                    text
+                    class="animation-btn"
+                    @click="playAnimation(clip)"
+                />
+            </div>
+        </div>
+
         <div v-if="!modelUrl" class="no-data-overlay">
             <i class="pi pi-user no-data-icon"></i>
             <span class="no-data-text">NO NEURAL DATA FOUND</span>
@@ -189,6 +244,45 @@ watch(() => props.modelUrl, () => {
     color: var(--color-noir-muted);
     font-size: 0.8rem;
     letter-spacing: 2px;
+}
+
+.animations-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1rem;
+    background: linear-gradient(to top, rgba(11, 15, 25, 0.9), transparent);
+    z-index: 10;
+}
+
+.animations-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.animation-btn {
+    font-family: var(--font-mono);
+    font-size: 0.75rem !important;
+    font-weight: bold !important;
+    padding: 0.25rem 0.75rem !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: var(--color-noir-muted) !important;
+    border-radius: 4px;
+}
+
+.animation-btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: var(--color-noir-text) !important;
+}
+
+:deep(.p-button-primary).animation-btn {
+    background: rgba(var(--color-noir-accent-rgb), 0.2) !important;
+    border-color: var(--color-noir-accent) !important;
+    color: var(--color-noir-accent) !important;
 }
 
 .scan-btn {

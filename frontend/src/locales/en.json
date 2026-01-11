@@ -163,11 +163,11 @@
     "characters": {
         "modal": {
             "title": "NEW CHARACTER",
-            "label_name": "NAME",
-            "label_role": "ROLE",
-            "label_description": "DESCRIPTION",
+            "label_name": "IDENTIFICATION",
+            "label_role": "OCCUPATION",
+            "label_description": "DOSSIER",
             "label_motive": "MOTIVE",
-            "label_is_playable": "Is playable character",
+            "label_is_playable": "NETWORK_NODE_ACCESS",
             "placeholder_name": "e.g. Roy Batty",
             "placeholder_role": "e.g. Nexus-6 Replicant",
             "placeholder_description": "Describe the character...",
@@ -178,17 +178,36 @@
         "messages": {
             "success_summary": "Success",
             "success_detail": "Character created successfully",
+            "success_update": "Character updated successfully",
+            "success_delete": "Character deleted successfully",
             "error_summary": "Error",
             "error_fill_fields": "Please fill in all fields",
-            "error_save": "Could not save character"
+            "error_save": "Could not save character",
+            "error_load": "Could not load character",
+            "error_delete": "Could not delete character"
+        },
+        "edit": {
+            "media": {
+                "header_2d": "PORTRAIT_DATA",
+                "header_3d": "NEURAL_SCAN_3D",
+                "btn_add_2d": "ADD PORTRAIT",
+                "btn_add_3d": "ADD 3D MODEL",
+                "no_2d": "NO_PORTRAIT_DATA",
+                "tabs": {
+                    "visual": "VISUAL IDENT (2D)",
+                    "neural": "NEURAL SCAN (3D)"
+                }
+            }
         }
     },
     "vehicles": {
         "modal": {
             "title": "NEW VEHICLE",
-            "label_name": "NAME",
-            "label_role": "ROLE",
-            "label_description": "DESCRIPTION",
+            "label_name": "REGISTRATION",
+            "label_role": "CLASSIFICATION",
+            "label_description": "TECHNICAL_SPECS",
+            "label_motive": "PURPOSE",
+            "label_is_playable": "NETWORK_NODE_ACCESS",
             "placeholder_name": "e.g. Spinner",
             "placeholder_description": "Describe the vehicle...",
             "role_decor": "Decor (Static)",
@@ -199,9 +218,26 @@
         "messages": {
             "success_summary": "Success",
             "success_detail": "Vehicle created successfully",
+            "success_update": "Vehicle updated successfully",
+            "success_delete": "Vehicle deleted successfully",
             "error_summary": "Error",
             "error_fill_fields": "Please fill in all fields",
-            "error_save": "Could not save vehicle"
+            "error_save": "Could not save vehicle",
+            "error_load": "Could not load vehicle",
+            "error_delete": "Could not delete vehicle"
+        },
+        "edit": {
+            "media": {
+                "header_2d": "VEHICLE_VISUALS",
+                "header_3d": "VEHICLE_SCAN_3D",
+                "btn_add_2d": "ADD IMAGE",
+                "btn_add_3d": "ADD 3D MODEL",
+                "no_2d": "NO_VISUAL_DATA",
+                "tabs": {
+                    "visual": "VISUAL DATA (2D)",
+                    "neural": "NEURAL SCAN (3D)"
+                }
+            }
         }
     },
     "sectors": {
