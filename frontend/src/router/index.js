@@ -9,9 +9,9 @@ const routes = [
         // component: { template: '<div>Dashboard Content</div>' } 
     },
     {
-        path: '/about',
-        name: 'about',
-        component: () => import('../views/AboutView.vue')
+        path: '/emanator',
+        name: 'emanator',
+        component: () => import('../views/GameView.vue')
     },
     {
         path: '/scenes',

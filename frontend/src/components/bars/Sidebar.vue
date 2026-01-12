@@ -8,7 +8,7 @@ const store = useStore();
 const { t } = useI18n();
 
 const navItems = computed(() => [
-    { path: '/about',      svg: 'about',     icon: 'pi pi-info-circle', label: t('common.sidebar.about'),        title: t('common.sidebar.about')        },
+    { path: '/emanator',   svg: 'about',     icon: 'pi pi-info-circle', label: t('common.sidebar.game'),         title: t('common.sidebar.game')        },
     { path: '/',           svg: 'dashboard', icon: 'pi pi-chart-bar',   label: t('common.sidebar.dashboard'),    title: t('common.sidebar.dashboard')    },
     { path: '/sectors',    svg: 'map',       icon: 'pi pi-map',         label: t('common.sidebar.sectors'),      title: t('common.sidebar.sectors')      },
     { path: '/scenes',     svg: 'scene',     icon: 'pi pi-images',      label: t('common.sidebar.scenes'),       title: t('common.sidebar.scenes')       },
