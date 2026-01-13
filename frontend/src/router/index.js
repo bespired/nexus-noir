@@ -59,6 +59,11 @@ const routes = [
         component: () => import('../views/actions/ActionsIndex.vue')
     },
     {
+        path: '/actions/:id',
+        name: 'action-edit',
+        component: () => import('../views/actions/ActionEdit.vue')
+    },
+    {
         path: '/dialogs',
         name: 'dialogs',
         component: () => import('../views/dialogs/DialogsIndex.vue')

@@ -31,7 +31,7 @@ class ActionController extends Controller
      */
     public function show(string $id)
     {
-        //
+        return \App\Models\Action::with('media')->findOrFail($id);
     }
 
     /**
@@ -39,7 +39,17 @@ class ActionController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $action = \App\Models\Action::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'actions' => 'array',
+        ]);
+
+        $action->update($validated);
+
+        return response()->json($action);
     }
 
     /**
