@@ -60,7 +60,9 @@ onMounted(() => {
     <div class="dialogs-view">
         <div class="view-header">
             <h1 class="view-title">{{ t('common.views.dialogs.title') }}</h1>
-            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
+            <div class="header-actions">
+                <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
+            </div>
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -111,8 +113,17 @@ onMounted(() => {
     padding: 2rem;
 }
 
+.header-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.new-btn {
+    margin-left: 0 !important;
+}
+
 .sort-select {
     width: 155px !important;
-    margin-left: 0.5rem;
 }
 </style>

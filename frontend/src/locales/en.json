@@ -292,6 +292,7 @@
             "type_vue": "Vue Component",
             "type_investigation": "Investigation",
             "type_combat": "Combat",
+            "type_cutscene": "Cut Scene",
             "btn_cancel": "NO THANK YOU",
             "btn_save": "YES SAVE"
         },
@@ -301,6 +302,43 @@
             "error_summary": "Error",
             "error_fill_fields": "Please fill in all fields",
             "error_save": "Could not save scene"
+        },
+        "edit": {
+            "label_type": "SCENE TYPE",
+            "label_sector": "SECTOR",
+            "label_description": "DESCRIPTION",
+            "nav_properties": "PROPERTIES",
+            "nav_gateway": "GATEWAY",
+            "nav_3d": "3D",
+            "btn_sector": "SECTOR",
+            "btn_upload": "UPLOAD IMAGE",
+            "btn_change": "CHANGE IMAGE",
+            "no_backdrop": "NO BACKDROP IMAGE",
+            "confirm_delete": "Are you sure you want to delete this scene?",
+            "loading": "Loading scene properties...",
+            "messages": {
+                "error_summary": "Error",
+                "success_summary": "Success",
+                "error_load": "Failed to load scene data",
+                "success_update": "Scene updated successfully",
+                "error_save": "Failed to save scene",
+                "success_delete": "Scene removed successfully",
+                "error_delete": "Failed to delete scene",
+                "upload_success": "Backdrop image updated",
+                "upload_error": "Failed to upload image",
+                "delete_backdrop_success": "Backdrop image removed",
+                "delete_backdrop_error": "Failed to delete image",
+                "gateways_save_success": "Gateways saved successfully",
+                "gateways_save_error": "Failed to save gateways"
+            },
+            "draw_hint": "CLICK & DRAG TO CREATE GATEWAY",
+            "no_gateways": "No gateways defined yet. Draw one on the backdrop.",
+            "gw_label": "IDENTIFICATION",
+            "gw_type": "PROPERTY_TYPE",
+            "target_scene": "DESTINATION_SCENE",
+            "target_spawn": "SPAWN_POINT",
+            "behavior": "ACTION_BEHAVIOR",
+            "target_character": "TARGET_CHARACTER"
         }
     }
 }

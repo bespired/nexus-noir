@@ -440,10 +440,6 @@ onMounted(() => {
     overflow-y: auto;
 }
 
-.edit-layout {
-    max-width: 1400px;
-    margin: 0 auto;
-}
 
 .edit-hero {
     background-color: var(--color-noir-dark);

@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 const props = defineProps({
     scene: {
@@ -8,10 +9,13 @@ const props = defineProps({
     }
 });
 
+const router = useRouter();
+
 const thumbUrl = computed(() => {
     if (props.scene.media && props.scene.media.length > 0) {
-        const file = props.scene.media.find(m => m.type === '2d')?.filepad || props.scene.media[0].filepad;
-        if(file.startsWith('http')) return file;
+        const file = props.scene.media.find(m => m.type === '2d')?.filepad;
+        if (!file) return null;
+        if (file.startsWith('http')) return file;
         return `/storage/${file}`;
     }
     return null;
@@ -54,6 +58,7 @@ const has3dModel = computed(() => {
                         severity="warning"
                         outlined
                         class="global-thumb__edit-btn"
+                        @click="router.push(`/scenes/${scene.id}/edit`)"
                     />
                 </div>
             </div>

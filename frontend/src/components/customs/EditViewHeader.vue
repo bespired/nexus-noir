@@ -50,7 +50,6 @@ const goBack = () => {
             <slot name="extra-actions"></slot>
             <template v-if="showButtons">
                 <Button
-                    v-if="saving"
                     label="SAVE"
                     severity="success"
                     class="header-btn save-btn"
@@ -58,7 +57,6 @@ const goBack = () => {
                     :loading="saving"
                 />
                 <Button
-                    v-if="deleting"
                     label="DELETE"
                     severity="danger"
                     class="header-btn delete-btn"

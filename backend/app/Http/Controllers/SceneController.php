@@ -20,7 +20,8 @@ class SceneController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'sector_id' => 'nullable|exists:sectors,id',
-            'type' => 'required|string|in:walkable-area,vue-component,investigation,combat',
+            'type' => 'required|string|in:walkable-area,vue-component,investigation,combat,cut-scene',
+            '2d_gateways' => 'nullable|array',
         ]);
 
         $scene = \App\Models\Scene::create($validated);
@@ -33,7 +34,7 @@ class SceneController extends Controller
      */
     public function show(string $id)
     {
-        //
+        return \App\Models\Scene::with(['media', 'sector'])->findOrFail($id);
     }
 
     /**
@@ -47,7 +48,9 @@ class SceneController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'sector_id' => 'nullable|exists:sectors,id',
-            'type' => 'required|string|in:walkable-area,vue-component,investigation,combat',
+            'type' => 'required|string|in:walkable-area,vue-component,investigation,combat,cut-scene',
+            '2d_gateways' => 'nullable|array',
+            'thumb_dimensions' => 'nullable|array',
         ]);
 
         $scene->update($validated);

@@ -15,11 +15,13 @@ class Sector extends Model
         'description',
         'visible_clue_conditions',
         'thumb_dimensions',
+        'entry_scene_id',
     ];
 
     protected $casts = [
         'visible_clue_conditions' => 'array',
         'thumb_dimensions' => 'array',
+        'entry_scene_id' => 'integer',
     ];
 
     public function scenes(): HasMany

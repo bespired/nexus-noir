@@ -197,8 +197,8 @@
 
     /* Shared Edit View Layout */
     .edit-layout {
-        max-width: 1400px;
-        margin: 0 auto;
+/*        max-width: 1400px;
+        margin: 0 auto;*/
     }
 
     .edit-grid {
@@ -243,7 +243,7 @@
         display: block;
         font-size: 0.75rem;
         color: var(--color-noir-muted);
-        margin-bottom: 0.75rem;
+        /*margin-bottom: 0.75rem;*/
         text-transform: uppercase;
         letter-spacing: 1px;
     }

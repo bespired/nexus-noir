@@ -19,6 +19,26 @@ const routes = [
         component: () => import('../views/scenes/ScenesIndex.vue')
     },
     {
+        path: '/scenes/:id/edit',
+        name: 'scene-edit',
+        component: () => import('../views/scenes/SceneEdit.vue')
+    },
+    {
+        path: '/scenes/:id/gateway',
+        name: 'scene-gateway',
+        component: () => import('../views/scenes/SceneGateway.vue')
+    },
+    {
+        path: '/scenes/:id/spawnpoint',
+        name: 'scene-spawnpoint',
+        component: () => import('../views/scenes/SceneSpawnpoint.vue')
+    },
+    {
+        path: '/scenes/map',
+        name: 'scenes-map',
+        component: () => import('../views/scenes/SceneMapView.vue')
+    },
+    {
         path: '/sectors',
         name: 'sectors',
         component: () => import('../views/sectors/SectorsIndex.vue')

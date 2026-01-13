@@ -291,6 +291,7 @@
             "type_vue": "Vue Component",
             "type_investigation": "Investigation",
             "type_combat": "Combat",
+            "type_cutscene": "Cut Scene",
             "btn_cancel": "NEE BEDANKT",
             "btn_save": "JA OPSLAAN"
         },
@@ -300,6 +301,43 @@
             "error_summary": "Fout",
             "error_fill_fields": "Vul alle velden in",
             "error_save": "Kon scene niet opslaan"
+        },
+        "edit": {
+            "label_type": "SCENE TYPE",
+            "label_sector": "SECTOR",
+            "label_description": "OMSCHRIJVING",
+            "nav_properties": "EIGENSCHAPPEN",
+            "nav_gateway": "GATEWAY",
+            "nav_3d": "3D",
+            "btn_sector": "SECTOR",
+            "btn_upload": "AFBEELDING UPLOADEN",
+            "btn_change": "AFBEELDING WIJZIGEN",
+            "no_backdrop": "GEEN ACHTERGROND AFBEELDING",
+            "confirm_delete": "Weet je zeker dat je deze scene wilt verwijderen?",
+            "loading": "Scene eigenschappen laden...",
+            "messages": {
+                "error_summary": "Fout",
+                "success_summary": "Succes",
+                "error_load": "Kon scene data niet laden",
+                "success_update": "Scene succesvol bijgewerkt",
+                "error_save": "Kon scene niet opslaan",
+                "success_delete": "Scene succesvol verwijderd",
+                "error_delete": "Kon scene niet verwijderen",
+                "upload_success": "Achtergrond afbeelding bijgewerkt",
+                "upload_error": "Uploaden mislukt",
+                "delete_backdrop_success": "Achtergrond afbeelding verwijderd",
+                "delete_backdrop_error": "Verwijderen mislukt",
+                "gateways_save_success": "Gateways succesvol opgeslagen",
+                "gateways_save_error": "Kon gateways niet opslaan"
+            },
+            "draw_hint": "KLIK & SLEEP OM EEN GATEWAY TE MAKEN",
+            "no_gateways": "Nog geen gateways gedefinieerd. Teken er een op de achtergrond.",
+            "gw_label": "IDENTIFICATIE",
+            "gw_type": "EIGENSCHAP_TYPE",
+            "target_scene": "BESTEMMING_SCENE",
+            "target_spawn": "SPAWNPUNT",
+            "behavior": "GEDRAG_ACTIE",
+            "target_character": "DOEL_CHARACTER"
         }
     }
 }

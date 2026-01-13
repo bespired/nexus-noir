@@ -27,7 +27,8 @@ const sceneTypes = ref([
     { label: t('scenes.modal.type_walkable'), value: 'walkable-area' },
     { label: t('scenes.modal.type_vue'), value: 'vue-component' },
     { label: t('scenes.modal.type_investigation'), value: 'investigation' },
-    { label: t('scenes.modal.type_combat'), value: 'combat' }
+    { label: t('scenes.modal.type_combat'), value: 'combat' },
+    { label: t('scenes.modal.type_cutscene'), value: 'cut-scene' }
 ]);
 
 const saving = ref(false);
@@ -52,11 +53,11 @@ const handleClose = () => {
 
 const handleSaveScene = async () => {
     if (!newScene.value.title) {
-        toast.add({ 
-            severity: 'error', 
-            summary: t('scenes.messages.error_summary'), 
-            detail: t('scenes.messages.error_fill_fields'), 
-            life: 3000 
+        toast.add({
+            severity: 'error',
+            summary: t('scenes.messages.error_summary'),
+            detail: t('scenes.messages.error_fill_fields'),
+            life: 3000
         });
         return;
     }
@@ -75,12 +76,12 @@ const handleSaveScene = async () => {
         if (!response.ok) throw new Error('Failed to save scene');
 
         const createdScene = await response.json();
-        
-        toast.add({ 
-            severity: 'success', 
-            summary: t('scenes.messages.success_summary'), 
-            detail: t('scenes.messages.success_detail'), 
-            life: 3000 
+
+        toast.add({
+            severity: 'success',
+            summary: t('scenes.messages.success_summary'),
+            detail: t('scenes.messages.success_detail'),
+            life: 3000
         });
 
         emit('created', createdScene);
@@ -88,11 +89,11 @@ const handleSaveScene = async () => {
         resetForm();
     } catch (error) {
         console.error(error);
-        toast.add({ 
-            severity: 'error', 
-            summary: t('scenes.messages.error_summary'), 
-            detail: t('scenes.messages.error_save'), 
-            life: 3000 
+        toast.add({
+            severity: 'error',
+            summary: t('scenes.messages.error_summary'),
+            detail: t('scenes.messages.error_save'),
+            life: 3000
         });
     } finally {
         saving.value = false;
@@ -110,12 +111,12 @@ const resetForm = () => {
 </script>
 
 <template>
-    <Dialog 
-        :visible="visible" 
+    <Dialog
+        :visible="visible"
         @update:visible="emit('update:visible', $event)"
-        modal 
+        modal
         dismissableMask
-        class="noir-modal scene-modal" 
+        class="noir-modal scene-modal"
         style="width: 35rem"
     >
         <template #header>

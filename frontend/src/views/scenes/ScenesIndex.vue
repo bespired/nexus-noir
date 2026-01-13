@@ -118,7 +118,10 @@ onMounted(() => {
                     class="noir-select"
                 />
             </div>
-            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
+            <div class="header-actions">
+                <Button label="MAP" severity="info" class="map-btn" icon="pi pi-map" @click="$router.push('/scenes/map')" />
+                <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
+            </div>
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -169,8 +172,17 @@ onMounted(() => {
     padding: 2rem;
 }
 
+.header-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.new-btn {
+    margin-left: 0 !important;
+}
+
 .sort-select {
     width: 155px !important;
-    margin-left: 0.5rem;
 }
 </style>

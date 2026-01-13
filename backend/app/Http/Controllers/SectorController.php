@@ -56,6 +56,7 @@ class SectorController extends Controller
             'visible_clue_conditions' => 'nullable|array',
             'visible_clue_conditions.*' => 'integer|exists:clues,id',
             'thumb_dimensions' => 'nullable|array',
+            'entry_scene_id' => 'nullable|integer|exists:scenes,id',
         ]);
 
         $sector->update($validated);
