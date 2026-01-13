@@ -39,7 +39,8 @@ const spawnPointTypes = [
     { label: 'Entry', value: 'entry' },
     { label: 'Player', value: 'player' },
     { label: 'NPC', value: 'npc' },
-    { label: 'Prop', value: 'prop' }
+    { label: 'Prop', value: 'prop' },
+    { label: 'Goto', value: 'goto' }
 ];
 
 const toggleCollapse = (index) => {
@@ -92,16 +93,108 @@ const backdropUrl = computed(() => {
     return null;
 });
 
-const glbUrl = computed(() => {
+const currentGlb = computed(() => {
     if (scene.value && scene.value.media) {
-        const model3d = scene.value.media.find(m => m.type === '3d');
-        if (model3d) {
-            const file = model3d.filepad;
-            return file.startsWith('http') ? file : `/storage/${file}`;
-        }
+        return scene.value.media.find(m => m.type === '3d');
     }
     return null;
 });
+
+const glbUrl = computed(() => {
+    if (currentGlb.value) {
+        const file = currentGlb.value.filepad;
+        return file.startsWith('http') ? file : `/storage/${file}`;
+    }
+    return null;
+});
+
+const onGlbUpload = async (event) => {
+    const file = event.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('imageable_id', sceneId);
+    formData.append('imageable_type', 'App\\Models\\Scene');
+    formData.append('title', `3D Model for ${scene.value.title}`);
+
+    try {
+        const response = await fetch('/api/media', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) throw new Error('Upload failed');
+
+        const newMedia = await response.json();
+        if (!scene.value.media) scene.value.media = [];
+        // Replace existing 3d model if it exists
+        scene.value.media = scene.value.media.filter(m => m.type !== '3d');
+        scene.value.media.push(newMedia);
+
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: '3D model updated',
+            life: 3000
+        });
+        
+        // Refresh scene
+        isGlbLoaded.value = false;
+        floorFound.value = false;
+        if (glbModel) {
+            threeScene.remove(glbModel);
+            glbModel = null;
+        }
+        initThree();
+    } catch (error) {
+        console.error(error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to upload GLB model',
+            life: 3000
+        });
+    }
+};
+
+const deleteGlb = async () => {
+    const glb = currentGlb.value;
+    if (!glb) return;
+    if (!confirm('Are you sure you want to delete the 3D model?')) return;
+
+    try {
+        const response = await fetch(`/api/media/${glb.id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Delete failed');
+
+        scene.value.media = scene.value.media.filter(m => m.id !== glb.id);
+        
+        // Clear three.js scene
+        if (glbModel) {
+            threeScene.remove(glbModel);
+            glbModel = null;
+        }
+        floorMesh = null;
+        floorFound.value = false;
+        isGlbLoaded.value = false;
+
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: '3D model deleted',
+            life: 3000
+        });
+    } catch (error) {
+        console.error(error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to delete 3D model',
+            life: 3000
+        });
+    }
+};
 
 const initThree = () => {
     if (!canvasContainer.value) return;
@@ -163,6 +256,7 @@ const initThree = () => {
                     
                     // Apply transparency and colors
                     if (child.material) {
+                        child.material = child.material.clone();
                         child.material.transparent = true;
                         child.material.opacity = 0.5;
                         child.material.depthWrite = false;
@@ -171,9 +265,10 @@ const initThree = () => {
                             child.material.color.set(0x3b82f6); // Noir Blue
                             floorMesh = child;
                             floorFound.value = true;
-                            console.log("Floor detected:", child.name);
+                            console.log("Floor detected & colored Blue:", child.name);
                         } else if (child.name.toLowerCase().includes('mask')) {
                             child.material.color.set(0xd946ef); // Noir Magenta
+                            console.log("Mask detected & colored Magenta:", child.name);
                         }
                     }
                 }
@@ -249,13 +344,21 @@ const handleMouseDown = (event) => {
     raycaster.setFromCamera(mouse, threeCamera);
     
     // Check if we hit a marker first (for dragging)
-    const markerIntersects = raycaster.intersectObjects(spawnPointMarkers);
+    const markerIntersects = raycaster.intersectObjects(spawnPointMarkers, true);
     if (markerIntersects.length > 0) {
-        const hitMarker = markerIntersects[0].object;
-        draggedIndex = hitMarker.userData.index;
-        selectedSpawnPointIndex.value = draggedIndex;
-        isDragging.value = true;
-        return;
+        // Find the group parent which has the index
+        let obj = markerIntersects[0].object;
+        while (obj && !obj.userData || obj.userData.index === undefined) {
+            obj = obj.parent;
+            if (!obj || obj === threeScene) break;
+        }
+        
+        if (obj && obj.userData && obj.userData.index !== undefined) {
+            draggedIndex = obj.userData.index;
+            selectedSpawnPointIndex.value = draggedIndex;
+            isDragging.value = true;
+            return;
+        }
     }
 
     // If no marker hit, check if we hit the floor (for placement)
@@ -319,22 +422,40 @@ const updateSpawnPointMarkers = () => {
     if (!scene.value || !scene.value['3d_spawnpoints']) return;
 
     scene.value['3d_spawnpoints'].forEach((sp, index) => {
+        const isSelected = selectedSpawnPointIndex.value === index;
+        const color = isSelected ? 0x3b82f6 : 0xef4444;
+        
+        // Group to hold cone and beak
+        const group = new THREE.Group();
+        group.position.set(sp.x, sp.y + 0.25, sp.z);
+        
+        // Main Cone
         const geometry = new THREE.ConeGeometry(0.2, 0.5, 8);
         const material = new THREE.MeshStandardMaterial({ 
-            color: selectedSpawnPointIndex.value === index ? 0x3b82f6 : 0xef4444,
-            emissive: selectedSpawnPointIndex.value === index ? 0x1d4ed8 : 0x991b1b,
+            color: color,
+            emissive: isSelected ? 0x1d4ed8 : 0x991b1b,
             emissiveIntensity: 0.5
         });
         const cone = new THREE.Mesh(geometry, material);
+        cone.rotation.x = Math.PI; // Invert cone to point down
+        group.add(cone);
         
-        cone.rotation.x = Math.PI;
-        cone.position.set(sp.x, sp.y + 0.25, sp.z);
+        // Direction Beak (small cone pointing forward)
+        const beakGeometry = new THREE.ConeGeometry(0.08, 0.2, 4);
+        const beakMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const beak = new THREE.Mesh(beakGeometry, beakMaterial);
         
-        cone.rotateY(sp.direction * (Math.PI / 180));
+        // Position beak at the "front" of the spawnpoint
+        beak.position.set(0, 0, -0.25);
+        beak.rotation.x = Math.PI / 2;
+        group.add(beak);
+        
+        // Apply orientation to the group
+        group.rotateY(sp.direction * (Math.PI / 180));
 
-        cone.userData = { index };
-        threeScene.add(cone);
-        spawnPointMarkers.push(cone);
+        group.userData = { index };
+        threeScene.add(group);
+        spawnPointMarkers.push(group);
     });
 };
 
@@ -480,6 +601,30 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
                             <i class="pi pi-map-marker"></i>
                             <span>CLICK ON FLOOR TO PLACE SPAWNPOINT</span>
                         </div>
+
+                        <div class="glb-actions">
+                            <FileUpload
+                                mode="basic"
+                                name="file"
+                                accept=".glb"
+                                :maxFileSize="20000000"
+                                @uploader="onGlbUpload"
+                                customUpload
+                                auto
+                                severity="secondary"
+                                :chooseLabel="glbUrl ? 'CHANGE MODEL' : 'UPLOAD GLB'"
+                                icon="pi pi-upload"
+                                class="noir-fileupload"
+                            />
+                            <Button
+                                v-if="glbUrl"
+                                icon="pi pi-trash"
+                                severity="danger"
+                                text
+                                @click="deleteGlb"
+                                class="glb-delete-btn"
+                            />
+                        </div>
                         
                         <div v-if="!glbUrl" class="no-glb-warning">
                             <i class="pi pi-exclamation-triangle"></i>
@@ -546,8 +691,11 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
                             </div>
 
                             <div class="field">
-                                <label>DIRECTION (DEGREES)</label>
-                                <InputNumber v-model="sp.direction" :min="0" :max="360" class="noir-input w-full" showButtons />
+                                <label>DIRECTION ({{ sp.direction }}°)</label>
+                                <div class="slider-row">
+                                    <Slider v-model="sp.direction" :min="0" :max="360" class="noir-slider" />
+                                    <InputNumber v-model="sp.direction" :min="0" :max="360" class="noir-input tiny" :useGrouping="false" />
+                                </div>
                             </div>
 
                             <div class="field-row">
@@ -675,6 +823,36 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
     gap: 0.5rem;
     border: 1px solid var(--color-noir-accent);
     pointer-events: none;
+    z-index: 20;
+}
+
+.glb-actions {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    z-index: 20;
+}
+
+.noir-fileupload :deep(.p-button) {
+    background: rgba(0, 0, 0, 0.7) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    font-size: 0.7rem !important;
+    font-weight: bold !important;
+}
+
+.noir-fileupload :deep(.p-button:hover) {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.glb-delete-btn {
+    background: rgba(220, 38, 38, 0.2) !important;
+    border: 1px solid rgba(220, 38, 38, 0.5) !important;
+    width: 2.2rem !important;
+    height: 2.2rem !important;
 }
 
 .no-glb-warning {
@@ -743,6 +921,7 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
 .gateway-type-indicator.player { background: #3b82f6; }
 .gateway-type-indicator.npc { background: #f59e0b; }
 .gateway-type-indicator.prop { background: #8b5cf6; }
+.gateway-type-indicator.goto { background: #06b6d4; } /* Cyan */
 
 .gateway-card__title {
     font-size: 0.8rem;
@@ -807,5 +986,56 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
     padding: 4rem;
     text-align: center;
     color: var(--color-noir-muted);
+}
+
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0;
+}
+
+.noir-slider {
+    flex: 1;
+    height: 4px;
+    background: #1f2937 !important;
+    border: none !important;
+}
+
+.noir-input.tiny {
+    width: 70px !important;
+}
+
+/* Specific styling for the numeric input field */
+.noir-input.tiny :deep(.p-inputnumber-input) {
+    width: 100% !important;
+    background: #000 !important;
+    border: 1px solid #1f2937 !important;
+    color: white !important;
+    padding: 0.4rem !important;
+    text-align: center;
+    font-size: 0.8rem;
+    border-radius: 4px;
+}
+
+/* Fix Slider Handle */
+:deep(.p-slider-handle) {
+    width: 16px !important;
+    height: 16px !important;
+    background: #fff !important;
+    border: 2px solid var(--color-noir-accent) !important;
+    border-radius: 50% !important;
+    cursor: grab;
+    margin-top: -6px !important; /* Center on 4px height track */
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+    z-index: 2;
+}
+
+:deep(.p-slider-handle:active) {
+    cursor: grabbing;
+}
+
+:deep(.p-slider-range) {
+    background: var(--color-noir-accent) !important;
 }
 </style>
