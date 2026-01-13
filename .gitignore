@@ -3,3 +3,4 @@ backup/json/
 .DS_Store
 .env
 backup
+upload.sh
