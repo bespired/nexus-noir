@@ -1,96 +1,425 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useToast } from 'primevue/usetoast';
+import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/customs/EditViewHeader.vue';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const route = useRoute();
+const router = useRouter();
+const toast = useToast();
+const { t } = useI18n();
+
 const sceneId = route.params.id;
 const scene = ref(null);
+const loading = ref(true);
+const saving = ref(false);
+const deleting = ref(false);
 
-const fetchScene = async () => {
+const canvasContainer = ref(null);
+const selectedSpawnPointIndex = ref(-1);
+const collapsedStates = ref({});
+const backdropAspectRatio = ref(16 / 9);
+
+// Three.js variables
+let threeScene, threeCamera, renderer, controls, loader, raycaster, mouse;
+let floorMesh = null;
+let spawnPointMarkers = [];
+let glbModel = null;
+let glbCamera = null;
+const isGlbLoaded = ref(false);
+const floorFound = ref(false);
+const isDragging = ref(false);
+let draggedIndex = -1;
+
+const spawnPointTypes = [
+    { label: 'Entry', value: 'entry' },
+    { label: 'Player', value: 'player' },
+    { label: 'NPC', value: 'npc' },
+    { label: 'Prop', value: 'prop' }
+];
+
+const toggleCollapse = (index) => {
+    collapsedStates.value[index] = !collapsedStates.value[index];
+};
+
+const fetchInitialData = async () => {
     try {
         const response = await fetch(`/api/scenes/${sceneId}`);
         if (!response.ok) throw new Error('Failed to fetch scene');
         scene.value = await response.json();
+        
+        if (!scene.value['3d_spawnpoints']) {
+            scene.value['3d_spawnpoints'] = [];
+        } else {
+            scene.value['3d_spawnpoints'].forEach((sp, index) => {
+                collapsedStates.value[index] = true;
+            });
+        }
+        
+        nextTick(() => {
+            initThree();
+        });
     } catch (error) {
         console.error(error);
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load scene data', life: 3000 });
+    } finally {
+        loading.value = false;
     }
 };
 
-const saving = ref(false);
-const deleting = ref(false);
+const backdropUrl = computed(() => {
+    if (scene.value && scene.value.media) {
+        const backdrop = scene.value.media.find(m => m.type === '2d');
+        if (backdrop) {
+            const file = backdrop.filepad;
+            const url = file.startsWith('http') ? file : `/storage/${file}`;
+            
+            // Load image to get aspect ratio
+            const img = new Image();
+            img.onload = () => {
+                backdropAspectRatio.value = img.width / img.height;
+                nextTick(() => handleResize()); // Resize three.js when aspect changes
+            };
+            img.src = url;
+            
+            return url;
+        }
+    }
+    return null;
+});
+
+const glbUrl = computed(() => {
+    if (scene.value && scene.value.media) {
+        const model3d = scene.value.media.find(m => m.type === '3d');
+        if (model3d) {
+            const file = model3d.filepad;
+            return file.startsWith('http') ? file : `/storage/${file}`;
+        }
+    }
+    return null;
+});
+
+const initThree = () => {
+    if (!canvasContainer.value) return;
+
+    // Setup Scene
+    threeScene = new THREE.Scene();
+    
+    // Setup Camera
+    threeCamera = new THREE.PerspectiveCamera(50, canvasContainer.value.clientWidth / canvasContainer.value.clientHeight, 0.1, 1000);
+    threeCamera.position.set(0, 5, 10);
+    threeCamera.lookAt(0, 0, 0);
+
+    // Setup Renderer
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(canvasContainer.value.clientWidth, canvasContainer.value.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    canvasContainer.value.appendChild(renderer.domElement);
+
+    // Setup Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+    threeScene.add(ambientLight);
+    
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+    dirLight.position.set(5, 10, 7);
+    threeScene.add(dirLight);
+
+    // Grid Helper for visibility (Disabled for final view but kept in code)
+    // const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+    // threeScene.add(gridHelper);
+
+    // Controls (DIsabled as per user request to lock fSpy view)
+    // controls = new OrbitControls(threeCamera, renderer.domElement);
+    // controls.enableDamping = true;
+
+    // Raycaster
+    raycaster = new THREE.Raycaster();
+    mouse = new THREE.Vector2();
+
+    // Load Model
+    if (glbUrl.value) {
+        console.log("Loading GLB from:", glbUrl.value);
+        loader = new GLTFLoader();
+        loader.load(glbUrl.value, (gltf) => {
+            console.log("GLB Loaded successfully");
+            glbModel = gltf.scene;
+            
+            // Do NOT center model if using fSpy/aligned views, as camera depends on original origin
+            // const box = new THREE.Box3().setFromObject(glbModel);
+            // const center = box.getCenter(new THREE.Vector3());
+            // glbModel.position.sub(center);
+            
+            threeScene.add(glbModel);
+            isGlbLoaded.value = true;
+            
+            // Search for floor and cameras, and set transparency
+            glbModel.traverse((child) => {
+                if (child.isMesh) {
+                    console.log("Found mesh:", child.name);
+                    
+                    // Apply transparency and colors
+                    if (child.material) {
+                        child.material.transparent = true;
+                        child.material.opacity = 0.5;
+                        child.material.depthWrite = false;
+                        
+                        if (child.name.toLowerCase().includes('floor')) {
+                            child.material.color.set(0x3b82f6); // Noir Blue
+                            floorMesh = child;
+                            floorFound.value = true;
+                            console.log("Floor detected:", child.name);
+                        } else if (child.name.toLowerCase().includes('mask')) {
+                            child.material.color.set(0xd946ef); // Noir Magenta
+                        }
+                    }
+                }
+                if (child.isCamera) {
+                    glbCamera = child;
+                    console.log("Found camera in GLB:", child.name);
+                }
+            });
+
+            if (!floorMesh) {
+                console.warn("No 'floor' object found in GLB for raycasting.");
+                // Fallback: try to find any large horizontal plane if no 'floor'
+            }
+
+            if (glbCamera) {
+                console.log("Updating to GLB camera.");
+                
+                // Ensure camera world matrix is correct if it has parents
+                threeScene.updateMatrixWorld(true);
+                
+                threeCamera = glbCamera;
+                threeCamera.aspect = canvasContainer.value.clientWidth / canvasContainer.value.clientHeight;
+                threeCamera.updateProjectionMatrix();
+                
+                // Controls removed as per request
+                // if (controls) controls.dispose();
+                // controls = new OrbitControls(threeCamera, renderer.domElement);
+                // controls.enableDamping = true;
+                
+                // Set target removed
+                // const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(threeCamera.quaternion);
+                // controls.target.copy(threeCamera.position).add(dir.multiplyScalar(5));
+                // controls.update();
+            } else {
+                // Adjust default camera to fit model if no GLB camera
+                const box = new THREE.Box3().setFromObject(glbModel);
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                threeCamera.position.z = maxDim * 2;
+                threeCamera.position.y = maxDim;
+                threeCamera.lookAt(0, 0, 0);
+            }
+
+            updateSpawnPointMarkers();
+        }, (xhr) => {
+            if (xhr.total > 0) {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            } else {
+                console.log(xhr.loaded + ' bytes loaded');
+            }
+        }, (error) => {
+            console.error("Error loading GLB:", error);
+        });
+    }
+
+    animate();
+};
+
+const animate = () => {
+    if (!renderer) return;
+    requestAnimationFrame(animate);
+    if (controls) controls.update();
+    renderer.render(threeScene, threeCamera);
+};
+
+const handleMouseDown = (event) => {
+    if (!canvasContainer.value) return;
+
+    const rect = canvasContainer.value.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, threeCamera);
+    
+    // Check if we hit a marker first (for dragging)
+    const markerIntersects = raycaster.intersectObjects(spawnPointMarkers);
+    if (markerIntersects.length > 0) {
+        const hitMarker = markerIntersects[0].object;
+        draggedIndex = hitMarker.userData.index;
+        selectedSpawnPointIndex.value = draggedIndex;
+        isDragging.value = true;
+        return;
+    }
+
+    // If no marker hit, check if we hit the floor (for placement)
+    if (floorMesh) {
+        const floorIntersects = raycaster.intersectObject(floorMesh);
+        if (floorIntersects.length > 0) {
+            const point = floorIntersects[0].point;
+            addSpawnPoint(point.x, point.y, point.z);
+        }
+    }
+};
+
+const handleMouseMove = (event) => {
+    if (!isDragging.value || draggedIndex === -1 || !floorMesh) return;
+
+    const rect = canvasContainer.value.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, threeCamera);
+    const intersects = raycaster.intersectObject(floorMesh);
+
+    if (intersects.length > 0) {
+        const point = intersects[0].point;
+        const sp = scene.value['3d_spawnpoints'][draggedIndex];
+        sp.x = parseFloat(point.x.toFixed(3));
+        sp.y = parseFloat(point.y.toFixed(3)); // Update Y too just in case
+        sp.z = parseFloat(point.z.toFixed(3));
+        // Markers update automatically via deep watcher
+    }
+};
+
+const handleMouseUp = () => {
+    isDragging.value = false;
+    draggedIndex = -1;
+};
+
+const addSpawnPoint = (x, y, z) => {
+    const newSP = {
+        name: `Spawnpoint ${scene.value['3d_spawnpoints'].length + 1}`,
+        type: 'player',
+        direction: 0,
+        x: parseFloat(x.toFixed(3)),
+        y: parseFloat(y.toFixed(3)),
+        z: parseFloat(z.toFixed(3))
+    };
+    
+    scene.value['3d_spawnpoints'].push(newSP);
+    selectedSpawnPointIndex.value = scene.value['3d_spawnpoints'].length - 1;
+    collapsedStates.value[selectedSpawnPointIndex.value] = false;
+    updateSpawnPointMarkers();
+};
+
+const updateSpawnPointMarkers = () => {
+    if (!threeScene) return;
+    
+    // Clear old markers
+    spawnPointMarkers.forEach(m => threeScene.remove(m));
+    spawnPointMarkers = [];
+
+    if (!scene.value || !scene.value['3d_spawnpoints']) return;
+
+    scene.value['3d_spawnpoints'].forEach((sp, index) => {
+        const geometry = new THREE.ConeGeometry(0.2, 0.5, 8);
+        const material = new THREE.MeshStandardMaterial({ 
+            color: selectedSpawnPointIndex.value === index ? 0x3b82f6 : 0xef4444,
+            emissive: selectedSpawnPointIndex.value === index ? 0x1d4ed8 : 0x991b1b,
+            emissiveIntensity: 0.5
+        });
+        const cone = new THREE.Mesh(geometry, material);
+        
+        cone.rotation.x = Math.PI;
+        cone.position.set(sp.x, sp.y + 0.25, sp.z);
+        
+        cone.rotateY(sp.direction * (Math.PI / 180));
+
+        cone.userData = { index };
+        threeScene.add(cone);
+        spawnPointMarkers.push(cone);
+    });
+};
+
+const deleteSpawnPoint = (index) => {
+    scene.value['3d_spawnpoints'].splice(index, 1);
+    if (selectedSpawnPointIndex.value === index) selectedSpawnPointIndex.value = -1;
+    updateSpawnPointMarkers();
+};
+
+const selectSpawnPoint = (index) => {
+    selectedSpawnPointIndex.value = index;
+    collapsedStates.value[index] = false;
+    updateSpawnPointMarkers();
+};
 
 const handleSave = async () => {
     saving.value = true;
     try {
         const response = await fetch(`/api/scenes/${sceneId}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({
                 title: scene.value.title,
                 description: scene.value.description,
                 sector_id: scene.value.sector_id,
-                type: scene.value.type
+                type: scene.value.type,
+                '3d_spawnpoints': scene.value['3d_spawnpoints']
             })
         });
 
-        if (!response.ok) throw new Error('Failed to update scene');
-
+        if (!response.ok) throw new Error('Save failed');
         toast.add({
             severity: 'success',
-            summary: t('scenes.edit.messages.success_summary') || 'Success',
-            detail: t('scenes.edit.messages.success_update'),
+            summary: 'Success',
+            detail: 'Spawnpoints saved successfully',
             life: 3000
         });
     } catch (error) {
         console.error(error);
-        toast.add({
-            severity: 'error',
-            summary: t('scenes.edit.messages.error_summary') || 'Error',
-            detail: t('scenes.edit.messages.error_save'),
-            life: 3000
-        });
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to save spawnpoints', life: 3000 });
     } finally {
         saving.value = false;
     }
 };
 
-const handleDelete = async () => {
+const handleDeleteScene = async () => {
     if (!confirm(t('scenes.edit.confirm_delete'))) return;
-
     deleting.value = true;
     try {
-        const response = await fetch(`/api/scenes/${sceneId}`, {
-            method: 'DELETE',
-            headers: { 'Accept': 'application/json' }
-        });
-
-        if (!response.ok) throw new Error('Failed to delete scene');
-
-        toast.add({
-            severity: 'success',
-            summary: t('scenes.edit.messages.success_summary') || 'Deleted',
-            detail: t('scenes.edit.messages.success_delete'),
-            life: 3000
-        });
+        await fetch(`/api/scenes/${sceneId}`, { method: 'DELETE' });
         router.push('/scenes');
     } catch (error) {
         console.error(error);
-        toast.add({
-            severity: 'error',
-            summary: t('scenes.edit.messages.error_summary') || 'Error',
-            detail: t('scenes.edit.messages.error_delete'),
-            life: 3000
-        });
     } finally {
         deleting.value = false;
     }
 };
 
-onMounted(fetchScene);
+const handleResize = () => {
+    if (!canvasContainer.value || !renderer) return;
+    threeCamera.aspect = canvasContainer.value.clientWidth / canvasContainer.value.clientHeight;
+    threeCamera.updateProjectionMatrix();
+    renderer.setSize(canvasContainer.value.clientWidth, canvasContainer.value.clientHeight);
+};
+
+onMounted(() => {
+    fetchInitialData();
+    window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
+    if (renderer) {
+        renderer.dispose();
+    }
+});
+
+watch(() => selectedSpawnPointIndex.value, () => {
+    updateSpawnPointMarkers();
+});
+
+watch(() => scene.value?.['3d_spawnpoints'], () => {
+    updateSpawnPointMarkers();
+}, { deep: true });
+
 </script>
 
 <template>
@@ -103,10 +432,14 @@ onMounted(fetchScene);
             :saving="saving"
             :deleting="deleting"
             @save="handleSave"
-            @delete="handleDelete"
+            @delete="handleDeleteScene"
         />
 
-        <div v-if="scene" class="edit-layout">
+        <div v-if="loading" class="loading-state">
+            {{ t('scenes.edit.loading') }}
+        </div>
+
+        <div v-else-if="scene" class="edit-layout">
             <!-- HEADER HERO -->
             <div class="edit-hero">
                 <div class="edit-hero__left">
@@ -114,17 +447,122 @@ onMounted(fetchScene);
                 </div>
                 <div class="edit-hero__right">
                     <div class="scene-nav">
-                        <router-link :to="`/scenes/${sceneId}/edit`" class="nav-link">{{ t('scenes.edit.nav_properties') }}</router-link>
-                        <router-link :to="`/scenes/${sceneId}/gateway`" class="nav-link">{{ t('scenes.edit.nav_gateway') }}</router-link>
-                        <router-link :to="`/scenes/${sceneId}/spawnpoint`" class="nav-link active">{{ t('scenes.edit.nav_3d') }}</router-link>
+                        <router-link :to="`\/scenes\/${sceneId}\/edit`" class="nav-link">{{ t('scenes.edit.nav_properties') }}</router-link>
+                        <router-link :to="`\/scenes\/${sceneId}\/gateway`" class="nav-link">{{ t('scenes.edit.nav_gateway') }}</router-link>
+                        <router-link :to="`\/scenes\/${sceneId}\/spawnpoint`" class="nav-link active">{{ t('scenes.edit.nav_3d') }}</router-link>
                     </div>
                     <span class="edit-hero__id">ID:{{ sceneId }}</span>
                 </div>
             </div>
 
-            <div class="placeholder-content">
-                <h1>SPAWNPOINT (3D) EDIT</h1>
-                <p>Coming soon...</p>
+            <div class="scene-edit-grid">
+                <!-- LEFT: 3D VIEWPORT -->
+                <div class="three-column">
+                    <div 
+                        class="viewport-container" 
+                        :style="{ 
+                            backgroundImage: backdropUrl ? `url(${backdropUrl})` : 'none',
+                            aspectRatio: backdropAspectRatio 
+                        }"
+                    >
+                        <div 
+                            class="canvas-wrapper" 
+                            ref="canvasContainer"
+                            @mousedown="handleMouseDown"
+                            @mousemove="handleMouseMove"
+                            @mouseup="handleMouseUp"
+                            @mouseleave="handleMouseUp"
+                        >
+                            <!-- Three.js renderer will be injected here -->
+                        </div>
+                        
+                        <div class="drawing-overlay-hint">
+                            <i class="pi pi-map-marker"></i>
+                            <span>CLICK ON FLOOR TO PLACE SPAWNPOINT</span>
+                        </div>
+                        
+                        <div v-if="!glbUrl" class="no-glb-warning">
+                            <i class="pi pi-exclamation-triangle"></i>
+                            <span>NO 3D MODEL LOADED FOR THIS SCENE</span>
+                        </div>
+                        
+                        <div v-if="glbUrl && !isGlbLoaded" class="no-glb-warning">
+                            <i class="pi pi-spin pi-spinner"></i>
+                            <span>LOADING 3D DATA...</span>
+                        </div>
+
+                        <div v-if="isGlbLoaded && !floorFound" class="no-glb-warning">
+                            <i class="pi pi-exclamation-circle"></i>
+                            <span>FLOOR MESH NOT DETECTED (CHECK OBJECT NAMES)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: SIDEBAR PROPERTIES -->
+                <div class="properties-column">
+                    <div v-if="scene['3d_spawnpoints'].length === 0" class="no-gateways-hint">
+                        No spawnpoints defined yet. Click on the 3D floor to place one.
+                    </div>
+
+                    <div 
+                        v-for="(sp, index) in scene['3d_spawnpoints']" 
+                        :key="index"
+                        class="gateway-card"
+                        :class="{ 'active': selectedSpawnPointIndex === index, 'collapsed': collapsedStates[index] }"
+                        @click="selectSpawnPoint(index)"
+                    >
+                        <div class="gateway-card__header" @click.stop="toggleCollapse(index)">
+                            <div class="gateway-type-indicator" :class="sp.type"></div>
+                            <span class="gateway-card__title">
+                                {{ sp.name || 'Unnamed Spawnpoint' }}
+                                <span v-if="collapsedStates[index]" class="header-label"> - {{ sp.type }}</span>
+                            </span>
+                            <div class="header-actions">
+                                <Button 
+                                    :icon="collapsedStates[index] ? 'pi pi-chevron-down' : 'pi pi-chevron-up'" 
+                                    text 
+                                    class="collapse-btn" 
+                                    @click.stop="toggleCollapse(index)" 
+                                />
+                                <Button icon="pi pi-trash" severity="danger" text class="gateway-card__delete" @click.stop="deleteSpawnPoint(index)" />
+                            </div>
+                        </div>
+
+                        <div v-if="!collapsedStates[index]" class="gateway-card__content">
+                            <div class="field">
+                                <label>IDENTIFICATION</label>
+                                <InputText v-model="sp.name" class="noir-input w-full" placeholder="e.g. Player Start" />
+                            </div>
+
+                            <div class="field">
+                                <label>SPAWN TYPE</label>
+                                <Select 
+                                    v-model="sp.type" 
+                                    :options="spawnPointTypes" 
+                                    optionLabel="label" 
+                                    optionValue="value"
+                                    class="noir-select w-full"
+                                />
+                            </div>
+
+                            <div class="field">
+                                <label>DIRECTION (DEGREES)</label>
+                                <InputNumber v-model="sp.direction" :min="0" :max="360" class="noir-input w-full" showButtons />
+                            </div>
+
+                            <div class="field-row">
+                                <div class="field half">
+                                    <label>X POSITION</label>
+                                    <InputNumber v-model="sp.x" :minFractionDigits="2" :maxFractionDigits="3" class="noir-input w-full" />
+                                </div>
+                                <div class="field half">
+                                    <label>Z POSITION</label>
+                                    <InputNumber v-model="sp.z" :minFractionDigits="2" :maxFractionDigits="3" class="noir-input w-full" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -135,6 +573,7 @@ onMounted(fetchScene);
     height: 100%;
     display: flex;
     flex-direction: column;
+    padding-right: 1rem;
 }
 
 .edit-hero {
@@ -196,12 +635,177 @@ onMounted(fetchScene);
     border: 1px solid var(--color-noir-accent);
 }
 
-.placeholder-content {
+.scene-edit-grid {
+    display: grid;
+    grid-template-columns: 5fr 2fr;
+    gap: 1rem;
     flex: 1;
+}
+
+.viewport-container {
+    position: relative;
+    width: 100%;
+    /* aspect-ratio will be set dynamically via v-bind or style */
+    background-color: #000;
+    background-size: 100% 100%;
+    background-position: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.canvas-wrapper {
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+
+.drawing-overlay-hint {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: var(--color-noir-accent);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid var(--color-noir-accent);
+    pointer-events: none;
+}
+
+.no-glb-warning {
+    position: absolute;
+    inset: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    background: rgba(0,0,0,0.5);
+    color: var(--color-noir-warning);
+    gap: 1rem;
+    pointer-events: none;
+}
+
+.no-glb-warning i {
+    font-size: 3rem;
+}
+
+.no-gateways-hint {
+    padding: 2rem;
+    text-align: center;
+    color: var(--color-noir-muted);
+    font-style: italic;
+    background: var(--color-noir-panel);
+    border-radius: 4px;
+}
+
+.gateway-card {
+    background: var(--color-noir-panel);
+    border: 1px solid #1f2937;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.gateway-card.active {
+    border-color: var(--color-noir-accent);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
+}
+
+.gateway-card__header {
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid #1f2937;
+    cursor: pointer;
+}
+
+.collapsed .gateway-card__header {
+    border-bottom: none;
+}
+
+.gateway-type-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.gateway-type-indicator.entry { background: #22c55e; }
+.gateway-type-indicator.player { background: #3b82f6; }
+.gateway-type-indicator.npc { background: #f59e0b; }
+.gateway-type-indicator.prop { background: #8b5cf6; }
+
+.gateway-card__title {
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    flex: 1;
+}
+
+.header-label {
+    color: var(--color-noir-muted);
+    text-transform: none;
+    font-weight: normal;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.collapse-btn {
+    width: 2rem !important;
+    height: 2rem !important;
+    color: var(--color-noir-muted) !important;
+}
+
+.gateway-card__content {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.field-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.field.half {
+    flex: 1;
+}
+
+.field label {
+    font-size: 0.7rem;
+    color: var(--color-noir-muted);
+    letter-spacing: 1px;
+}
+
+.noir-input, .noir-select {
+    background: #000 !important;
+    border: 1px solid #1f2937 !important;
+    color: white !important;
+}
+
+.loading-state {
+    padding: 4rem;
+    text-align: center;
     color: var(--color-noir-muted);
 }
 </style>

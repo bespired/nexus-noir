@@ -22,6 +22,7 @@ class SceneController extends Controller
             'sector_id' => 'nullable|exists:sectors,id',
             'type' => 'required|string|in:walkable-area,vue-component,investigation,combat,cut-scene',
             '2d_gateways' => 'nullable|array',
+            '3d_spawnpoints' => 'nullable|array',
         ]);
 
         $scene = \App\Models\Scene::create($validated);
@@ -50,6 +51,7 @@ class SceneController extends Controller
             'sector_id' => 'nullable|exists:sectors,id',
             'type' => 'required|string|in:walkable-area,vue-component,investigation,combat,cut-scene',
             '2d_gateways' => 'nullable|array',
+            '3d_spawnpoints' => 'nullable|array',
             'thumb_dimensions' => 'nullable|array',
         ]);
 

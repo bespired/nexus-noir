@@ -91,7 +91,7 @@ const handleSave = async () => {
 
 const handleSetEntryPoint = async () => {
     if (!scene.value.sector_id) return;
-    
+
     try {
         const response = await fetch(`/api/sectors/${scene.value.sector_id}`, {
             method: 'PUT',
@@ -333,6 +333,7 @@ onMounted(fetchInitialData);
 
                     <div class="field">
                         <label>{{ t('scenes.edit.label_sector') }}</label>
+                        <div class="duo-fields">
                         <div class="sector-field">
                             <Select
                                 v-model="scene.sector_id"
@@ -350,16 +351,17 @@ onMounted(fetchInitialData);
                                 <i class="pi pi-check-circle"></i>
                                 SECTOR ENTRY POINT
                             </div>
-                            <Button 
+                            <Button
                                 v-else
-                                label="SET AS SECTOR ENTRY POINT" 
-                                severity="success" 
-                                text 
+                                label="SET AS SECTOR ENTRY POINT"
+                                severity="success"
+                                text
                                 size="small"
                                 icon="pi pi-map-marker"
-                                class="entry-btn" 
-                                @click="handleSetEntryPoint" 
+                                class="entry-btn"
+                                @click="handleSetEntryPoint"
                             />
+                        </div>
                         </div>
                     </div>
 
@@ -524,6 +526,15 @@ onMounted(fetchInitialData);
     display: flex;
     gap: 0.5rem;
 }
+
+.duo-fields {
+    display: flex;
+}
+
+.duo-fields > div {
+    margin-right: 8px;
+}
+
 
 .sector-btn {
     background-color: rgba(59, 130, 246, 0.1) !important;
