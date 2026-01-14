@@ -240,7 +240,7 @@ const getThumbUrl = (sector) => {
 
 const openSector = (sector) => {
     if (hasMoved.value) return;
-    router.push(`/sectors/${sector.id}`);
+    router.push(`/sectors/${sector.id}/edit`);
 };
 
 const handleBack = () => {

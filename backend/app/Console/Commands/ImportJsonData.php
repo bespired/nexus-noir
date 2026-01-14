@@ -80,13 +80,13 @@ class ImportJsonData extends Command
         $data = $this->loadJson('sectors.json');
         foreach ($data as $item) {
             Sector::create([
-                'id' => $item['id'],
-                'name' => $item['name'],
-                'description' => $item['description'] ?? null,
+                'id'                      => $item['id'],
+                'name'                    => $item['name'],
+                'description'             => $item['description'] ?? null,
                 'visible_clue_conditions' => $item['visible_clue_conditions'] ?? null,
-                'thumb_dimensions' => isset($item['thumb_dimensions']) ? json_encode($item['thumb_dimensions']) : null,
-                'created_at' => $item['created_at'] ?? now(),
-                'updated_at' => $item['updated_at'] ?? now(),
+                'thumb_dimensions'        => isset($item['thumb_dimensions']) ? json_encode($item['thumb_dimensions']) : null,
+                'created_at'              => $item['created_at'] ?? now(),
+                'updated_at'              => $item['updated_at'] ?? now(),
             ]);
         }
     }
@@ -97,16 +97,16 @@ class ImportJsonData extends Command
         $data = $this->loadJson('characters.json');
         foreach ($data as $item) {
             Character::create([
-                'id' => $item['id'],
-                'name' => $item['name'],
-                'role' => $item['role'],
+                'id'          => $item['id'],
+                'name'        => $item['name'],
+                'role'        => $item['role'],
                 'description' => $item['description'],
-                'motive' => $item['motive'] ?? null,
+                'motive'      => $item['motive'] ?? null,
                 'is_playable' => $item['is_playable'] ?? false,
-                'is_system' => $item['is_system'] ?? false,
-                'type' => $item['type'] ?? 'persoon',
-                'created_at' => $item['created_at'] ?? now(),
-                'updated_at' => $item['updated_at'] ?? now(),
+                'is_system'   => $item['is_system'] ?? false,
+                'type'        => $item['type'] ?? 'persoon',
+                'created_at'  => $item['created_at'] ?? now(),
+                'updated_at'  => $item['updated_at'] ?? now(),
             ]);
         }
     }
@@ -117,13 +117,13 @@ class ImportJsonData extends Command
         $data = $this->loadJson('clues.json');
         foreach ($data as $item) {
             Clue::create([
-                'id' => $item['id'],
-                'title' => $item['title'] ?? $item['titel'],
+                'id'          => $item['id'],
+                'title'       => $item['title'] ?? $item['titel'],
                 'description' => $item['description'],
-                'type' => $item['type'] ?? null,
-                'initial' => $item['initial'] ?? null,
-                'created_at' => $item['created_at'] ?? now(),
-                'updated_at' => $item['updated_at'] ?? now(),
+                'type'        => $item['type'] ?? null,
+                'initial'     => $item['initial'] ?? null,
+                'created_at'  => $item['created_at'] ?? now(),
+                'updated_at'  => $item['updated_at'] ?? now(),
             ]);
         }
     }
@@ -134,9 +134,9 @@ class ImportJsonData extends Command
         $data = $this->loadJson('dialogs.json');
         foreach ($data as $item) {
             Dialog::create([
-                'id' => $item['id'],
-                'title' => $item['title'] ?? $item['titel'],
-                'tree' => $item['tree'] ?? null,
+                'id'         => $item['id'],
+                'title'      => $item['title'] ?? $item['titel'],
+                'tree'       => $item['tree'] ?? null,
                 'created_at' => $item['created_at'] ?? now(),
                 'updated_at' => $item['updated_at'] ?? now(),
             ]);
@@ -149,12 +149,12 @@ class ImportJsonData extends Command
         $data = $this->loadJson('actions.json');
         foreach ($data as $item) {
             Action::create([
-                'id' => $item['id'],
-                'name' => $item['name'],
+                'id'          => $item['id'],
+                'name'        => $item['name'],
                 'description' => $item['description'] ?? null,
-                'actions' => $item['actions'] ?? null,
-                'created_at' => $item['created_at'] ?? now(),
-                'updated_at' => $item['updated_at'] ?? now(),
+                'actions'     => $item['actions'] ?? null,
+                'created_at'  => $item['created_at'] ?? now(),
+                'updated_at'  => $item['updated_at'] ?? now(),
             ]);
         }
     }
@@ -165,10 +165,10 @@ class ImportJsonData extends Command
         $data = $this->loadJson('notes.json');
         foreach ($data as $item) {
             Note::create([
-                'id' => $item['id'],
-                'title' => $item['title'] ?? $item['titel'],
-                'content' => $item['content'],
-                'is_done' => $item['is_done'] ?? false,
+                'id'         => $item['id'],
+                'title'      => $item['title'] ?? $item['titel'],
+                'content'    => $item['content'],
+                'is_done'    => $item['is_done'] ?? false,
                 'created_at' => $item['created_at'] ?? now(),
                 'updated_at' => $item['updated_at'] ?? now(),
             ]);
@@ -181,9 +181,9 @@ class ImportJsonData extends Command
         $data = $this->loadJson('configs.json');
         foreach ($data as $item) {
             Config::create([
-                'id' => $item['id'],
-                'key' => $item['key'],
-                'value' => $item['value'] ?? null,
+                'id'         => $item['id'],
+                'key'        => $item['key'],
+                'value'      => $item['value'] ?? null,
                 'created_at' => $item['created_at'] ?? now(),
                 'updated_at' => $item['updated_at'] ?? now(),
             ]);
@@ -196,16 +196,17 @@ class ImportJsonData extends Command
         $data = $this->loadJson('scenes.json');
         foreach ($data as $item) {
             Scene::create([
-                'id' => $item['id'],
-                'sector_id' => $item['sector_id'] ?? null,
-                'title' => $item['title'] ?? $item['titel'], // Handle both keys just in case
-                'description' => $item['description'] ?? '',
-                'type' => $item['type'] ?? 'walkable-area',
-                '2d_gateways' => $item['2d_gateways'] ?? null,
-                '3d_spawnpoints' => $item['3d_spawnpoints'] ?? null,
+                'id'               => $item['id'],
+                'sector_id'        => $item['sector_id'] ?? null,
+                'title'            => $item['title'] ?? $item['titel'], // Handle both keys just in case
+                'description'      => $item['description'] ?? '',
+                'type'             => $item['type'] ?? 'walkable-area',
+                '2d_gateways'      => $item['2d_gateways'] ?? null,
+                '3d_spawnpoints'   => $item['3d_spawnpoints'] ?? null,
                 'thumb_dimensions' => isset($item['thumb_dimensions']) ? $item['thumb_dimensions'] : null,
-                'created_at' => $item['created_at'] ?? now(),
-                'updated_at' => $item['updated_at'] ?? now(),
+                'data'             => isset($item['data']) ? $item['data'] : null,
+                'created_at'       => $item['created_at'] ?? now(),
+                'updated_at'       => $item['updated_at'] ?? now(),
             ]);
         }
     }
@@ -216,14 +217,14 @@ class ImportJsonData extends Command
         $data = $this->loadJson('mediax.json');
         foreach ($data as $item) {
             Media::create([
-                'id' => $item['id'],
-                'filepad' => $item['filepad'] ?? $item['bestandspad'], // Mapping bestandspad -> filepad
-                'title' => $item['title'] ?? $item['titel'] ?? null,
-                'type' => $this->determineMediaType($item['filepad'] ?? $item['bestandspad']),
+                'id'             => $item['id'],
+                'filepad'        => $item['filepad'] ?? $item['bestandspad'], // Mapping bestandspad -> filepad
+                'title'          => $item['title'] ?? $item['titel'] ?? null,
+                'type'           => $this->determineMediaType($item['filepad'] ?? $item['bestandspad']),
                 'imageable_type' => $item['imageable_type'],
-                'imageable_id' => $item['imageable_id'],
-                'created_at' => $item['created_at'] ?? now(),
-                'updated_at' => $item['updated_at'] ?? now(),
+                'imageable_id'   => $item['imageable_id'],
+                'created_at'     => $item['created_at'] ?? now(),
+                'updated_at'     => $item['updated_at'] ?? now(),
             ]);
         }
     }
@@ -231,13 +232,13 @@ class ImportJsonData extends Command
     private function loadJson($filename)
     {
         $path = base_path('../backup/json/' . $filename);
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             $this->warn("File not found: $path");
             return [];
         }
 
         $content = File::get($path);
-        $json = json_decode($content, true);
+        $json    = json_decode($content, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             $this->error("JSON Error in $filename: " . json_last_error_msg());

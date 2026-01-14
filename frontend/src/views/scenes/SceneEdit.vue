@@ -364,7 +364,7 @@ onMounted(fetchInitialData);
                                 :placeholder="t('scenes.edit.label_sector')"
                                 showClear
                             />
-                            <Button :label="t('scenes.edit.btn_sector')" severity="info" class="sector-btn" @click="router.push(`/sectors/${scene.sector_id}`)" :disabled="!scene.sector_id" />
+                            <Button :label="t('scenes.edit.btn_sector')" severity="info" class="sector-btn" @click="router.push(`/sectors/${scene.sector_id}/edit`)" :disabled="!scene.sector_id" />
                         </div>
 
                         </div>
