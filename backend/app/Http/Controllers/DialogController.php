@@ -30,7 +30,8 @@ class DialogController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $dialog = \App\Models\Dialog::with('media')->findOrFail($id);
+        return response()->json($dialog);
     }
 
     /**
@@ -38,7 +39,16 @@ class DialogController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $dialog = \App\Models\Dialog::findOrFail($id);
+        
+        $validated = $request->validate([
+            'title' => 'sometimes|required|string|max:255',
+            'tree' => 'sometimes|nullable|array',
+        ]);
+
+        $dialog->update($validated);
+
+        return response()->json($dialog);
     }
 
     /**
@@ -46,6 +56,9 @@ class DialogController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $dialog = \App\Models\Dialog::findOrFail($id);
+        $dialog->delete();
+
+        return response()->json(null, 204);
     }
 }

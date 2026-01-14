@@ -137,9 +137,28 @@
         "messages": {
             "success_summary": "Succes",
             "success_detail": "Dialoog succesvol aangemaakt",
+            "success_update": "Dialoog opgeslagen",
             "error_summary": "Fout",
             "error_fill_fields": "Vul alle velden in",
             "error_save": "Kon dialoog niet opslaan"
+        },
+        "edit": {
+            "title": "DIALOOG SYSTEM",
+            "btn_new_node": "+ NIEUW PRAATJE",
+            "btn_save_tree": "SAVE TREE",
+            "btn_delete": "VERWIJDEREN",
+            "properties": "PROPERTIES",
+            "node_name": "NAAM [ID]",
+            "node_text": "TEKST / BESCHRIJVING",
+            "action_enter": "ACTIE BIJ BINNENKOMST",
+            "choices": "KEUZES",
+            "choices_count": "{count} KEUZE(S)",
+            "next_step": "VOLGENDE STAP",
+            "choice_action": "ACTIE",
+            "add_choice": "+ KEUZE TOEVOEGEN",
+            "delete_node": "VERWIJDER NODE",
+            "select_action": "SELECTEER ACTIE",
+            "select_node": "SELECTEER NODE"
         }
     },
     "actions": {

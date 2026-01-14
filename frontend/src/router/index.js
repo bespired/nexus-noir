@@ -69,6 +69,11 @@ const routes = [
         component: () => import('../views/dialogs/DialogsIndex.vue')
     },
     {
+        path: '/dialogs/:id/edit',
+        name: 'dialog-edit',
+        component: () => import('../views/dialogs/DialogEdit.vue')
+    },
+    {
         path: '/characters',
         name: 'characters',
         component: () => import('../views/characters/CharactersIndex.vue')

@@ -138,9 +138,28 @@
         "messages": {
             "success_summary": "Success",
             "success_detail": "Dialogue created successfully",
+            "success_update": "Dialogue tree saved",
             "error_summary": "Error",
             "error_fill_fields": "Please fill in all fields",
             "error_save": "Could not save dialogue"
+        },
+        "edit": {
+            "title": "DIALOGUE SYSTEM",
+            "btn_new_node": "+ NEW NODE",
+            "btn_save_tree": "SAVE",
+            "btn_delete": "DELETE",
+            "properties": "PROPERTIES",
+            "node_name": "NAME [ID]",
+            "node_text": "TEXT / DESCRIPTION",
+            "action_enter": "ACTION ON ENTER",
+            "choices": "CHOICES",
+            "choices_count": "{count} CHOICE(S)",
+            "next_step": "NEXT STEP",
+            "choice_action": "ACTION",
+            "add_choice": "+ ADD CHOICE",
+            "delete_node": "DELETE NODE",
+            "select_action": "SELECT ACTION",
+            "select_node": "SELECT NODE"
         }
     },
     "actions": {
