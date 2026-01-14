@@ -29,6 +29,7 @@ const startY = ref(0);
 const currentGateway = ref(null);
 const selectedGatewayIndex = ref(-1);
 const collapsedStates = ref({});
+const spawnpointsCache = ref({});
 
 const toggleCollapse = (index) => {
     collapsedStates.value[index] = !collapsedStates.value[index];
@@ -45,7 +46,7 @@ const fetchInitialData = async () => {
 
         if (!sceneRes.ok) throw new Error('Failed to fetch scene');
         scene.value = await sceneRes.json();
-        
+
         // Ensure 2d_gateways is an array and initialize collapsed states
         if (!scene.value['2d_gateways']) {
             scene.value['2d_gateways'] = [];
@@ -58,12 +59,42 @@ const fetchInitialData = async () => {
         scenes.value = await scenesRes.json();
         characters.value = await charsRes.json();
         actions.value = await actionsRes.json();
+
+        // Pre-fetch spawnpoints for existing gateways
+        if (scene.value['2d_gateways']) {
+            scene.value['2d_gateways'].forEach(gw => {
+                if (gw.target_scene_id) {
+                    fetchSpawnpoints(gw.target_scene_id);
+                }
+            });
+        }
     } catch (error) {
         console.error(error);
         toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load data', life: 3000 });
     } finally {
         loading.value = false;
     }
+};
+
+const fetchSpawnpoints = async (targetSceneId) => {
+    if (!targetSceneId || spawnpointsCache.value[targetSceneId]) return;
+
+    try {
+        const response = await fetch(`/api/scenes/${targetSceneId}`);
+        if (!response.ok) throw new Error('Failed to fetch target scene');
+        const targetScene = await response.json();
+        spawnpointsCache.value[targetSceneId] = targetScene['3d_spawnpoints'] || [];
+    } catch (error) {
+        console.error(`Error fetching spawnpoints for scene ${targetSceneId}:`, error);
+    }
+};
+
+const gotoSceneGateway = (targetId) => {
+    if (!targetId) return;
+    router.push(`/scenes/${targetId}/gateway`).then(() => {
+        // Force refresh data for the new scene
+        window.location.reload(); 
+    });
 };
 
 const backdropUrl = computed(() => {
@@ -80,20 +111,20 @@ const backdropUrl = computed(() => {
 
 const filteredScenes = computed(() => {
     if (!scene.value) return [];
-    
+
     const currentSectorId = scene.value.sector_id;
-    
+
     return scenes.value
         .filter(s => {
             // Never show self
             if (s.id === scene.value.id) return false;
-            
+
             // Always show scenes in the same sector
             if (s.sector_id === currentSectorId) return true;
-            
+
             // For other sectors, ONLY show non-walkable scenes (e.g. cut-scenes, investigations)
             if (s.type !== 'walkable-area') return true;
-            
+
             return false;
         })
         .map(s => ({
@@ -104,11 +135,11 @@ const filteredScenes = computed(() => {
             // Same sector first
             if (a.sector_id === currentSectorId && b.sector_id !== currentSectorId) return -1;
             if (a.sector_id !== currentSectorId && b.sector_id === currentSectorId) return 1;
-            
+
             // Then walkable areas
             if (a.type === 'walkable-area' && b.type !== 'walkable-area') return -1;
             if (a.type !== 'walkable-area' && b.type === 'walkable-area') return 1;
-            
+
             return a.title.localeCompare(b.title);
         });
 });
@@ -117,7 +148,7 @@ const filteredScenes = computed(() => {
 const handleMouseDown = (e, index = -1) => {
     if (!backdropContainer.value) return;
     const rect = backdropContainer.value.getBoundingClientRect();
-    
+
     if (index !== -1) {
         // Start dragging existing gateway
         isDraggingExisting.value = true;
@@ -276,22 +307,22 @@ onMounted(fetchInitialData);
             <div class="scene-edit-grid">
                 <!-- LEFT: DRAWING AREA -->
                 <div class="drawing-column">
-                    <div 
-                        class="drawing-backdrop" 
+                    <div
+                        class="drawing-backdrop"
                         ref="backdropContainer"
                         @mousedown="handleMouseDown"
                         @mousemove="handleMouseMove"
                         @mouseup="handleMouseUp"
                     >
                         <img v-if="backdropUrl" :src="backdropUrl" class="backdrop-img" draggable="false" />
-                        
+
                         <!-- DRAWN GATEWAYS -->
-                        <div 
-                            v-for="(gw, index) in scene['2d_gateways']" 
+                        <div
+                            v-for="(gw, index) in scene['2d_gateways']"
                             :key="index"
                             class="gateway-rect"
-                            :class="{ 
-                                'selected': selectedGatewayIndex === index, 
+                            :class="{
+                                'selected': selectedGatewayIndex === index,
                                 'trigger': gw.type === 'trigger',
                                 'dragging-state': isDraggingExisting && draggingIndex === index
                             }"
@@ -309,7 +340,7 @@ onMounted(fetchInitialData);
                         </div>
 
                         <!-- CURRENT DRAWING RECT -->
-                        <div 
+                        <div
                             v-if="isDrawing && currentGateway"
                             class="gateway-rect drawing"
                             :style="{
@@ -333,8 +364,8 @@ onMounted(fetchInitialData);
                         {{ t('scenes.edit.no_gateways') || 'No gateways defined yet. Draw one on the backdrop.' }}
                     </div>
 
-                    <div 
-                        v-for="(gw, index) in scene['2d_gateways']" 
+                    <div
+                        v-for="(gw, index) in scene['2d_gateways']"
                         :key="index"
                         class="gateway-card"
                         :class="{ 'active': selectedGatewayIndex === index, 'collapsed': collapsedStates[index] }"
@@ -347,11 +378,11 @@ onMounted(fetchInitialData);
                                 <span v-if="collapsedStates[index] && gw.label" class="header-label"> - {{ gw.label }}</span>
                             </span>
                             <div class="header-actions">
-                                <Button 
-                                    :icon="collapsedStates[index] ? 'pi pi-chevron-down' : 'pi pi-chevron-up'" 
-                                    text 
-                                    class="collapse-btn" 
-                                    @click.stop="toggleCollapse(index)" 
+                                <Button
+                                    :icon="collapsedStates[index] ? 'pi pi-chevron-down' : 'pi pi-chevron-up'"
+                                    text
+                                    class="collapse-btn"
+                                    @click.stop="toggleCollapse(index)"
                                 />
                                 <Button icon="pi pi-trash" severity="danger" text class="gateway-card__delete" @click.stop="deleteGateway(index)" />
                             </div>
@@ -366,10 +397,10 @@ onMounted(fetchInitialData);
 
                             <div class="field">
                                 <label>{{ t('scenes.edit.gw_type') || 'PROPERTY_TYPE' }}</label>
-                                <Select 
-                                    v-model="gw.type" 
-                                    :options="[{label: 'Gateway', value: 'scene'}, {label: 'Trigger', value: 'trigger'}]" 
-                                    optionLabel="label" 
+                                <Select
+                                    v-model="gw.type"
+                                    :options="[{label: 'Gateway', value: 'scene'}, {label: 'Trigger', value: 'trigger'}]"
+                                    optionLabel="label"
                                     optionValue="value"
                                     class="noir-select w-full"
                                 />
@@ -379,19 +410,39 @@ onMounted(fetchInitialData);
                             <template v-if="gw.type === 'scene'">
                                 <div class="field">
                                     <label>{{ t('scenes.edit.target_scene') || 'DESTINATION_SCENE' }}</label>
-                                    <Select 
-                                        v-model="gw.target_scene_id" 
-                                        :options="filteredScenes" 
-                                        optionLabel="displayName" 
-                                        optionValue="id"
-                                        class="noir-select w-full"
-                                        filter
-                                        showClear
-                                    />
+                                    <div class="field-row-inline">
+                                        <Select 
+                                            v-model="gw.target_scene_id" 
+                                            :options="filteredScenes" 
+                                            optionLabel="displayName" 
+                                            optionValue="id"
+                                            class="noir-select flex-1"
+                                            filter
+                                            showClear
+                                            @change="fetchSpawnpoints(gw.target_scene_id)"
+                                        />
+                                        <Button 
+                                            v-if="gw.target_scene_id"
+                                            icon="pi pi-arrow-right" 
+                                            @click="gotoSceneGateway(gw.target_scene_id)"
+                                            class="noir-button-small"
+                                            v-tooltip.top="'Go to scene'"
+                                        />
+                                    </div>
                                 </div>
                                 <div class="field">
                                     <label>{{ t('scenes.edit.target_spawn') || 'SPAWN_POINT' }}</label>
-                                    <InputText v-model="gw.target_spawn_point" class="noir-input w-full" placeholder="e.g. south" />
+                                    <Select
+                                        v-model="gw.target_spawn_point"
+                                        :options="spawnpointsCache[gw.target_scene_id] || []"
+                                        optionLabel="name"
+                                        optionValue="name"
+                                        class="noir-select w-full"
+                                        filter
+                                        showClear
+                                        :placeholder="gw.target_scene_id ? 'Pick a spawnpoint' : 'Select a scene first'"
+                                        :disabled="!gw.target_scene_id"
+                                    />
                                 </div>
                             </template>
 
@@ -399,10 +450,10 @@ onMounted(fetchInitialData);
                             <template v-if="gw.type === 'trigger'">
                                 <div class="field">
                                     <label>{{ t('scenes.edit.behavior') || 'ACTION_BEHAVIOR' }}</label>
-                                    <Select 
-                                        v-model="gw.gedrag_id" 
-                                        :options="actions" 
-                                        optionLabel="name" 
+                                    <Select
+                                        v-model="gw.gedrag_id"
+                                        :options="actions"
+                                        optionLabel="name"
                                         optionValue="id"
                                         class="noir-select w-full"
                                         filter
@@ -411,10 +462,10 @@ onMounted(fetchInitialData);
                                 </div>
                                 <div class="field">
                                     <label>{{ t('scenes.edit.target_character') || 'TARGET_CHARACTER' }}</label>
-                                    <Select 
-                                        v-model="gw.target_character" 
-                                        :options="characters" 
-                                        optionLabel="name" 
+                                    <Select
+                                        v-model="gw.target_character"
+                                        :options="characters"
+                                        optionLabel="name"
                                         optionValue="id"
                                         class="noir-select w-full"
                                         filter
@@ -504,9 +555,13 @@ onMounted(fetchInitialData);
     flex: 1;
 }
 
+.drawing-column {
+    min-width: 0;
+}
+
 .drawing-backdrop {
     position: relative;
-    aspect-ratio: 16 / 9;
+    /*aspect-ratio: 16 / 9;*/
     background: #000;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 4px;
@@ -732,5 +787,23 @@ onMounted(fetchInitialData);
     padding: 4rem;
     text-align: center;
     color: var(--color-noir-muted);
+}
+
+.field-row-inline {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.noir-button-small {
+    background: var(--color-noir-accent) !important;
+    border: none !important;
+    width: 2.2rem !important;
+    height: 2.2rem !important;
+    flex-shrink: 0;
+}
+
+.noir-button-small:hover {
+    filter: brightness(1.2);
 }
 </style>

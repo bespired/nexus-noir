@@ -333,7 +333,7 @@
             "label_description": "DESCRIPTION",
             "nav_properties": "PROPERTIES",
             "nav_gateway": "GATEWAY",
-            "nav_3d": "3D",
+            "nav_3d": "SPAWNPOINTS",
             "btn_sector": "SECTOR",
             "btn_upload": "UPLOAD IMAGE",
             "btn_change": "CHANGE IMAGE",

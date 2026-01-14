@@ -34,6 +34,7 @@ const isGlbLoaded = ref(false);
 const floorFound = ref(false);
 const isDragging = ref(false);
 let draggedIndex = -1;
+const projectedSpawnpoints = ref([]);
 
 const spawnPointTypes = [
     { label: 'Entry', value: 'entry' },
@@ -52,7 +53,7 @@ const fetchInitialData = async () => {
         const response = await fetch(`/api/scenes/${sceneId}`);
         if (!response.ok) throw new Error('Failed to fetch scene');
         scene.value = await response.json();
-        
+
         if (!scene.value['3d_spawnpoints']) {
             scene.value['3d_spawnpoints'] = [];
         } else {
@@ -60,7 +61,7 @@ const fetchInitialData = async () => {
                 collapsedStates.value[index] = true;
             });
         }
-        
+
         nextTick(() => {
             initThree();
         });
@@ -78,7 +79,7 @@ const backdropUrl = computed(() => {
         if (backdrop) {
             const file = backdrop.filepad;
             const url = file.startsWith('http') ? file : `/storage/${file}`;
-            
+
             // Load image to get aspect ratio
             const img = new Image();
             img.onload = () => {
@@ -86,7 +87,7 @@ const backdropUrl = computed(() => {
                 nextTick(() => handleResize()); // Resize three.js when aspect changes
             };
             img.src = url;
-            
+
             return url;
         }
     }
@@ -136,7 +137,7 @@ const onGlbUpload = async (event) => {
             detail: '3D model updated',
             life: 3000
         });
-        
+
         // Refresh scene
         isGlbLoaded.value = false;
         floorFound.value = false;
@@ -169,7 +170,7 @@ const deleteGlb = async () => {
         if (!response.ok) throw new Error('Delete failed');
 
         scene.value.media = scene.value.media.filter(m => m.id !== glb.id);
-        
+
         // Clear three.js scene
         if (glbModel) {
             threeScene.remove(glbModel);
@@ -201,7 +202,7 @@ const initThree = () => {
 
     // Setup Scene
     threeScene = new THREE.Scene();
-    
+
     // Setup Camera
     threeCamera = new THREE.PerspectiveCamera(50, canvasContainer.value.clientWidth / canvasContainer.value.clientHeight, 0.1, 1000);
     threeCamera.position.set(0, 5, 10);
@@ -216,7 +217,7 @@ const initThree = () => {
     // Setup Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
     threeScene.add(ambientLight);
-    
+
     const dirLight = new THREE.DirectionalLight(0xffffff, 2);
     dirLight.position.set(5, 10, 7);
     threeScene.add(dirLight);
@@ -240,27 +241,27 @@ const initThree = () => {
         loader.load(glbUrl.value, (gltf) => {
             console.log("GLB Loaded successfully");
             glbModel = gltf.scene;
-            
+
             // Do NOT center model if using fSpy/aligned views, as camera depends on original origin
             // const box = new THREE.Box3().setFromObject(glbModel);
             // const center = box.getCenter(new THREE.Vector3());
             // glbModel.position.sub(center);
-            
+
             threeScene.add(glbModel);
             isGlbLoaded.value = true;
-            
+
             // Search for floor and cameras, and set transparency
             glbModel.traverse((child) => {
                 if (child.isMesh) {
                     console.log("Found mesh:", child.name);
-                    
+
                     // Apply transparency and colors
                     if (child.material) {
                         child.material = child.material.clone();
                         child.material.transparent = true;
                         child.material.opacity = 0.5;
                         child.material.depthWrite = false;
-                        
+
                         if (child.name.toLowerCase().includes('floor')) {
                             child.material.color.set(0x3b82f6); // Noir Blue
                             floorMesh = child;
@@ -285,19 +286,19 @@ const initThree = () => {
 
             if (glbCamera) {
                 console.log("Updating to GLB camera.");
-                
+
                 // Ensure camera world matrix is correct if it has parents
                 threeScene.updateMatrixWorld(true);
-                
+
                 threeCamera = glbCamera;
                 threeCamera.aspect = canvasContainer.value.clientWidth / canvasContainer.value.clientHeight;
                 threeCamera.updateProjectionMatrix();
-                
+
                 // Controls removed as per request
                 // if (controls) controls.dispose();
                 // controls = new OrbitControls(threeCamera, renderer.domElement);
                 // controls.enableDamping = true;
-                
+
                 // Set target removed
                 // const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(threeCamera.quaternion);
                 // controls.target.copy(threeCamera.position).add(dir.multiplyScalar(5));
@@ -327,11 +328,37 @@ const initThree = () => {
     animate();
 };
 
+const updateProjectedCoordinates = () => {
+    if (!threeScene || !threeCamera || !canvasContainer.value || !scene.value) return;
+
+    const width = canvasContainer.value.clientWidth;
+    const height = canvasContainer.value.clientHeight;
+    const widthHalf = width / 2;
+    const heightHalf = height / 2;
+
+    const spawnpoints = scene.value['3d_spawnpoints'] || [];
+
+    projectedSpawnpoints.value = spawnpoints.map((sp, index) => {
+        const vector = new THREE.Vector3(sp.x, sp.y + 0.8, sp.z); // 0.8 offset to be above the cone
+        vector.project(threeCamera);
+
+        return {
+            id: index,
+            name: sp.name || `Spawnpoint ${index + 1}`,
+            x: (vector.x * widthHalf) + widthHalf,
+            y: -(vector.y * heightHalf) + heightHalf,
+            visible: vector.z < 1,
+            isSelected: selectedSpawnPointIndex.value === index
+        };
+    });
+};
+
 const animate = () => {
     if (!renderer) return;
     requestAnimationFrame(animate);
     if (controls) controls.update();
     renderer.render(threeScene, threeCamera);
+    updateProjectedCoordinates();
 };
 
 const handleMouseDown = (event) => {
@@ -342,7 +369,7 @@ const handleMouseDown = (event) => {
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     raycaster.setFromCamera(mouse, threeCamera);
-    
+
     // Check if we hit a marker first (for dragging)
     const markerIntersects = raycaster.intersectObjects(spawnPointMarkers, true);
     if (markerIntersects.length > 0) {
@@ -352,7 +379,7 @@ const handleMouseDown = (event) => {
             obj = obj.parent;
             if (!obj || obj === threeScene) break;
         }
-        
+
         if (obj && obj.userData && obj.userData.index !== undefined) {
             draggedIndex = obj.userData.index;
             selectedSpawnPointIndex.value = draggedIndex;
@@ -405,7 +432,7 @@ const addSpawnPoint = (x, y, z) => {
         y: parseFloat(y.toFixed(3)),
         z: parseFloat(z.toFixed(3))
     };
-    
+
     scene.value['3d_spawnpoints'].push(newSP);
     selectedSpawnPointIndex.value = scene.value['3d_spawnpoints'].length - 1;
     collapsedStates.value[selectedSpawnPointIndex.value] = false;
@@ -414,7 +441,7 @@ const addSpawnPoint = (x, y, z) => {
 
 const updateSpawnPointMarkers = () => {
     if (!threeScene) return;
-    
+
     // Clear old markers
     spawnPointMarkers.forEach(m => threeScene.remove(m));
     spawnPointMarkers = [];
@@ -424,14 +451,14 @@ const updateSpawnPointMarkers = () => {
     scene.value['3d_spawnpoints'].forEach((sp, index) => {
         const isSelected = selectedSpawnPointIndex.value === index;
         const color = isSelected ? 0x3b82f6 : 0xef4444;
-        
+
         // Group to hold cone and beak
         const group = new THREE.Group();
         group.position.set(sp.x, sp.y + 0.25, sp.z);
-        
+
         // Main Cone
         const geometry = new THREE.ConeGeometry(0.2, 0.5, 8);
-        const material = new THREE.MeshStandardMaterial({ 
+        const material = new THREE.MeshStandardMaterial({
             color: color,
             emissive: isSelected ? 0x1d4ed8 : 0x991b1b,
             emissiveIntensity: 0.5
@@ -439,17 +466,17 @@ const updateSpawnPointMarkers = () => {
         const cone = new THREE.Mesh(geometry, material);
         cone.rotation.x = Math.PI; // Invert cone to point down
         group.add(cone);
-        
+
         // Direction Beak (small cone pointing forward)
         const beakGeometry = new THREE.ConeGeometry(0.08, 0.2, 4);
         const beakMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
         const beak = new THREE.Mesh(beakGeometry, beakMaterial);
-        
+
         // Position beak at the "front" of the spawnpoint
         beak.position.set(0, 0, -0.25);
         beak.rotation.x = Math.PI / 2;
         group.add(beak);
-        
+
         // Apply orientation to the group
         group.rotateY(sp.direction * (Math.PI / 180));
 
@@ -579,15 +606,15 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
             <div class="scene-edit-grid">
                 <!-- LEFT: 3D VIEWPORT -->
                 <div class="three-column">
-                    <div 
-                        class="viewport-container" 
-                        :style="{ 
+                    <div
+                        class="viewport-container"
+                        :style="{
                             backgroundImage: backdropUrl ? `url(${backdropUrl})` : 'none',
-                            aspectRatio: backdropAspectRatio 
+                            aspectRatio: backdropAspectRatio
                         }"
                     >
-                        <div 
-                            class="canvas-wrapper" 
+                        <div
+                            class="canvas-wrapper"
                             ref="canvasContainer"
                             @mousedown="handleMouseDown"
                             @mousemove="handleMouseMove"
@@ -596,7 +623,26 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
                         >
                             <!-- Three.js renderer will be injected here -->
                         </div>
-                        
+
+                        <!-- Labels Layer -->
+                        <div class="labels-layer">
+                            <div
+                                v-for="sp in projectedSpawnpoints"
+                                :key="sp.id"
+                                v-show="sp.visible"
+                                class="spawnpoint-label"
+                                :class="{ 'active': sp.isSelected }"
+                                :style="{
+                                    left: `${sp.x}px`,
+                                    top: `${sp.y}px`
+                                }"
+                                @click="selectSpawnPoint(sp.id)"
+                            >
+                                <span class="label-text">{{ sp.name }}</span>
+                                <div class="label-anchor"></div>
+                            </div>
+                        </div>
+
                         <div class="drawing-overlay-hint">
                             <i class="pi pi-map-marker"></i>
                             <span>CLICK ON FLOOR TO PLACE SPAWNPOINT</span>
@@ -625,12 +671,12 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
                                 class="glb-delete-btn"
                             />
                         </div>
-                        
+
                         <div v-if="!glbUrl" class="no-glb-warning">
                             <i class="pi pi-exclamation-triangle"></i>
                             <span>NO 3D MODEL LOADED FOR THIS SCENE</span>
                         </div>
-                        
+
                         <div v-if="glbUrl && !isGlbLoaded" class="no-glb-warning">
                             <i class="pi pi-spin pi-spinner"></i>
                             <span>LOADING 3D DATA...</span>
@@ -649,8 +695,8 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
                         No spawnpoints defined yet. Click on the 3D floor to place one.
                     </div>
 
-                    <div 
-                        v-for="(sp, index) in scene['3d_spawnpoints']" 
+                    <div
+                        v-for="(sp, index) in scene['3d_spawnpoints']"
                         :key="index"
                         class="gateway-card"
                         :class="{ 'active': selectedSpawnPointIndex === index, 'collapsed': collapsedStates[index] }"
@@ -663,11 +709,11 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
                                 <span v-if="collapsedStates[index]" class="header-label"> - {{ sp.type }}</span>
                             </span>
                             <div class="header-actions">
-                                <Button 
-                                    :icon="collapsedStates[index] ? 'pi pi-chevron-down' : 'pi pi-chevron-up'" 
-                                    text 
-                                    class="collapse-btn" 
-                                    @click.stop="toggleCollapse(index)" 
+                                <Button
+                                    :icon="collapsedStates[index] ? 'pi pi-chevron-down' : 'pi pi-chevron-up'"
+                                    text
+                                    class="collapse-btn"
+                                    @click.stop="toggleCollapse(index)"
                                 />
                                 <Button icon="pi pi-trash" severity="danger" text class="gateway-card__delete" @click.stop="deleteSpawnPoint(index)" />
                             </div>
@@ -681,10 +727,10 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
 
                             <div class="field">
                                 <label>SPAWN TYPE</label>
-                                <Select 
-                                    v-model="sp.type" 
-                                    :options="spawnPointTypes" 
-                                    optionLabel="label" 
+                                <Select
+                                    v-model="sp.type"
+                                    :options="spawnPointTypes"
+                                    optionLabel="label"
                                     optionValue="value"
                                     class="noir-select w-full"
                                 />
@@ -790,9 +836,14 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
     flex: 1;
 }
 
+.three-column {
+    min-width: 0;
+}
+
 .viewport-container {
     position: relative;
     width: 100%;
+    min-height: 0;
     /* aspect-ratio will be set dynamically via v-bind or style */
     background-color: #000;
     background-size: 100% 100%;
@@ -803,9 +854,65 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
 }
 
 .canvas-wrapper {
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    inset: 0;
     cursor: crosshair;
+}
+
+.canvas-wrapper :deep(canvas) {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.labels-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+    overflow: hidden;
+}
+
+.spawnpoint-label {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    pointer-events: auto;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: transform 0.1s ease-out;
+}
+
+.spawnpoint-label.active .label-text {
+    background: var(--color-noir-accent);
+    border-color: #fff;
+    color: #fff;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+.label-text {
+    background: rgba(0, 0, 0, 0.85);
+    color: var(--color-noir-accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    white-space: nowrap;
+    border: 1px solid var(--color-noir-accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    backdrop-filter: blur(2px);
+}
+
+.label-anchor {
+    width: 2px;
+    height: 10px;
+    background: var(--color-noir-accent);
+}
+
+.spawnpoint-label.active .label-anchor {
+    background: #fff;
 }
 
 .drawing-overlay-hint {

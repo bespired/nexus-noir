@@ -274,6 +274,22 @@ onMounted(fetchInitialData);
                     <h1 class="edit-hero__title">{{ scene.title }}</h1>
                 </div>
                 <div class="edit-hero__right">
+                    <div v-if="scene.sector_id" class="entry-point-action">
+                            <div v-if="scene.sector?.entry_scene_id === scene.id" class="entry-point-badge">
+                                <i class="pi pi-check-circle"></i>
+                                SECTOR ENTRY POINT
+                            </div>
+                            <Button
+                                v-else
+                                label="SET AS SECTOR ENTRY POINT"
+                                severity="success"
+                                text
+                                size="small"
+                                icon="pi pi-map-marker"
+                                class="entry-btn"
+                                @click="handleSetEntryPoint"
+                            />
+                        </div>
                     <div class="scene-nav">
                         <router-link :to="`/scenes/${sceneId}/edit`" class="nav-link active">{{ t('scenes.edit.nav_properties') }}</router-link>
                         <router-link :to="`/scenes/${sceneId}/gateway`" class="nav-link">{{ t('scenes.edit.nav_gateway') }}</router-link>
@@ -350,22 +366,7 @@ onMounted(fetchInitialData);
                             />
                             <Button :label="t('scenes.edit.btn_sector')" severity="info" class="sector-btn" @click="router.push(`/sectors/${scene.sector_id}`)" :disabled="!scene.sector_id" />
                         </div>
-                        <div v-if="scene.sector_id" class="entry-point-action">
-                            <div v-if="scene.sector?.entry_scene_id === scene.id" class="entry-point-badge">
-                                <i class="pi pi-check-circle"></i>
-                                SECTOR ENTRY POINT
-                            </div>
-                            <Button
-                                v-else
-                                label="SET AS SECTOR ENTRY POINT"
-                                severity="success"
-                                text
-                                size="small"
-                                icon="pi pi-map-marker"
-                                class="entry-btn"
-                                @click="handleSetEntryPoint"
-                            />
-                        </div>
+
                         </div>
                     </div>
 
@@ -462,7 +463,7 @@ onMounted(fetchInitialData);
 
 .backdrop-container {
     position: relative;
-    aspect-ratio: 16 / 9;
+    /*aspect-ratio: 16 / 9;*/
     background: #000;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 4px;
@@ -555,9 +556,7 @@ onMounted(fetchInitialData);
     font-size: 0.75rem !important;
 }
 
-.entry-point-action {
-    margin-top: 0.5rem;
-}
+
 
 .entry-point-badge {
     display: inline-flex;
