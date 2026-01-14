@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/customs/EditViewHeader.vue';
+import ConfirmationModal from '@components/modals/ConfirmationModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -16,6 +17,7 @@ const sectors = ref([]);
 const loading = ref(true);
 const saving = ref(false);
 const deleting = ref(false);
+const showDeleteConfirm = ref(false);
 
 const sceneTypes = ref([
     { label: t('scenes.modal.type_walkable'), value: 'walkable-area' },
@@ -127,9 +129,11 @@ const handleSetEntryPoint = async () => {
     }
 };
 
-const handleDelete = async () => {
-    if (!confirm(t('scenes.edit.confirm_delete'))) return;
+const handleDelete = () => {
+    showDeleteConfirm.value = true;
+};
 
+const confirmDelete = async () => {
     deleting.value = true;
     try {
         const response = await fetch(`/api/scenes/${sceneId}`, {
@@ -372,6 +376,13 @@ onMounted(fetchInitialData);
                 </div>
             </div>
         </div>
+
+        <ConfirmationModal
+            :visible="showDeleteConfirm"
+            @update:visible="showDeleteConfirm = $event"
+            @accept="confirmDelete"
+            :message="t('scenes.edit.confirm_delete')"
+        />
     </div>
 </template>
 

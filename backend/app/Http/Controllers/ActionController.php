@@ -57,6 +57,9 @@ class ActionController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $action = \App\Models\Action::findOrFail($id);
+        $action->delete();
+
+        return response()->json(null, 204);
     }
 }

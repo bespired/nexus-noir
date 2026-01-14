@@ -82,6 +82,9 @@ class SceneController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $scene = \App\Models\Scene::findOrFail($id);
+        $scene->delete();
+
+        return response()->json(null, 204);
     }
 }

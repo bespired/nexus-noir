@@ -111,7 +111,8 @@
             "success_detail": "Clue created successfully",
             "error_summary": "Error",
             "error_fill_fields": "Please fill in all fields",
-            "error_save": "Could not save clue"
+            "error_save": "Could not save clue",
+            "confirm_delete": "Are you sure you want to delete this clue/evidence?"
         },
         "edit": {
             "media": {
@@ -141,7 +142,8 @@
             "success_update": "Dialogue tree saved",
             "error_summary": "Error",
             "error_fill_fields": "Please fill in all fields",
-            "error_save": "Could not save dialogue"
+            "error_save": "Could not save dialogue",
+            "confirm_delete": "Are you sure you want to delete this entire dialogue sequence?"
         },
         "edit": {
             "title": "DIALOGUE SYSTEM",
@@ -177,7 +179,8 @@
             "success_detail": "Action created successfully",
             "error_summary": "Error",
             "error_fill_fields": "Please fill in all fields",
-            "error_save": "Could not save action"
+            "error_save": "Could not save action",
+            "confirm_delete": "Are you sure you want to delete this action sequence?"
         }
     },
     "characters": {
@@ -200,6 +203,7 @@
             "success_detail": "Character created successfully",
             "success_update": "Character updated successfully",
             "success_delete": "Character deleted successfully",
+            "confirm_delete": "Are you sure you want to delete this character?",
             "error_summary": "Error",
             "error_fill_fields": "Please fill in all fields",
             "error_save": "Could not save character",
@@ -240,6 +244,7 @@
             "success_detail": "Vehicle created successfully",
             "success_update": "Vehicle updated successfully",
             "success_delete": "Vehicle deleted successfully",
+            "confirm_delete": "Are you sure you want to delete this vehicle?",
             "error_summary": "Error",
             "error_fill_fields": "Please fill in all fields",
             "error_save": "Could not save vehicle",

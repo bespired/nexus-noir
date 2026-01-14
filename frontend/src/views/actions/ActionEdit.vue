@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/customs/EditViewHeader.vue';
+import ConfirmationModal from '@components/modals/ConfirmationModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -18,6 +19,7 @@ const scenes = ref([]);
 const loading = ref(true);
 const saving = ref(false);
 const deleting = ref(false);
+const showDeleteConfirm = ref(false);
 
 const actionTypes = [
     { type: 'WALK_TO_POSITION', svg: 'walk',     icon: 'pi pi-directions', label: 'walk_to' },
@@ -77,8 +79,11 @@ const handleSave = async () => {
     }
 };
 
-const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this action sequence?')) return;
+const handleDelete = () => {
+    showDeleteConfirm.value = true;
+};
+
+const confirmDelete = async () => {
     deleting.value = true;
     try {
         const response = await fetch(`/api/actions/${actionId}`, {
@@ -294,6 +299,13 @@ onMounted(fetchInitialData);
                 </div>
             </div>
         </div>
+
+        <ConfirmationModal
+            :visible="showDeleteConfirm"
+            @update:visible="showDeleteConfirm = $event"
+            @accept="confirmDelete"
+            :message="t('actions.messages.confirm_delete')"
+        />
     </div>
 </template>
 

@@ -110,7 +110,8 @@
             "success_detail": "Aanwijzing succesvol aangemaakt",
             "error_summary": "Fout",
             "error_fill_fields": "Vul alle velden in",
-            "error_save": "Kon aanwijzing niet opslaan"
+            "error_save": "Kon aanwijzing niet opslaan",
+            "confirm_delete": "Weet je zeker dat je dit bewijsstuk wilt verwijderen?"
         },
         "edit": {
             "media": {
@@ -140,7 +141,8 @@
             "success_update": "Dialoog opgeslagen",
             "error_summary": "Fout",
             "error_fill_fields": "Vul alle velden in",
-            "error_save": "Kon dialoog niet opslaan"
+            "error_save": "Kon dialoog niet opslaan",
+            "confirm_delete": "Weet je zeker dat je deze gehele dialoog sequence wilt verwijderen?"
         },
         "edit": {
             "title": "DIALOOG SYSTEM",
@@ -176,7 +178,8 @@
             "success_detail": "Actie succesvol aangemaakt",
             "error_summary": "Fout",
             "error_fill_fields": "Vul alle velden in",
-            "error_save": "Kon actie niet opslaan"
+            "error_save": "Kon actie niet opslaan",
+            "confirm_delete": "Weet je zeker dat je deze actie sequence wilt verwijderen?"
         }
     },
     "characters": {
@@ -199,6 +202,7 @@
             "success_detail": "Personage succesvol aangemaakt",
             "success_update": "Personage succesvol bijgewerkt",
             "success_delete": "Personage succesvol verwijderd",
+            "confirm_delete": "Weet je zeker dat je dit personage wilt verwijderen?",
             "error_summary": "Fout",
             "error_fill_fields": "Vul alle velden in",
             "error_save": "Kon personage niet opslaan",
@@ -239,6 +243,7 @@
             "success_detail": "Voertuig succesvol aangemaakt",
             "success_update": "Voertuig succesvol bijgewerkt",
             "success_delete": "Voertuig succesvol verwijderd",
+            "confirm_delete": "Weet je zeker dat je dit voertuig wilt verwijderen?",
             "error_summary": "Fout",
             "error_fill_fields": "Vul alle velden in",
             "error_save": "Kon voertuig niet opslaan",

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/customs/EditViewHeader.vue';
+import ConfirmationModal from '@components/modals/ConfirmationModal.vue';
 import MediaUpload from '@components/customs/MediaUpload.vue';
 import ThreePreview from '@components/customs/ThreePreview.vue';
 
@@ -393,7 +394,8 @@ onMounted(async () => {
         <ConfirmationModal
             :visible="showDeleteConfirm"
             @update:visible="showDeleteConfirm = $event"
-            @confirm="confirmDelete"
+            @accept="confirmDelete"
+            :message="t(`${i18nPrefix}.messages.confirm_delete`) || 'Are you sure you want to delete this?'"
         />
     </div>
 </template>

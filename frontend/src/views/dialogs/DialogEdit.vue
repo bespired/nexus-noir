@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/customs/EditViewHeader.vue';
+import ConfirmationModal from '@components/modals/ConfirmationModal.vue';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -15,15 +16,16 @@ const dialog = ref({ title: '', tree: { nodes: [] } });
 const loading = ref(true);
 const saving = ref(false);
 const deleting = ref(false);
+const showDeleteConfirm = ref(false);
 const selectedNodeId = ref(null);
 const draggingNodeId = ref(null);
 const dragOffset = ref({ x: 0, y: 0 });
 
 // Actions available for nodes and answers
 const actionOptions = [
-    { label: 'WALK TO', value: 'walk-to' },
-    { label: 'LOOK AT', value: 'look-at' },
-    { label: 'GIVE CLUE', value: 'give-clue' },
+    { label: 'WALK TO',    value: 'walk-to' },
+    { label: 'LOOK AT',    value: 'look-at' },
+    { label: 'GIVE CLUE',  value: 'give-clue' },
     { label: 'GOTO SCENE', value: 'goto-scene' },
     { label: 'END', value: 'end' }
 ];
@@ -120,34 +122,45 @@ const saveDialog = async () => {
     }
 };
 
+const handleDelete = () => {
+    showDeleteConfirm.value = true;
+};
+
 const deleteDialog = async () => {
-    if (confirm('Are you sure you want to delete this dialog?')) {
-        deleting.value = true;
-        try {
-            const response = await fetch(`/api/dialogs/${dialogId}`, {
-                method: 'DELETE'
-            });
-            if (!response.ok) throw new Error('Failed to delete dialog');
-            router.push({ name: 'dialogs' });
-        } catch (error) {
-            console.error(error);
-        } finally {
-            deleting.value = false;
-        }
+    deleting.value = true;
+    try {
+        const response = await fetch(`/api/dialogs/${dialogId}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error('Failed to delete dialog');
+        router.push('/dialogs');
+    } catch (error) {
+        console.error(error);
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Could not delete dialog', life: 3000 });
+    } finally {
+        deleting.value = false;
+        showDeleteConfirm.value = false;
     }
 };
 
 const addNode = () => {
     if (!dialog.value.tree.nodes) dialog.value.tree.nodes = [];
+    const id = 'node_' + Date.now();
     const newNode = {
-        id: 'node_' + Date.now(),
+        id,
         name: 'New Node',
         text: 'What do you say?',
         action: null,
         answers: [],
-        position: { x: 100, y: 100 }
+        position: { x: 100 + (dialog.value.tree.nodes.length * 20), y: 100 + (dialog.value.tree.nodes.length * 20) }
     };
     dialog.value.tree.nodes.push(newNode);
+    
+    // If this is the first node, make it the start node
+    if (dialog.value.tree.nodes.length === 1 && !dialog.value.tree.startNodeId) {
+        dialog.value.tree.startNodeId = id;
+    }
+    
     selectedNodeId.value = newNode.id;
 };
 
@@ -253,7 +266,7 @@ const connections = computed(() => {
                         // Vertical position of the answer exit port:
                         // Roughly: content-top-padding (24) + text (~20) + content-bottom-padding (16) + answers-list-padding (8) + item-padding (8) + half-text (7)
                         // Adjusted to match visual center of the blue dots
-                        const startY = node.position.y + 83 + (index * 42); 
+                        const startY = node.position.y + 90 + (index * 42); 
                         // End point: Entry dot on the LEFT side of target node
                         const endX = targetNode.position.x;
                         const endY = targetNode.position.y + 14;
@@ -289,7 +302,7 @@ onMounted(fetchDialog);
             :saving="saving"
             :deleting="deleting"
             @save="saveDialog"
-            @delete="deleteDialog"
+            @delete="handleDelete"
         >
             <template #extra-actions>
                 <Button :label="t('dialogs.edit.btn_new_node')" severity="warning" class="header-btn new-node-btn" @click="addNode" />
@@ -312,11 +325,16 @@ onMounted(fetchDialog);
                     v-for="node in dialog.tree.nodes" 
                     :key="node.id"
                     class="node-box"
-                    :class="{ selected: selectedNodeId === node.id, entry_node: node.id === 'root' }"
+                    :class="{ 
+                        selected: selectedNodeId === node.id, 
+                        entry_node: node.id === (dialog.tree.startNodeId || 'root') 
+                    }"
                     :style="{ left: node.position.x + 'px', top: node.position.y + 'px' }"
                     @mousedown="onMouseDown($event, node.id)"
                 >
-                    <div class="node-tag" v-if="node.name">{{ node.name.toUpperCase() }}</div>
+                    <div class="node-tag" v-if="node.name">
+                        {{ node.id === (dialog.tree.startNodeId || 'root') ? 'START' : node.name.toUpperCase() }}
+                    </div>
                     <div class="node-port entry"></div>
                     
                     <div class="node-content">
@@ -384,6 +402,14 @@ onMounted(fetchDialog);
                     </div>
 
                     <div class="sidebar-footer">
+                        <Button 
+                            v-if="selectedNodeId !== (dialog.tree.startNodeId || 'root')"
+                            label="SET AS START NODE" 
+                            severity="success" 
+                            outlined 
+                            class="start-node-btn mb-2" 
+                            @click="dialog.tree.startNodeId = selectedNodeId" 
+                        />
                         <Button :label="t('dialogs.edit.delete_node')" severity="danger" outlined class="delete-node-btn" @click="deleteNode(selectedNodeId)" />
                     </div>
                 </div>
@@ -392,6 +418,13 @@ onMounted(fetchDialog);
         <div v-else class="loading-state">
             LOADING DIALOGUE SYSTEM...
         </div>
+
+        <ConfirmationModal
+            :visible="showDeleteConfirm"
+            @update:visible="showDeleteConfirm = $event"
+            @accept="deleteDialog"
+            :message="t('dialogs.messages.confirm_delete')"
+        />
     </div>
 </template>
 
@@ -542,6 +575,9 @@ onMounted(fetchDialog);
 }
 
 .answer-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     position: relative;
     background-color: #0b0f19;
     padding: 0.5rem 1rem;
@@ -669,6 +705,11 @@ onMounted(fetchDialog);
 
 .delete-node-btn {
     width: 100%;
+}
+
+.start-node-btn {
+    width: 100%;
+    margin-bottom: 0.75rem;
 }
 
 .loading-state {

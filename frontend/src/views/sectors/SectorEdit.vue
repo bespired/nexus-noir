@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/customs/EditViewHeader.vue';
+import ConfirmationModal from '@components/modals/ConfirmationModal.vue';
 import SceneThumb from '@components/thumbs/SceneThumb.vue';
 import ClueThumb from '@components/thumbs/ClueThumb.vue';
 
@@ -22,6 +23,7 @@ const allScenes = ref([]);
 const allClues = ref([]);
 const showScenePicker = ref(false);
 const showCluePicker = ref(false);
+const showDeleteConfirm = ref(false);
 
 const fetchSector = async () => {
     try {
@@ -89,10 +91,11 @@ const handleSave = async () => {
     }
 };
 
-const handleDelete = async () => {
-    // Basic confirmation for now, as SectorEdit.vue is new
-    if (!confirm(t('sectors.edit.confirm_delete'))) return;
+const handleDelete = () => {
+    showDeleteConfirm.value = true;
+};
 
+const confirmDelete = async () => {
     deleting.value = true;
     try {
         const response = await fetch(`/api/sectors/${sectorId}`, {
@@ -291,6 +294,13 @@ onMounted(fetchSector);
                 <div v-if="availableClues.length === 0" class="empty-state">{{ t('sectors.edit.pickers.no_clues') }}</div>
             </div>
         </Dialog>
+
+        <ConfirmationModal
+            :visible="showDeleteConfirm"
+            @update:visible="showDeleteConfirm = $event"
+            @accept="confirmDelete"
+            :message="t('sectors.edit.confirm_delete')"
+        />
     </div>
 </template>
 
