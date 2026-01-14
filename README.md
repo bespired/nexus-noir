@@ -31,19 +31,19 @@ gives you
 
 #### Install Nexus Noir assets
 
-Download zip.  
-https://drive.google.com/file/d/1fv0KcFAUNGH_W6-i9UC2yyvoJtLnyTKs/view?usp=drivesdk
+Download zip.
+https://drive.google.com/file/d/1cjVkwWUJ0Drq8G0wkUQaafZ3Fvyx-SLU/view?usp=sharing
 
-Put it in the backup folder.  
-Then run  
+Put it in the backup folder.
+Then run
 
-`docker compose exec backend php artisan app:install`    
+`docker compose exec backend php artisan app:install`
 
 
 #### Install Vue
-`cd frontend;`  
-`nvm use 20;`  
-`npm i;`  
+`cd frontend;`
+`nvm use 20;`
+`npm i;`
 
 #### Start Nexus Noir
 `npm run dev`
