@@ -34,10 +34,37 @@ const canvasSize = ref({ w: 0, h: 0 });
 const mapAspectRatio = 16 / 9;
 
 const selectedSectorId = ref(Number(sessionStorage.getItem('scenes_map_filter_sector')) || null);
+const snapToGrid = ref(sessionStorage.getItem('scenes_map_snap') === 'true');
+
+// Grid Constants
+const H_PADDING = 3;
+const V_PADDING = 4;
+const THUMB_W = 6.0;
+const STEP_X = THUMB_W * 0.5125; // 3.075% (Halved - 2 steps per thumb gap)
+const STEP_Y = 4.0; // The scale you preferred for vertical
+const MAIN_STEP_X = STEP_X * 8; // 24.6% (Matches the previous unit spacing)
+const MAIN_STEP_Y = STEP_Y * 4; // 16.0%
+
+const gridStyle = computed(() => {
+    const w = canvasSize.value.w || 0;
+    const h = canvasSize.value.h || 0;
+    return {
+        '--h-pad': `${w * H_PADDING / 100}px`,
+        '--v-pad': `${h * V_PADDING / 100}px`,
+        '--step-x': `${w * STEP_X / 100}px`,
+        '--step-y': `${h * STEP_Y / 100}px`,
+        '--main-x': `${w * MAIN_STEP_X / 100}px`,
+        '--main-y': `${h * MAIN_STEP_Y / 100}px`
+    };
+});
 
 watch(selectedSectorId, (val) => {
     if (val) sessionStorage.setItem('scenes_map_filter_sector', val);
     else sessionStorage.removeItem('scenes_map_filter_sector');
+});
+
+watch(snapToGrid, (val) => {
+    sessionStorage.setItem('scenes_map_snap', val);
 });
 
 const updateCanvasSize = () => {
@@ -126,7 +153,7 @@ const getSceneStyle = (scene) => {
     return {
         left: `${pos.x}%`,
         top: `${pos.y}%`,
-        width: '6.6%' // Shrinking to 2/3 of 10%
+        width: `${THUMB_W}%`
     };
 };
 
@@ -160,9 +187,20 @@ const onDragging = (event) => {
 
     if (!draggingScene.value.thumb_dimensions) draggingScene.value.thumb_dimensions = { x: 0, y: 0 };
     
-    // Limits: thumb width 6.6%, Height approx 10%
-    draggingScene.value.thumb_dimensions.x = Math.max(0, Math.min(93, mx - dragOffset.value.x));
-    draggingScene.value.thumb_dimensions.y = Math.max(0, Math.min(90, my - dragOffset.value.y));
+    let targetX = Math.max(0, Math.min(100 - THUMB_W, mx - dragOffset.value.x));
+    let targetY = Math.max(0, Math.min(90, my - dragOffset.value.y));
+
+    if (snapToGrid.value) {
+        // Snap to the subgrid units (STEP_X, STEP_Y) as requested
+        const snapX = Math.round((targetX - H_PADDING) / STEP_X) * STEP_X + H_PADDING;
+        const snapY = Math.round((targetY - V_PADDING) / STEP_Y) * STEP_Y + V_PADDING;
+
+        targetX = Math.max(0.5, Math.min(99.5 - THUMB_W, snapX));
+        targetY = Math.max(0.5, Math.min(95, snapY));
+    }
+
+    draggingScene.value.thumb_dimensions.x = targetX;
+    draggingScene.value.thumb_dimensions.y = targetY;
     
     hasMoved.value = true;
 };
@@ -210,32 +248,10 @@ const cleanup = async (mode) => {
     }
 
     const count = filteredScenes.value.length;
-    // Automatic sorting modes use a tighter 16/9 grid
-    // Grid alignment mode uses a coarser grid (fewer columns) to make snapping more obvious
-    const aspectRatioFactor = mode === 'grid' ? 1.0 : 1.77; 
-    const cols = Math.ceil(Math.sqrt(count * aspectRatioFactor));
-    const rows = Math.ceil(count / cols);
-    
-    const hPadding = 8;
-    const vPadding = 12;
-    const usableWidth = 100 - (2 * hPadding);
-    const usableHeight = 100 - (2 * vPadding);
-    
-    const colSpacing = usableWidth / Math.max(1, cols - 1 || 1);
-    const rowSpacing = usableHeight / Math.max(1, rows - 1 || 1);
+    let cols, rows;
 
     if (mode === 'grid') {
-        const gridPoints = [];
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                let x = hPadding + (c * colSpacing);
-                let y = vPadding + (r * rowSpacing);
-                if (cols === 1) x = 50 - 3.3;
-                if (rows === 1) y = 45;
-                gridPoints.push({ x, y, occupied: false });
-            }
-        }
-
+        // Find best grid points for each scene based on current position
         const scenesToAssign = [...filteredScenes.value].sort((a, b) => {
             const posA = getScenePosition(a);
             const posB = getScenePosition(b);
@@ -243,47 +259,51 @@ const cleanup = async (mode) => {
             return posA.x - posB.x;
         });
 
+        const occupiedPoints = new Set();
         scenesToAssign.forEach(scene => {
             const currentPos = getScenePosition(scene);
-            let bestPoint = null;
-            let minDist = Infinity;
-
-            gridPoints.forEach(point => {
-                if (point.occupied) return;
-                const dist = Math.sqrt(Math.pow(point.x - currentPos.x, 2) + Math.pow(point.y - currentPos.y, 2));
-                if (dist < minDist) {
-                    minDist = dist;
-                    bestPoint = point;
+            
+            // Snap to unit grid
+            let snapX = Math.round((currentPos.x - H_PADDING) / STEP_X) * STEP_X + H_PADDING;
+            let snapY = Math.round((currentPos.y - V_PADDING) / STEP_Y) * STEP_Y + V_PADDING;
+            
+            // Ensure uniqueness
+            while (occupiedPoints.has(`${snapX.toFixed(2)}-${snapY.toFixed(2)}`)) {
+                snapX += STEP_X;
+                if (snapX > 94) {
+                    snapX = H_PADDING;
+                    snapY += STEP_Y;
                 }
-            });
-
-            if (bestPoint) {
-                bestPoint.occupied = true;
-                const updatedScene = scenes.value.find(s => s.id === scene.id);
-                if (updatedScene) {
-                    updatedScene.thumb_dimensions = { 
-                        x: Math.max(2, Math.min(91, bestPoint.x)), 
-                        y: Math.max(2, Math.min(88, bestPoint.y)) 
-                    };
-                }
+            }
+            
+            occupiedPoints.add(`${snapX.toFixed(2)}-${snapY.toFixed(2)}`);
+            const updatedScene = scenes.value.find(s => s.id === scene.id);
+            if (updatedScene) {
+                updatedScene.thumb_dimensions = { 
+                    x: Math.max(0.5, Math.min(99.5 - THUMB_W, snapX)), 
+                    y: Math.max(0.5, Math.min(95, snapY)) 
+                };
             }
         });
     } else {
+        cols = Math.ceil(Math.sqrt(count * 1.77));
+        rows = Math.ceil(count / cols);
+        
+        const colSpacing = (100 - (2 * H_PADDING)) / Math.max(1, cols - 1 || 1);
+        const rowSpacing = (100 - (2 * V_PADDING)) / Math.max(1, rows - 1 || 1);
+
         sorted.forEach((scene, index) => {
             const c = index % cols;
             const r = Math.floor(index / cols);
             
-            let x = hPadding + (c * colSpacing);
-            let y = vPadding + (r * rowSpacing);
-
-            if (cols === 1) x = 50 - 3.3; 
-            if (rows === 1) y = 45;
+            let x = H_PADDING + (c * colSpacing);
+            let y = V_PADDING + (r * rowSpacing);
 
             const updatedScene = scenes.value.find(s => s.id === scene.id);
             if (updatedScene) {
                 updatedScene.thumb_dimensions = { 
-                    x: Math.max(2, Math.min(91, x)), 
-                    y: Math.max(2, Math.min(88, y)) 
+                    x: Math.max(0.5, Math.min(99.5 - THUMB_W, x)), 
+                    y: Math.max(0.5, Math.min(95, y)) 
                 };
             }
         });
@@ -335,7 +355,12 @@ const connections = computed(() => {
             scene['2d_gateways'].forEach(gw => {
                 const targetId = Number(gw.target_scene_id);
                 if (targetId && sceneMap[targetId]) {
-                    list.push({ from: scene.id, to: targetId, id: `${scene.id}-${targetId}` });
+                    list.push({ 
+                        from: scene.id, 
+                        to: targetId, 
+                        id: `${scene.id}-${targetId}`,
+                        targetType: sceneMap[targetId].type
+                    });
                 }
             });
         }
@@ -377,7 +402,8 @@ const getLinePath = (conn) => {
 
     // Intersection points in pixels
     const sPx = { x: fPx.x + Math.cos(angle) * scale, y: fPx.y + Math.sin(angle) * scale };
-    const ePx = { x: tPx.x - Math.cos(angle) * (scale + 8), y: tPx.y - Math.sin(angle) * (scale + 8) };
+    // Reduced offset from 8 to 2px for tighter arrows
+    const ePx = { x: tPx.x - Math.cos(angle) * (scale + 2), y: tPx.y - Math.sin(angle) * (scale + 2) };
 
     // Use absolute pixel coordinates for the path, but match SVG's coordinate system
     // We'll update the SVG to use viewBox=canvasSize pixels to avoid distortion
@@ -410,6 +436,14 @@ onUnmounted(() => {
             <template #extra-actions>
                 <div class="header-filters">
                     <Select v-model="selectedSectorId" :options="sectors" optionLabel="name" optionValue="id" placeholder="All Sectors" showClear class="noir-select" />
+                    <Button 
+                        type="button" 
+                        :label="t('scenes.map.snap_to_grid')" 
+                        :severity="snapToGrid ? 'success' : 'secondary'" 
+                        class="header-btn" 
+                        :icon="snapToGrid ? 'pi pi-lock' : 'pi pi-lock-open'" 
+                        @click="snapToGrid = !snapToGrid" 
+                    />
                     <Button type="button" :label="t('scenes.map.cleanup')" severity="secondary" class="header-btn" icon="pi pi-th-large" @click="(event) => cleanupMenu.toggle(event)" :loading="spreading || saving" />
                     <Menu ref="cleanupMenu" :model="cleanupItems" :popup="true" class="noir-menu" />
                     <Button label="UPDATE BACKDROP" severity="info" class="header-btn" icon="pi pi-image" @click="showBackdropModal = true" />
@@ -431,8 +465,9 @@ onUnmounted(() => {
         </Dialog>
 
         <div class="map-viewport" ref="mapContainer">
-            <div class="map-canvas" :style="canvasStyle">
+            <div class="map-canvas" :style="[canvasStyle, gridStyle]">
                 <div class="map-backdrop" :style="`background-image: url(${backgroundUrl});`" />
+                <div class="map-grid" />
                 
                 <!-- Matching viewBox to pixel size of canvas to fix arrow distortion -->
                 <svg class="map-connections" :viewBox="`0 0 ${canvasSize.w} ${canvasSize.h}`">
@@ -440,8 +475,15 @@ onUnmounted(() => {
                         <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
                             <path d="M0,0 L0,10 L10,5 Z" fill="var(--color-noir-accent)" opacity="0.8" />
                         </marker>
+                        <marker id="arrowhead-orange" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
+                            <path d="M0,0 L0,10 L10,5 Z" fill="#f97316" opacity="0.8" />
+                        </marker>
                     </defs>
-                    <path v-for="conn in connections" :key="conn.id" :d="getLinePath(conn)" class="connection-line" marker-end="url(#arrowhead)" />
+                    <path v-for="conn in connections" :key="conn.id" 
+                          :d="getLinePath(conn)" 
+                          class="connection-line" 
+                          :class="{ 'to-vue': conn.targetType === 'vue-component' }"
+                          :marker-end="conn.targetType === 'vue-component' ? 'url(#arrowhead-orange)' : 'url(#arrowhead)'" />
                 </svg>
 
                 <div v-for="scene in filteredScenes" :key="scene.id"
@@ -497,6 +539,24 @@ onUnmounted(() => {
     overflow: hidden;
 }
 
+.map-grid {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5; /* Above backdrop, below thumbs */
+    /* Main Grid Lines (Solid) */
+    background-image: 
+        linear-gradient(rgba(0, 255, 100, 0.2) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 0, 0.2) 1px, transparent 1px),
+        /* Subgrid Lines (Ultra faint to reduce clutter) */
+        linear-gradient(rgba(0, 255, 0, 0.15) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 0, 0.15) 1px, transparent 1px);
+    background-size: 
+        var(--main-x) var(--main-y), var(--main-x) var(--main-y),
+        var(--step-x) var(--step-y), var(--step-x) var(--step-y);
+    background-position: var(--h-pad) var(--v-pad);
+}
+
 .map-backdrop {
     position: absolute;
     inset: 0;
@@ -523,6 +583,10 @@ onUnmounted(() => {
     opacity: 0.6;
 }
 
+.connection-line.to-vue {
+    stroke: #f97316;
+}
+
 .is-dragging .connection-line {
     transition: none !important;
 }
@@ -541,7 +605,6 @@ onUnmounted(() => {
 
 .is-dragging .map-scene-thumb {
     cursor: grabbing;
-    opacity: 0.9;
 }
 
 .map-scene-thumb:hover {

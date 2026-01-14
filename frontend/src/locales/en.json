@@ -344,7 +344,8 @@
             "cleanup": "CLEANUP",
             "cleanup_by_name": "CLEANUP BY NAME",
             "cleanup_by_sector": "CLEANUP BY SECTOR",
-            "cleanup_on_grid": "CLEANUP ON GRID"
+            "cleanup_on_grid": "CLEANUP ON GRID",
+            "snap_to_grid": "SNAP"
         }
     }
 }
