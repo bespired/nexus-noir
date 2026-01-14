@@ -8,12 +8,12 @@ const props = defineProps({
     nextSceneId: { type: [String, Number], default: null }
 });
 
-const emit = defineEmits(['scene-complete']);
+const emit = defineEmits(['next-scene']);
 
 const start = () => {
     // E.g. play a sound, then emit
     console.log("Emitting next scene:", props.nextSceneId);
-    emit('scene-complete', { targetSceneId: props.nextSceneId });
+    emit('next-scene', { targetSceneId: props.nextSceneId });
 };
 </script>
 

@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/editor/EditViewHeader.vue';
-import ConfirmationModal from '@components/modals/ConfirmationModal.vue';
+import ConfirmationModal from '@components/editor/modals/ConfirmationModal.vue';
 import MediaUpload from '@components/editor/MediaUpload.vue';
 import ThreePreview from '@components/editor/ThreePreview.vue';
 

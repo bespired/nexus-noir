@@ -42,7 +42,7 @@ const init = () => {
     camera.position.set(0, 5, 20);
 
     // RENDERER
-    renderer = new THREE.WebGLRenderer({ 
+    renderer = new THREE.WebGLRenderer({
         antialias: true,
         preserveDrawingBuffer: true
     });
@@ -54,17 +54,13 @@ const init = () => {
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
     scene.add(ambientLight);
 
-    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 3);
+    const directionalLight1 = new THREE.DirectionalLight(0xffff77, 2);
     directionalLight1.position.set(10, 20, 20);
     scene.add(directionalLight1);
 
-    // const directionalLight2 = new THREE.DirectionalLight(0xffffff, 2);
-    // directionalLight2.position.set(-10, 10, -10);
-    // scene.add(directionalLight2);
-
-    // const pointLight = new THREE.PointLight(0x3b82f6, 5, 50);
-    // pointLight.position.set(0, 5, 5);
-    // scene.add(pointLight);
+    const directionalLight2 = new THREE.DirectionalLight(0xff77ff, 3);
+    directionalLight2.position.set(-10, 10, -10);
+    scene.add(directionalLight2);
 
     // CONTROLS
     controls = new OrbitControls(camera, renderer.domElement);
@@ -105,7 +101,7 @@ const updateFraming = () => {
     // Center of character vertically (since normalized to 1.0 units height starting from 0)
     const centerHeight = 0.5;
     camera.position.set(0, centerHeight, distance);
-    
+
     if (controls) {
         controls.target.set(0, centerHeight, 0);
         controls.update();
@@ -117,8 +113,8 @@ const loadModel = () => {
 
     loader.load(props.modelUrl, (gltf) => {
         // 1. Clear existing model content
-        while(modelGroup.children.length > 0){ 
-            modelGroup.remove(modelGroup.children[0]); 
+        while(modelGroup.children.length > 0){
+            modelGroup.remove(modelGroup.children[0]);
         }
 
         if (mixer) {
@@ -130,12 +126,41 @@ const loadModel = () => {
 
         // 2. Add new model
         const model = gltf.scene;
+
+        // Remove embedded lights from the model
+        const lightsToRemove = [];
+        model.traverse((child) => {
+            if (child.isLight) {
+                lightsToRemove.push(child);
+            }
+        });
+        lightsToRemove.forEach((light) => {
+            if (light.parent) {
+                light.parent.remove(light);
+                console.log(`[Preview3D] Removed embedded light: ${light.type}`);
+            }
+        });
+
+        // Debug Materials
+        model.traverse((child) => {
+            if (child.isMesh) {
+                console.log(`[Preview3D] Mesh: ${child.name}, Material:`, child.material);
+                if (child.material.isMeshStandardMaterial) {
+                    console.log(`- Metalness: ${child.material.metalness}, Roughness: ${child.material.roughness}`);
+                    // Temporary fix: If it's fully metal but we have no envMap, it might look black.
+                    // child.material.metalness = 0; // Uncomment to test if this fixes the "black" issue
+                }
+            }
+        });
+
         modelGroup.add(model);
 
         // 3. Normalized Scaling and Centering
         const box = new THREE.Box3().setFromObject(model);
         const size = box.getSize(new THREE.Vector3());
-        
+
+
+
         // Normalize to a standard height of 1.0 units
         const targetHeight = 1.0;
         const scaleFactor = targetHeight / (size.y || 1);
@@ -144,12 +169,14 @@ const loadModel = () => {
         // Re-calculate box and center after scale
         box.setFromObject(model);
         const center = box.getCenter(new THREE.Vector3());
-        
+
         // Move to origin (centered on XZ, feet at Y=0)
         model.position.x -= center.x;
         model.position.z -= center.z;
         model.position.y -= box.min.y;
 
+        console.log('loaded model', model)
+        
         // 4. Animations
         if (gltf.animations && gltf.animations.length > 0) {
             mixer = new THREE.AnimationMixer(model);
@@ -157,10 +184,12 @@ const loadModel = () => {
             playAnimation(gltf.animations[0]);
         }
 
+
+
         // 5. Apply Precise Framing
         updateFraming();
-    }, 
-    undefined, 
+    },
+    undefined,
     (error) => {
         console.error(`[ThreePreview] Error loading model: ${props.modelUrl}`, error);
     });
@@ -207,7 +236,7 @@ watch(() => props.modelUrl, () => {
 </script>
 
 <template>
-    <div class="three-preview shadow-lg">
+    <div class="three-preview">
         <div class="header-overlay">
             <span class="header-title">{{ title || t('clues.edit.media.header_3d') }}</span>
             <slot name="header-actions"></slot>
@@ -217,8 +246,8 @@ watch(() => props.modelUrl, () => {
 
         <div v-if="animations.length > 0" class="animations-overlay">
             <div class="animations-list">
-                <Button 
-                    v-for="clip in animations" 
+                <Button
+                    v-for="clip in animations"
                     :key="clip.name"
                     :label="clip.name.toUpperCase()"
                     :severity="activeAnimation === clip.name ? 'primary' : 'secondary'"

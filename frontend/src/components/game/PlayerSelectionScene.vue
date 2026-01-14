@@ -7,7 +7,7 @@ const props = defineProps({
     nextSceneId: { type: [String, Number], default: null }
 });
 
-const emit = defineEmits(['scene-complete']);
+const emit = defineEmits(['next-scene']);
 
 const characters = ref([]);
 const currentIndex = ref(0);
@@ -18,7 +18,7 @@ const loadCharacters = async () => {
         const response = await fetch('/api/characters');
         if (!response.ok) throw new Error('Failed to fetch characters');
         const data = await response.json();
-        
+
         // Filter for playable characters
         characters.value = data.filter(c => c.is_playable && c.type === 'person');
         loading.value = false;
@@ -45,7 +45,7 @@ const selectCharacter = () => {
     console.log('Selected character:', currentCharacter.value.name);
     localStorage.setItem('player_character', JSON.stringify(currentCharacter.value));
 
-    emit('scene-complete', {
+    emit('next-scene', {
         targetSceneId: props.nextSceneId,
         selectedCharacterId: currentCharacter.value.id
     });

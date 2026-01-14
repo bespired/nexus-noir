@@ -1,8 +1,8 @@
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import ClueThumb from '@components/thumbs/ClueThumb.vue';
-import CreateClueModal from '@components/modals/CreateClueModal.vue';
+import ClueThumb from '@components/editor/thumbs/ClueThumb.vue';
+import CreateClueModal from '@components/editor/modals/CreateClueModal.vue';
 import MediaUpload from '@components/editor/MediaUpload.vue';
 
 const { t } = useI18n();

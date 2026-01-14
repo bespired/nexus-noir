@@ -4,9 +4,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/editor/EditViewHeader.vue';
-import ConfirmationModal from '@components/modals/ConfirmationModal.vue';
-import SceneThumb from '@components/thumbs/SceneThumb.vue';
-import ClueThumb from '@components/thumbs/ClueThumb.vue';
+import ConfirmationModal from '@components/editor/modals/ConfirmationModal.vue';
+import SceneThumb from '@components/editor/thumbs/SceneThumb.vue';
+import ClueThumb from '@components/editor/thumbs/ClueThumb.vue';
 
 const route = useRoute();
 const router = useRouter();

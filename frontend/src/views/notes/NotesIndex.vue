@@ -2,8 +2,8 @@
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
-import NoteThumb from '@components/thumbs/NoteThumb.vue';
-import CreateNoteModal from '@components/modals/CreateNoteModal.vue';
+import NoteThumb from '@components/editor/thumbs/NoteThumb.vue';
+import CreateNoteModal from '@components/editor/modals/CreateNoteModal.vue';
 
 const { t } = useI18n();
 const toast = useToast();

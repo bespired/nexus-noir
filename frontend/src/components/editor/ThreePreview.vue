@@ -207,7 +207,7 @@ watch(() => props.modelUrl, () => {
 </script>
 
 <template>
-    <div class="three-preview shadow-lg">
+    <div class="three-preview">
         <div class="header-overlay">
             <span class="header-title">{{ title || t('clues.edit.media.header_3d') }}</span>
             <slot name="header-actions"></slot>

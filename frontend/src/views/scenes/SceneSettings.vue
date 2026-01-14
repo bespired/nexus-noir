@@ -39,7 +39,7 @@ const fetchInitialData = async () => {
         }
 
         scenes.value = await scenesRes.json();
-        
+
         const componentsConfig = await configRes.json();
         if (componentsConfig && componentsConfig.value) {
             try {
@@ -150,63 +150,72 @@ onMounted(fetchInitialData);
 
             <div class="scene-settings-grid">
                 <div class="settings-column">
-                    <div class="card p-6">
-                        <h2 class="card-title mb-6">COMPONENT CONFIGURATION</h2>
-                        
-                        <div class="field mb-6">
-                            <label>SELECT COMPONENT</label>
-                            <Select
-                                v-model="scene.data.component.name"
-                                :options="vueComponents"
-                                optionLabel="label"
-                                optionValue="name"
-                                class="noir-select w-full"
-                                placeholder="Select a component"
-                                @change="onComponentChange($event.value)"
-                            />
-                        </div>
+                    <div class="card card-padded">
+                        <h2 class="card-title header-mb">{{ t('scenes.edit.header_component') }}</h2>
 
-                        <div class="field mb-6">
-                            <label>NEXT SCENE</label>
-                            <Select
-                                v-model="scene.data.nextSceneId"
-                                :options="scenes"
-                                optionLabel="title"
-                                optionValue="id"
-                                class="noir-select w-full"
-                                filter
-                                placeholder="Select next scene"
-                                showClear
-                            />
-                        </div>
-
-                        <div class="data-section mt-8">
-                            <div class="flex justify-between items-center mb-4">
-                                <label class="section-label">DYNAMIC DATA</label>
-                                <Button icon="pi pi-plus" label="ADD FIELD" size="small" text @click="addDataKey" />
+                        <div class="field field-mb">
+                            <label>
+                                {{ t('scenes.edit.label_select_component') }}
+                            </label>
+                            <div class="icon-select">
+                                <img src="/icons/vue.svg"/>
+                                <Select
+                                    v-model="scene.data.component.name"
+                                    :options="vueComponents"
+                                    optionLabel="label"
+                                    optionValue="name"
+                                    class="noir-select full-width"
+                                    :placeholder="t('scenes.edit.select_a_component')"
+                                    @change="onComponentChange($event.value)"
+                                />
                             </div>
-                            
+                        </div>
+
+                        <div class="field field-mb">
+                            <label>
+                                {{ t('scenes.edit.label_next_scene') }}
+                            </label>
+                            <div class="icon-select" >
+                                <i class="pi pi-arrow-right" style="color: #4ade80;"></i>
+                                <Select
+                                    v-model="scene.data.nextSceneId"
+                                    :options="scenes"
+                                    optionLabel="title"
+                                    optionValue="id"
+                                    class="noir-select full-width"
+                                    filter
+                                    :placeholder="t('scenes.edit.select_next_scene')"
+                                    showClear
+                                />
+                            </div>
+                        </div>
+
+                        <div class="data-section section-mt">
+                            <div class="flex-row justify-between align-center item-mb">
+                                <label class="section-label">{{ t('scenes.edit.header_dynamic') }}</label>
+                                <Button icon="pi pi-plus" :label="t('scenes.edit.btn_add_field')" size="small" text @click="addDataKey" />
+                            </div>
+
                             <div v-if="Object.keys(scene.data.data).length === 0" class="no-data-hint">
-                                No data fields defined.
+                                {{ t('scenes.edit.no_data_fields') }}
                             </div>
 
-                            <div v-for="(value, key) in scene.data.data" :key="key" class="data-field mb-4">
-                                <div class="flex items-center gap-2 mb-2">
+                            <div v-for="(value, key) in scene.data.data" :key="key" class="data-field item-mb">
+                                <div class="flex-row align-center gap-small sm-mb">
                                     <span class="key-name">{{ key }}</span>
                                     <Button icon="pi pi-trash" severity="danger" text size="small" @click="removeDataKey(key)" />
                                 </div>
-                                <InputText v-model="scene.data.data[key]" class="noir-input w-full" :placeholder="`Enter value for ${key}`" />
+                                <InputText v-model="scene.data.data[key]" class="noir-input full-width" :placeholder="`Enter value for ${key}`" />
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="info-column">
-                    <div class="card p-6">
-                        <h2 class="card-title mb-4">INFO</h2>
-                        <p class="text-sm text-gray-400">
-                            Configure the behavior of this Vue Component scene.
-                            The component selected will be rendered by the game engine.
+                    <div class="card card-padded">
+                        <h2 class="card-title item-mb">{{ t('scenes.edit.header_info') }}</h2>
+                        <p class="text-gray">
+                            {{ t('scenes.edit.info_text') }}
                         </p>
                     </div>
                 </div>
@@ -341,20 +350,25 @@ onMounted(fetchInitialData);
     color: white !important;
 }
 
-.loading-state {
-    padding: 4rem;
-    text-align: center;
+.card-padded { padding: 1.5rem; }
+.header-mb { margin-bottom: 1.5rem; }
+.field-mb { margin-bottom: 1.5rem; }
+.field-mb label { display: flex; align-items: center; gap: 0.5rem; }
+.field-mb .icon-select { display: flex; align-items: center; gap: 8px; }
+.field-mb .icon-select img { height: 24px }
+
+.section-mt { margin-top: 2rem; }
+.item-mb { margin-bottom: 1rem; }
+.sm-mb { margin-bottom: 0.5rem; }
+
+.flex-row { display: flex; }
+.justify-between { justify-content: space-between; }
+.align-center { align-items: center; }
+.gap-small { gap: 0.5rem; }
+.full-width { width: 100%; }
+
+.text-gray {
+    font-size: 0.875rem;
     color: var(--color-noir-muted);
 }
-
-.mb-4 { margin-bottom: 1rem; }
-.mb-6 { margin-bottom: 1.5rem; }
-.mt-8 { margin-top: 2rem; }
-.p-6 { padding: 1.5rem; }
-.flex { display: flex; }
-.justify-between { justify-content: space-between; }
-.items-center { align-items: center; }
-.gap-2 { gap: 0.5rem; }
-.w-full { width: 100%; }
-.flex-1 { flex: 1; }
 </style>

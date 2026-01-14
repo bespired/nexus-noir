@@ -19,6 +19,7 @@ const loadScene = async (sceneId) => {
     error.value = null;
 
     try {
+        debuggerInfo('LOAD ID ' + sceneId)
         const response = await fetch(`/api/scenes/${sceneId}`);
         if (!response.ok) throw new Error(`Scene ${sceneId} not found`);
 
@@ -30,6 +31,8 @@ const loadScene = async (sceneId) => {
             // Name example: "game/DemoTitleScene.vue"
             // Since we are in src/components/game, we strip "game/" and ".vue"
             const cleanName = compPath.replace('game/', '').replace('.vue', '');
+
+            debuggerInfo('LOAD SCENE ' + cleanName)
 
             try {
                 // Vite dynamic import hint: needs a relatively static path
@@ -56,10 +59,10 @@ const loadScene = async (sceneId) => {
 
 const debuggerInfo = (line) => {
   debugInfo.value.push(line)
-  debugInfo.value = debugInfo.value.slice(0, 5)
+  debugInfo.value = debugInfo.value.slice(-5)
 }
 
-const handleSceneComplete = (payload) => {
+const handleNextScene = (payload) => {
     console.log("Scene complete, payload:", payload);
     if (payload && payload.targetSceneId) {
         debuggerInfo('GOTO SCENE ' + payload.targetSceneId)
@@ -106,7 +109,7 @@ onMounted(async () => {
             v-bind="currentScene.data?.data || {}"
             :scene="currentScene"
             :nextSceneId="currentScene.data?.nextSceneId"
-            @scene-complete="handleSceneComplete"
+            @next-scene="handleNextScene"
         />
     </div>
 
@@ -139,7 +142,7 @@ onMounted(async () => {
   font-family: wallace, helvetica;
   background: #000;
   color: #fff;
-  height: 100vh; 
+  height: 100vh;
   width: 100%;
   overflow: hidden;
   position: relative;

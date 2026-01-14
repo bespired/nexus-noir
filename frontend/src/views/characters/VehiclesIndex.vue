@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import VehicleThumb from '@components/thumbs/VehicleThumb.vue';
+import VehicleThumb from '@components/editor/thumbs/VehicleThumb.vue';
 
 const { t } = useI18n();
 const vehicles = ref([]);
