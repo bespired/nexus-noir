@@ -60,6 +60,23 @@ class SceneController extends Controller
         return response()->json($scene);
     }
 
+    public function batchUpdate(Request $request)
+    {
+        $validated = $request->validate([
+            'scenes' => 'required|array',
+            'scenes.*.id' => 'required|exists:scenes,id',
+            'scenes.*.thumb_dimensions' => 'required|array',
+        ]);
+
+        foreach ($validated['scenes'] as $sceneData) {
+            \App\Models\Scene::where('id', $sceneData['id'])->update([
+                'thumb_dimensions' => $sceneData['thumb_dimensions']
+            ]);
+        }
+
+        return response()->json(['status' => 'success']);
+    }
+
     /**
      * Remove the specified resource from storage.
      */

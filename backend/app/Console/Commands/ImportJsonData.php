@@ -203,7 +203,7 @@ class ImportJsonData extends Command
                 'type' => $item['type'] ?? 'walkable-area',
                 '2d_gateways' => $item['2d_gateways'] ?? null,
                 '3d_spawnpoints' => $item['3d_spawnpoints'] ?? null,
-                'data' => $item['data'] ?? null,
+                'thumb_dimensions' => isset($item['thumb_dimensions']) ? $item['thumb_dimensions'] : null,
                 'created_at' => $item['created_at'] ?? now(),
                 'updated_at' => $item['updated_at'] ?? now(),
             ]);

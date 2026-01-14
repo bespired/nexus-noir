@@ -339,6 +339,12 @@
             "target_spawn": "SPAWN_POINT",
             "behavior": "ACTION_BEHAVIOR",
             "target_character": "TARGET_CHARACTER"
+        },
+        "map": {
+            "cleanup": "CLEANUP",
+            "cleanup_by_name": "CLEANUP BY NAME",
+            "cleanup_by_sector": "CLEANUP BY SECTOR",
+            "cleanup_on_grid": "CLEANUP ON GRID"
         }
     }
 }

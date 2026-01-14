@@ -17,14 +17,12 @@ class Scene extends Model
         'type',
         '2d_gateways',
         '3d_spawnpoints',
-        'data',
         'thumb_dimensions',
     ];
 
     protected $casts = [
         '2d_gateways' => 'array',
         '3d_spawnpoints' => 'array',
-        'data' => 'array',
         'thumb_dimensions' => 'array',
     ];
 

@@ -25,6 +25,10 @@ const props = defineProps({
     showButtons: {
         type: Boolean,
         default: true
+    },
+    showDelete: {
+        type: Boolean,
+        default: true
     }
 });
 
@@ -57,6 +61,7 @@ const goBack = () => {
                     :loading="saving"
                 />
                 <Button
+                    v-if="showDelete"
                     label="DELETE"
                     severity="danger"
                     class="header-btn delete-btn"

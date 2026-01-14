@@ -20,6 +20,14 @@ const hasMoved = ref(false);
 const isDragging = ref(false); 
 const showBackdropModal = ref(false);
 const backdropFile = ref(null);
+const spreading = ref(false);
+const saving = ref(false);
+const cleanupMenu = ref(null);
+const cleanupItems = computed(() => [
+    { label: t('scenes.map.cleanup_by_name'), icon: 'pi pi-sort-alpha-down', command: () => cleanup('name') },
+    { label: t('scenes.map.cleanup_by_sector'), icon: 'pi pi-map', command: () => cleanup('sector') },
+    { label: t('scenes.map.cleanup_on_grid'), icon: 'pi pi-table', command: () => cleanup('grid') }
+]);
 
 // Map Canvas dimensions (Maintains 16:9)
 const canvasSize = ref({ w: 0, h: 0 });
@@ -160,12 +168,13 @@ const onDragging = (event) => {
 };
 
 const stopDrag = async () => {
-    if (draggingScene.value && hasMoved.value) {
-        await saveScenePosition(draggingScene.value);
-    }
     window.removeEventListener('mousemove', onDragging);
     window.removeEventListener('mouseup', stopDrag);
     isDragging.value = false;
+
+    if (draggingScene.value && hasMoved.value) {
+        await saveScenePosition(draggingScene.value);
+    }
     draggingScene.value = null;
 };
 
@@ -181,6 +190,131 @@ const saveScenePosition = async (scene) => {
             })
         });
     } catch (e) {}
+};
+
+const cleanup = async (mode) => {
+    if (filteredScenes.value.length === 0) return;
+    
+    spreading.value = true;
+    
+    let sorted = [];
+    if (mode === 'name') {
+        sorted = [...filteredScenes.value].sort((a, b) => a.title.localeCompare(b.title));
+    } else if (mode === 'sector') {
+        sorted = [...filteredScenes.value].sort((a, b) => {
+            const sA = sectors.value.find(s => s.id === a.sector_id)?.name || '';
+            const sB = sectors.value.find(s => s.id === b.sector_id)?.name || '';
+            if (sA !== sB) return sA.localeCompare(sB);
+            return a.title.localeCompare(b.title);
+        });
+    }
+
+    const count = filteredScenes.value.length;
+    // Automatic sorting modes use a tighter 16/9 grid
+    // Grid alignment mode uses a coarser grid (fewer columns) to make snapping more obvious
+    const aspectRatioFactor = mode === 'grid' ? 1.0 : 1.77; 
+    const cols = Math.ceil(Math.sqrt(count * aspectRatioFactor));
+    const rows = Math.ceil(count / cols);
+    
+    const hPadding = 8;
+    const vPadding = 12;
+    const usableWidth = 100 - (2 * hPadding);
+    const usableHeight = 100 - (2 * vPadding);
+    
+    const colSpacing = usableWidth / Math.max(1, cols - 1 || 1);
+    const rowSpacing = usableHeight / Math.max(1, rows - 1 || 1);
+
+    if (mode === 'grid') {
+        const gridPoints = [];
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                let x = hPadding + (c * colSpacing);
+                let y = vPadding + (r * rowSpacing);
+                if (cols === 1) x = 50 - 3.3;
+                if (rows === 1) y = 45;
+                gridPoints.push({ x, y, occupied: false });
+            }
+        }
+
+        const scenesToAssign = [...filteredScenes.value].sort((a, b) => {
+            const posA = getScenePosition(a);
+            const posB = getScenePosition(b);
+            if (posA.y !== posB.y) return posA.y - posB.y;
+            return posA.x - posB.x;
+        });
+
+        scenesToAssign.forEach(scene => {
+            const currentPos = getScenePosition(scene);
+            let bestPoint = null;
+            let minDist = Infinity;
+
+            gridPoints.forEach(point => {
+                if (point.occupied) return;
+                const dist = Math.sqrt(Math.pow(point.x - currentPos.x, 2) + Math.pow(point.y - currentPos.y, 2));
+                if (dist < minDist) {
+                    minDist = dist;
+                    bestPoint = point;
+                }
+            });
+
+            if (bestPoint) {
+                bestPoint.occupied = true;
+                const updatedScene = scenes.value.find(s => s.id === scene.id);
+                if (updatedScene) {
+                    updatedScene.thumb_dimensions = { 
+                        x: Math.max(2, Math.min(91, bestPoint.x)), 
+                        y: Math.max(2, Math.min(88, bestPoint.y)) 
+                    };
+                }
+            }
+        });
+    } else {
+        sorted.forEach((scene, index) => {
+            const c = index % cols;
+            const r = Math.floor(index / cols);
+            
+            let x = hPadding + (c * colSpacing);
+            let y = vPadding + (r * rowSpacing);
+
+            if (cols === 1) x = 50 - 3.3; 
+            if (rows === 1) y = 45;
+
+            const updatedScene = scenes.value.find(s => s.id === scene.id);
+            if (updatedScene) {
+                updatedScene.thumb_dimensions = { 
+                    x: Math.max(2, Math.min(91, x)), 
+                    y: Math.max(2, Math.min(88, y)) 
+                };
+            }
+        });
+    }
+
+    spreading.value = false;
+    await saveAllPositions();
+};
+
+const saveAllPositions = async () => {
+    saving.value = true;
+    try {
+        const data = filteredScenes.value.map(s => ({
+            id: s.id,
+            thumb_dimensions: s.thumb_dimensions
+        }));
+
+        const res = await fetch('/api/scenes/batch-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scenes: data })
+        });
+
+        if (res.ok) {
+            toast.add({ severity: 'success', summary: 'Success', detail: 'Layout optimized and saved.', life: 3000 });
+        }
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to save layout.' });
+    } finally {
+        saving.value = false;
+    }
 };
 
 const getThumbUrl = (scene) => {
@@ -264,10 +398,20 @@ onUnmounted(() => {
 
 <template>
     <div class="scene-map-view" :class="{ 'is-dragging': isDragging }">
-        <EditViewHeader backRoute="/scenes" parentName="SCENES" itemName="MAP">
+        <EditViewHeader 
+            backRoute="/scenes" 
+            parentName="SCENES" 
+            itemName="MAP" 
+            :saving="saving" 
+            @save="saveAllPositions"
+            :showDelete="false"
+            ref="header"
+        >
             <template #extra-actions>
                 <div class="header-filters">
                     <Select v-model="selectedSectorId" :options="sectors" optionLabel="name" optionValue="id" placeholder="All Sectors" showClear class="noir-select" />
+                    <Button type="button" :label="t('scenes.map.cleanup')" severity="secondary" class="header-btn" icon="pi pi-th-large" @click="(event) => cleanupMenu.toggle(event)" :loading="spreading || saving" />
+                    <Menu ref="cleanupMenu" :model="cleanupItems" :popup="true" class="noir-menu" />
                     <Button label="UPDATE BACKDROP" severity="info" class="header-btn" icon="pi pi-image" @click="showBackdropModal = true" />
                 </div>
             </template>
@@ -334,6 +478,11 @@ onUnmounted(() => {
     padding-right: 1rem;
 }
 
+.scene-map-view.is-dragging,
+.scene-map-view.is-dragging * {
+    cursor: grabbing !important;
+}
+
 .map-viewport {
     flex: 1;
     position: relative;
@@ -392,6 +541,7 @@ onUnmounted(() => {
 
 .is-dragging .map-scene-thumb {
     cursor: grabbing;
+    opacity: 0.9;
 }
 
 .map-scene-thumb:hover {

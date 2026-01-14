@@ -338,6 +338,12 @@
             "target_spawn": "SPAWNPUNT",
             "behavior": "GEDRAG_ACTIE",
             "target_character": "DOEL_CHARACTER"
+        },
+        "map": {
+            "cleanup": "OPRUIMEN",
+            "cleanup_by_name": "OPRUIMEN OP NAAM",
+            "cleanup_by_sector": "OPRUIMEN OP SECTOR",
+            "cleanup_on_grid": "OPRUIMEN OP GRID"
         }
     }
 }
