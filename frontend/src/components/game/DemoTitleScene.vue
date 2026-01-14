@@ -1,6 +1,6 @@
 <script setup>
 import { defineProps, defineEmits } from 'vue';
-import ClickButton from '../inputs/ClickButton.vue';
+import ClickButton from './ClickButton.vue';
 
 const props = defineProps({
     title:       { type: String, default: 'CYBER NOIR' },

@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
-import EditViewHeader from '@components/customs/EditViewHeader.vue';
+import EditViewHeader from '@components/editor/EditViewHeader.vue';
 import ConfirmationModal from '@components/modals/ConfirmationModal.vue';
 
 const route = useRoute();
@@ -292,8 +292,13 @@ onMounted(fetchInitialData);
                         </div>
                     <div class="scene-nav">
                         <router-link :to="`/scenes/${sceneId}/edit`" class="nav-link active">{{ t('scenes.edit.nav_properties') }}</router-link>
-                        <router-link :to="`/scenes/${sceneId}/gateway`" class="nav-link">{{ t('scenes.edit.nav_gateway') }}</router-link>
-                        <router-link :to="`/scenes/${sceneId}/spawnpoint`" class="nav-link">{{ t('scenes.edit.nav_3d') }}</router-link>
+                        <template v-if="scene.type === 'vue-component'">
+                            <router-link :to="`/scenes/${sceneId}/settings`" class="nav-link">{{ t('scenes.edit.nav_settings') }}</router-link>
+                        </template>
+                        <template v-else>
+                            <router-link :to="`/scenes/${sceneId}/gateway`" class="nav-link">{{ t('scenes.edit.nav_gateway') }}</router-link>
+                            <router-link :to="`/scenes/${sceneId}/spawnpoint`" class="nav-link">{{ t('scenes.edit.nav_3d') }}</router-link>
+                        </template>
                     </div>
                     <span class="edit-hero__id">ID:{{ sceneId }}</span>
                 </div>

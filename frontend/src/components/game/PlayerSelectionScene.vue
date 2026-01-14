@@ -1,17 +1,13 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import Character3DViewer from '../Character3DViewer.vue';
-import ClickButton from '../inputs/ClickButton.vue';
-import { useDataRobustness } from '../../composables/useDataRobustness';
+import ThreePreview from './Preview3D.vue';
+import ClickButton from './ClickButton.vue';
 
 const props = defineProps({
-    title: { type: String, default: 'SELECT_RUNNER' },
     nextSceneId: { type: [String, Number], default: null }
 });
 
 const emit = defineEmits(['scene-complete']);
-
-const { fetchData, resolveAssetUrl, getCharacterGlbUrl } = useDataRobustness();
 
 const characters = ref([]);
 const currentIndex = ref(0);
@@ -19,8 +15,12 @@ const loading = ref(true);
 
 const loadCharacters = async () => {
     try {
-        const data = await fetchData('personages.json', 'personages');
-        characters.value = data.filter(p => p.is_playable);
+        const response = await fetch('/api/characters');
+        if (!response.ok) throw new Error('Failed to fetch characters');
+        const data = await response.json();
+        
+        // Filter for playable characters
+        characters.value = data.filter(c => c.is_playable && c.type === 'person');
         loading.value = false;
     } catch (err) {
         console.error('Failed to load character data:', err);
@@ -30,17 +30,19 @@ const loadCharacters = async () => {
 const currentCharacter = computed(() => characters.value[currentIndex.value] || null);
 
 const nextCharacter = () => {
+    if (characters.value.length === 0) return;
     currentIndex.value = (currentIndex.value + 1) % characters.value.length;
 };
 
 const prevCharacter = () => {
+    if (characters.value.length === 0) return;
     currentIndex.value = (currentIndex.value - 1 + characters.value.length) % characters.value.length;
 };
 
 const selectCharacter = () => {
     if (!currentCharacter.value) return;
 
-    console.log('Selected character:', currentCharacter.value.naam);
+    console.log('Selected character:', currentCharacter.value.name);
     localStorage.setItem('player_character', JSON.stringify(currentCharacter.value));
 
     emit('scene-complete', {
@@ -49,19 +51,15 @@ const selectCharacter = () => {
     });
 };
 
-const getGlbUrl = (personage) => {
-    if (!personage) return '';
+const getGlbUrl = (character) => {
+    if (!character || !character.media) return '';
 
-    // 1. Try to find the first artwork that ends with .glb in the database
-    if (personage.artwork && personage.artwork.length > 0) {
-        const glbArtwork = personage.artwork.find(a => a.bestandspad.toLowerCase().endsWith('.glb'));
-        if (glbArtwork) {
-            return resolveAssetUrl(glbArtwork.bestandspad);
-        }
+    const glbMedia = character.media.find(m => m.filepad && m.filepad.toLowerCase().endsWith('.glb'));
+    if (glbMedia) {
+        if (glbMedia.filepad.startsWith('http')) return glbMedia.filepad;
+        return `/storage/${glbMedia.filepad}`;
     }
-
-    // 2. Fallback: Try to calculate the path from the character's name/slug
-    return getCharacterGlbUrl(personage.naam);
+    return '';
 };
 
 onMounted(() => {
@@ -71,8 +69,6 @@ onMounted(() => {
 
 <template>
     <div class="selection-container">
-        <!-- <h1 class="scene-title glitch-text" :data-text="title">{{ title }}</h1> -->
-
         <div v-if="loading" class="loading-state">
             <div class="loading-spinner"></div>
             <p>BUFFERING_NEURAL_RECORDS...</p>
@@ -87,10 +83,10 @@ onMounted(() => {
             <!-- 3D View Card -->
             <div class="character-card landscape">
                 <div class="viewer-wrapper">
-                    <Character3DViewer
+                    <ThreePreview
                         v-if="getGlbUrl(currentCharacter)"
-                        :glb-url="getGlbUrl(currentCharacter)"
-                        type="persoon"
+                        :model-url="getGlbUrl(currentCharacter)"
+                        :title="currentCharacter.name"
                         class="viewer-component"
                     />
                     <div v-else class="error-placeholder">
@@ -99,10 +95,10 @@ onMounted(() => {
                 </div>
 
                 <div class="character-info">
-                    <h2 class="name">{{ currentCharacter.naam }}</h2>
-                    <p class="role">{{ currentCharacter.rol }}</p>
+                    <h2 class="name">{{ currentCharacter.name }}</h2>
+                    <p class="role">{{ currentCharacter.role }}</p>
                     <div class="description custom-scrollbar">
-                        {{ currentCharacter.beschrijving }}
+                        {{ currentCharacter.description }}
                     </div>
 
                     <div class="stats-panel">
@@ -111,8 +107,8 @@ onMounted(() => {
                             <span class="stat-value">ACTIVE</span>
                         </div>
                         <div class="stat-row">
-                            <span class="stat-label">ORIGIN:</span>
-                            <span class="stat-value">NEO-TOKYO</span>
+                            <span class="stat-label">TYPE:</span>
+                            <span class="stat-value">{{ currentCharacter.type.toUpperCase() }}</span>
                         </div>
                     </div>
                 </div>

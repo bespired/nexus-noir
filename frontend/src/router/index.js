@@ -34,6 +34,11 @@ const routes = [
         component: () => import('../views/scenes/SceneSpawnpoint.vue')
     },
     {
+        path: '/scenes/:id/settings',
+        name: 'scene-settings',
+        component: () => import('../views/scenes/SceneSettings.vue')
+    },
+    {
         path: '/scenes/map',
         name: 'scenes-map',
         component: () => import('../views/scenes/SceneMapView.vue')
