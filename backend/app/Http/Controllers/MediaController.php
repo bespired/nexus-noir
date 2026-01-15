@@ -11,7 +11,7 @@ class MediaController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:jpeg,png,jpg,gif,glb|max:10240',
+            'file' => 'required|file|mimes:jpeg,png,jpg,gif,glb,fbx|max:10240',
             'imageable_id' => 'required|integer',
             'imageable_type' => 'required|string',
             'title' => 'nullable|string'
@@ -22,9 +22,9 @@ class MediaController extends Controller
             $extension = $file->getClientOriginalExtension();
             $imageableType = $request->imageable_type;
 
-            if ($extension === 'glb') {
+            if (in_array($extension, ['glb', 'fbx'])) {
                 $type = '3d';
-                $folder = 'glb';
+                $folder = "3d/{$extension}";
             } else {
                 $type = '2d';
                 // Detect destination folder from class name

@@ -22,7 +22,7 @@ class ExportArtwork extends Command
      *
      * @var string
      */
-    protected $description = 'Export artwork and glb files to a zip archive in backup folder.';
+    protected $description = 'Export artwork, glb and fbx files to a zip archive in backup folder.';
 
     /**
      * Execute the console command.

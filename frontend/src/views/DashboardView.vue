@@ -7,7 +7,7 @@ const { t } = useI18n();
 
 <template>
     <div class="about">
-        <h1>CYBER_NOIR</h1>
+        <h1>NEXUS_NOIR</h1>
         <h2>// INVESTIGATION_SYSTEM</h2>
         <p>{{ t('about.trying') }}</p>
         <br />

@@ -16,6 +16,7 @@ const navItems = computed(() => [
     { path: '/dialogs',    svg: 'dialogue',  icon: 'pi pi-comments',    label: t('common.sidebar.dialogues'),    title: t('common.sidebar.dialogues')    },
     { path: '/characters', svg: 'personage', icon: 'pi pi-users',       label: t('common.sidebar.characters'),   title: t('common.sidebar.characters')   },
     { path: '/vehicles',   svg: 'vehicle',   icon: 'pi pi-car',         label: t('common.sidebar.vehicles'),     title: t('common.sidebar.vehicles')     },
+    { path: '/animations', svg: 'animation', icon: 'pi pi-users',       label: t('common.sidebar.animations'),   title: t('common.sidebar.animations')   },
     { path: '/clues',      svg: 'clue',      icon: 'pi pi-search',      label: t('common.sidebar.clues'),        title: t('common.sidebar.clues')        },
     { path: '/notes',      svg: 'note',      icon: 'pi pi-file-edit',   label: t('common.sidebar.notes'),        title: t('common.sidebar.notes')        },
 ]);
