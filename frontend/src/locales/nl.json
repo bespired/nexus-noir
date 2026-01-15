@@ -332,7 +332,8 @@
             "label_description": "OMSCHRIJVING",
             "nav_properties": "EIGENSCHAPPEN",
             "nav_gateway": "GATEWAY",
-            "nav_3d": "3D",
+            "nav_3d": "SPAWNPOINTS",
+            "nav_settings": "INSTELLINGEN",
             "btn_sector": "SECTOR",
             "btn_upload": "AFBEELDING UPLOADEN",
             "btn_change": "AFBEELDING WIJZIGEN",
@@ -361,7 +362,17 @@
             "target_scene": "BESTEMMING_SCENE",
             "target_spawn": "SPAWNPUNT",
             "behavior": "GEDRAG_ACTIE",
-            "target_character": "DOEL_CHARACTER"
+            "target_character": "DOEL_CHARACTER",
+            "header_component": "COMPONENT CONFIGURATIE",
+            "label_select_component": "SELECTEER COMPONENT",
+            "label_next_scene": "VOLGENDE SCENE",
+            "select_a_component": "SELECTEER EEN COMPONENT",
+            "select_next_scene": "SELECTEER VOLGENDE SCENE",
+            "header_dynamic": "DYNAMISCHE DATA",
+            "btn_add_field": "VELD TOEVOEGEN",
+            "no_data_fields": "Geen data velden gedefinieerd.",
+            "header_info": "INFO",
+            "info_text": "Configureer het gedrag van deze Vue Component scene. Het geselecteerde component zal door de game engine worden gerenderd."
         },
         "map": {
             "cleanup": "OPRUIMEN",

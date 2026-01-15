@@ -47,7 +47,7 @@ const conditionCount = computed(() => {
                     severity="warning"
                     outlined
                     class="global-thumb__edit-btn"
-                    @click="$router.push(`/sectors/${sector.id}`)"
+                    @click="$router.push(`/sectors/${sector.id}/edit`)"
                 />
             </div>
         </div>

@@ -333,7 +333,8 @@
             "label_description": "DESCRIPTION",
             "nav_properties": "PROPERTIES",
             "nav_gateway": "GATEWAY",
-            "nav_3d": "3D",
+            "nav_3d": "SPAWNPOINTS",
+            "nav_settings": "SETTINGS",
             "btn_sector": "SECTOR",
             "btn_upload": "UPLOAD IMAGE",
             "btn_change": "CHANGE IMAGE",
@@ -362,7 +363,17 @@
             "target_scene": "DESTINATION_SCENE",
             "target_spawn": "SPAWN_POINT",
             "behavior": "ACTION_BEHAVIOR",
-            "target_character": "TARGET_CHARACTER"
+            "target_character": "TARGET_CHARACTER",
+            "header_component": "COMPONENT CONFIGURATION",
+            "label_select_component": "SELECT COMPONENT",
+            "label_next_scene": "NEXT SCENE",
+            "select_a_component": "SELECT A COMPONENT",
+            "select_next_scene": "SELECT NEXT SCENE",
+            "header_dynamic": "DYNAMIC DATA",
+            "btn_add_field": "ADD FIELD",
+            "no_data_fields": "No data fields defined.",
+            "header_info": "INFO",
+            "info_text": "Configure the behavior of this Vue Component scene. The component selected will be rendered by the game engine."
         },
         "map": {
             "cleanup": "CLEANUP",

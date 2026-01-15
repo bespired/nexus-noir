@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import DialogThumb from '@components/thumbs/DialogThumb.vue';
+import DialogThumb from '@components/editor/thumbs/DialogThumb.vue';
 
 const { t } = useI18n();
 

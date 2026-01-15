@@ -3,8 +3,8 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
-import EditViewHeader from '@components/customs/EditViewHeader.vue';
-import ConfirmationModal from '@components/modals/ConfirmationModal.vue';
+import EditViewHeader from '@components/editor/EditViewHeader.vue';
+import ConfirmationModal from '@components/editor/modals/ConfirmationModal.vue';
 
 const route = useRoute();
 const router = useRouter();

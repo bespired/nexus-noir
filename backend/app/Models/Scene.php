@@ -18,12 +18,14 @@ class Scene extends Model
         '2d_gateways',
         '3d_spawnpoints',
         'thumb_dimensions',
+        'data',
     ];
 
     protected $casts = [
         '2d_gateways' => 'array',
         '3d_spawnpoints' => 'array',
         'thumb_dimensions' => 'array',
+        'data' => 'array',
     ];
 
     public function sector(): BelongsTo

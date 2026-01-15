@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import CharacterThumb from '@components/thumbs/CharacterThumb.vue';
+import CharacterThumb from '@components/editor/thumbs/CharacterThumb.vue';
 
 const { t } = useI18n();
 

@@ -34,6 +34,11 @@ const routes = [
         component: () => import('../views/scenes/SceneSpawnpoint.vue')
     },
     {
+        path: '/scenes/:id/settings',
+        name: 'scene-settings',
+        component: () => import('../views/scenes/SceneSettings.vue')
+    },
+    {
         path: '/scenes/map',
         name: 'scenes-map',
         component: () => import('../views/scenes/SceneMapView.vue')
@@ -44,7 +49,7 @@ const routes = [
         component: () => import('../views/sectors/SectorsIndex.vue')
     },
     {
-        path: '/sectors/:id',
+        path: '/sectors/:id/edit',
         name: 'sector-edit',
         component: () => import('../views/sectors/SectorEdit.vue')
     },
@@ -59,7 +64,7 @@ const routes = [
         component: () => import('../views/actions/ActionsIndex.vue')
     },
     {
-        path: '/actions/:id',
+        path: '/actions/:id/edit',
         name: 'action-edit',
         component: () => import('../views/actions/ActionEdit.vue')
     },
@@ -79,7 +84,7 @@ const routes = [
         component: () => import('../views/characters/CharactersIndex.vue')
     },
     {
-        path: '/characters/:id',
+        path: '/characters/:id/edit',
         name: 'character-edit',
         component: () => import('../views/characters/CharacterEdit.vue')
     },
@@ -89,7 +94,7 @@ const routes = [
         component: () => import('../views/characters/VehiclesIndex.vue')
     },
     {
-        path: '/vehicles/:id',
+        path: '/vehicles/:id/edit',
         name: 'vehicle-edit',
         component: () => import('../views/characters/CharacterEdit.vue')
     },
@@ -99,7 +104,7 @@ const routes = [
         component: () => import('../views/clues/CluesIndex.vue')
     },
     {
-        path: '/clues/:id',
+        path: '/clues/:id/edit',
         name: 'clue-edit',
         component: () => import('../views/clues/ClueEdit.vue')
     },

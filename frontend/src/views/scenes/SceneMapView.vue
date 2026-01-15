@@ -3,7 +3,7 @@ import { ref, onMounted, computed, onUnmounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import { useRouter } from 'vue-router';
-import EditViewHeader from '@components/customs/EditViewHeader.vue';
+import EditViewHeader from '@components/editor/EditViewHeader.vue';
 
 const { t } = useI18n();
 const toast = useToast();

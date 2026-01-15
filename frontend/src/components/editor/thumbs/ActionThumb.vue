@@ -41,7 +41,7 @@ const has3dModel = computed(() => {
                         severity="warning"
                         outlined
                         class="global-thumb__edit-btn"
-                        @click="$router.push(`/actions/${action.id}`)"
+                        @click="$router.push(`/actions/${action.id}/edit`)"
                     />
                 </div>
             </div>

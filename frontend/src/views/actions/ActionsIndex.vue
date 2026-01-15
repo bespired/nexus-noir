@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import ActionThumb from '@components/thumbs/ActionThumb.vue';
+import ActionThumb from '@components/editor/thumbs/ActionThumb.vue';
 
 const { t } = useI18n();
 const actions = ref([]);

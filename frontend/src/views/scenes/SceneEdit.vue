@@ -3,8 +3,8 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
-import EditViewHeader from '@components/customs/EditViewHeader.vue';
-import ConfirmationModal from '@components/modals/ConfirmationModal.vue';
+import EditViewHeader from '@components/editor/EditViewHeader.vue';
+import ConfirmationModal from '@components/editor/modals/ConfirmationModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -274,10 +274,31 @@ onMounted(fetchInitialData);
                     <h1 class="edit-hero__title">{{ scene.title }}</h1>
                 </div>
                 <div class="edit-hero__right">
+                    <div v-if="scene.sector_id" class="entry-point-action">
+                            <div v-if="scene.sector?.entry_scene_id === scene.id" class="entry-point-badge">
+                                <i class="pi pi-check-circle"></i>
+                                SECTOR ENTRY POINT
+                            </div>
+                            <Button
+                                v-else
+                                label="SET AS SECTOR ENTRY POINT"
+                                severity="success"
+                                text
+                                size="small"
+                                icon="pi pi-map-marker"
+                                class="entry-btn"
+                                @click="handleSetEntryPoint"
+                            />
+                        </div>
                     <div class="scene-nav">
                         <router-link :to="`/scenes/${sceneId}/edit`" class="nav-link active">{{ t('scenes.edit.nav_properties') }}</router-link>
-                        <router-link :to="`/scenes/${sceneId}/gateway`" class="nav-link">{{ t('scenes.edit.nav_gateway') }}</router-link>
-                        <router-link :to="`/scenes/${sceneId}/spawnpoint`" class="nav-link">{{ t('scenes.edit.nav_3d') }}</router-link>
+                        <template v-if="scene.type === 'vue-component'">
+                            <router-link :to="`/scenes/${sceneId}/settings`" class="nav-link">{{ t('scenes.edit.nav_settings') }}</router-link>
+                        </template>
+                        <template v-else>
+                            <router-link :to="`/scenes/${sceneId}/gateway`" class="nav-link">{{ t('scenes.edit.nav_gateway') }}</router-link>
+                            <router-link :to="`/scenes/${sceneId}/spawnpoint`" class="nav-link">{{ t('scenes.edit.nav_3d') }}</router-link>
+                        </template>
                     </div>
                     <span class="edit-hero__id">ID:{{ sceneId }}</span>
                 </div>
@@ -348,24 +369,9 @@ onMounted(fetchInitialData);
                                 :placeholder="t('scenes.edit.label_sector')"
                                 showClear
                             />
-                            <Button :label="t('scenes.edit.btn_sector')" severity="info" class="sector-btn" @click="router.push(`/sectors/${scene.sector_id}`)" :disabled="!scene.sector_id" />
+                            <Button :label="t('scenes.edit.btn_sector')" severity="info" class="sector-btn" @click="router.push(`/sectors/${scene.sector_id}/edit`)" :disabled="!scene.sector_id" />
                         </div>
-                        <div v-if="scene.sector_id" class="entry-point-action">
-                            <div v-if="scene.sector?.entry_scene_id === scene.id" class="entry-point-badge">
-                                <i class="pi pi-check-circle"></i>
-                                SECTOR ENTRY POINT
-                            </div>
-                            <Button
-                                v-else
-                                label="SET AS SECTOR ENTRY POINT"
-                                severity="success"
-                                text
-                                size="small"
-                                icon="pi pi-map-marker"
-                                class="entry-btn"
-                                @click="handleSetEntryPoint"
-                            />
-                        </div>
+
                         </div>
                     </div>
 
@@ -462,7 +468,7 @@ onMounted(fetchInitialData);
 
 .backdrop-container {
     position: relative;
-    aspect-ratio: 16 / 9;
+    /*aspect-ratio: 16 / 9;*/
     background: #000;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 4px;
@@ -555,9 +561,7 @@ onMounted(fetchInitialData);
     font-size: 0.75rem !important;
 }
 
-.entry-point-action {
-    margin-top: 0.5rem;
-}
+
 
 .entry-point-badge {
     display: inline-flex;

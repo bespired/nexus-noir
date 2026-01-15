@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import SectorThumb from '@components/thumbs/SectorThumb.vue';
+import SectorThumb from '@components/editor/thumbs/SectorThumb.vue';
 
 const { t } = useI18n();
 const sectors = ref([]);

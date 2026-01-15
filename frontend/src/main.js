@@ -9,7 +9,7 @@ import i18n from './i18n'
 import ToastService from 'primevue/toastservice';
 import Toast from 'primevue/toast';
 import Badge from 'primevue/badge';
-import ConfirmationModal from '@components/modals/ConfirmationModal.vue';
+import ConfirmationModal from '@components/editor/modals/ConfirmationModal.vue';
 import App from './App.vue'
 
 import router from './router'
