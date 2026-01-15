@@ -5,23 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Character extends Model
+class Animation extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'name',
-        'role',
         'description',
-        'motive',
-        'is_playable',
-        'is_system',
         'type',
-    ];
-
-    protected $casts = [
-        'is_playable' => 'boolean',
-        'is_system' => 'boolean',
     ];
 
     public function media(): \Illuminate\Database\Eloquent\Relations\MorphMany
@@ -29,8 +20,8 @@ class Character extends Model
         return $this->morphMany(Media::class, 'imageable')->orderBy('id', 'desc');
     }
 
-    public function animations(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function characters(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->belongsToMany(Animation::class);
+        return $this->belongsToMany(Character::class);
     }
 }

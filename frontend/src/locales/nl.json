@@ -65,6 +65,10 @@
             "clues": {
                 "title": "Aanwijzingen",
                 "loading": "Aanwijzingen laden..."
+            },
+            "animations": {
+                "title": "Animaties",
+                "loading": "Animaties laden..."
             }
         }
     },
@@ -381,6 +385,40 @@
             "cleanup_by_sector": "OPRUIMEN OP SECTOR",
             "cleanup_on_grid": "OPRUIMEN OP GRID",
             "snap_to_grid": "SNAP"
+        }
+    },
+    "animations": {
+        "modal": {
+            "title": "NIEUW ANIMATIE SKELET",
+            "label_name": "NAAM",
+            "label_type": "TYPE",
+            "label_description": "OMSCHRIJVING",
+            "placeholder_name": "bijv. Character_Walk",
+            "placeholder_description": "Animatie details...",
+            "btn_cancel": "NEE BEDANKT",
+            "btn_save": "JA OPSLAAN"
+        },
+        "messages": {
+            "success_summary": "Succes",
+            "success_detail": "Animatie succesvol aangemaakt",
+            "error_summary": "Fout",
+            "error_fill_fields": "Geef een naam op",
+            "error_save": "Kon animatie niet opslaan",
+            "confirm_delete": "Weet je zeker dat je dit animatie skelet wilt verwijderen?"
+        },
+        "edit": {
+            "media": {
+                "header_2d": "THUMBNAIL_DATA",
+                "header_3d": "3D_SKELET_SCAN",
+                "btn_add_2d": "VOEG THUMB TOE",
+                "btn_add_3d": "VOEG 3D MODEL TOE",
+                "no_2d": "GEEN_THUMBNAIL",
+                "tabs": {
+                    "visual": "VISUELE DATA (2D)",
+                    "neural": "NEURALE SCAN (3D)"
+                }
+            },
+            "label_characters": "TOEPASSEN OP PERSONAGES"
         }
     }
 }

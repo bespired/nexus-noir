@@ -65,6 +65,10 @@
             "clues": {
                 "title": "Clues",
                 "loading": "Loading clues..."
+            },
+            "animations": {
+                "title": "Animations",
+                "loading": "Loading animations..."
             }
         }
     },
@@ -382,6 +386,40 @@
             "cleanup_by_sector": "CLEANUP BY SECTOR",
             "cleanup_on_grid": "CLEANUP ON GRID",
             "snap_to_grid": "SNAP"
+        }
+    },
+    "animations": {
+        "modal": {
+            "title": "NEW ANIMATION SKELETON",
+            "label_name": "NAME",
+            "label_type": "TYPE",
+            "label_description": "DESCRIPTION",
+            "placeholder_name": "e.g. Character_Walk",
+            "placeholder_description": "Animation details...",
+            "btn_cancel": "NO THANK YOU",
+            "btn_save": "YES SAVE"
+        },
+        "messages": {
+            "success_summary": "Success",
+            "success_detail": "Animation created successfully",
+            "error_summary": "Error",
+            "error_fill_fields": "Please provide a name",
+            "error_save": "Could not save animation",
+            "confirm_delete": "Are you sure you want to delete this animation skeleton?"
+        },
+        "edit": {
+            "media": {
+                "header_2d": "THUMBNAIL_DATA",
+                "header_3d": "3D_SKELETON_SCAN",
+                "btn_add_2d": "ADD THUMB",
+                "btn_add_3d": "ADD 3D MODEL",
+                "no_2d": "NO_THUMBNAIL",
+                "tabs": {
+                    "visual": "VISUAL DATA (2D)",
+                    "neural": "NEURAL SCAN (3D)"
+                }
+            },
+            "label_characters": "APPLY TO CHARACTERS"
         }
     }
 }

@@ -2,13 +2,15 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
     modelUrl: {
         type: String,
-        required: true
+        required: false,
+        default: null
     },
     title: {
         type: String,
@@ -21,9 +23,85 @@ const { t } = useI18n();
 const container = ref(null);
 const animations = ref([]);
 const activeAnimation = ref(null);
-let scene, camera, renderer, controls, loader, mixer;
-let modelGroup;
+let scene, camera, renderer, controls, gltfLoader, fbxLoader, mixer;
+let modelGroup, skeletonHelper;
 const clock = new THREE.Clock();
+
+/**
+ * Custom helper to visualize bones as thick cylinders
+ */
+class ThickSkeletonHelper extends THREE.Group {
+    constructor(model) {
+        super();
+        this.model = model;
+        this.bones = [];
+        this.boneSegments = [];
+        
+        model.traverse(child => {
+            if (child.isBone) this.bones.push(child);
+        });
+
+        const material = new THREE.MeshStandardMaterial({ 
+            color: 0x3b82f6, 
+            emissive: 0x3b82f6, 
+            emissiveIntensity: 2,
+            metalness: 0.5,
+            roughness: 0.2
+        });
+        
+        const cylinderGeo = new THREE.CylinderGeometry(1, 1, 1, 6);
+        const sphereGeo = new THREE.SphereGeometry(1, 8, 8);
+
+        this.bones.forEach(bone => {
+            // Joint sphere
+            const sphere = new THREE.Mesh(sphereGeo, material);
+            this.add(sphere);
+
+            // Bone segment to parent
+            if (bone.parent && bone.parent.isBone) {
+                const cylinder = new THREE.Mesh(cylinderGeo, material);
+                this.add(cylinder);
+                this.boneSegments.push({ cylinder, bone, parent: bone.parent });
+            }
+            
+            this.boneSegments.push({ sphere, bone });
+        });
+        
+        this.renderOrder = 999;
+    }
+
+    update() {
+        const boneRadius = 0.006;
+        const jointRadius = 0.008;
+
+        this.boneSegments.forEach(seg => {
+            if (seg.cylinder) {
+                const start = new THREE.Vector3();
+                const end = new THREE.Vector3();
+                seg.parent.getWorldPosition(start);
+                seg.bone.getWorldPosition(end);
+
+                const distance = start.distanceTo(end);
+                if (distance > 0) {
+                    seg.cylinder.position.copy(start).lerp(end, 0.5);
+                    seg.cylinder.scale.set(boneRadius, distance, boneRadius);
+                    seg.cylinder.quaternion.setFromUnitVectors(
+                        new THREE.Vector3(0, 1, 0),
+                        end.clone().sub(start).normalize()
+                    );
+                    seg.cylinder.visible = true;
+                } else {
+                    seg.cylinder.visible = false;
+                }
+            } else if (seg.sphere) {
+                const pos = new THREE.Vector3();
+                seg.bone.getWorldPosition(pos);
+                seg.sphere.position.copy(pos);
+                seg.sphere.scale.set(jointRadius, jointRadius, jointRadius);
+            }
+        });
+    }
+}
 
 const init = () => {
     if (!container.value) return;
@@ -51,10 +129,10 @@ const init = () => {
     container.value.appendChild(renderer.domElement);
 
     // LIGHTS
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 2.0); // Boosted
     scene.add(ambientLight);
 
-    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 3);
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 4); // Boosted
     directionalLight1.position.set(10, 20, 20);
     scene.add(directionalLight1);
 
@@ -66,14 +144,19 @@ const init = () => {
     pointLight.position.set(0, 5, 5);
     scene.add(pointLight);
 
+    // GRID (Spatial Context)
+    const grid = new THREE.GridHelper(20, 20, 0x666666, 0x333333); // Larger, brighter grid
+    scene.add(grid);
+
     // CONTROLS
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.autoRotate = true;
     controls.autoRotateSpeed = 2.0;
 
-    // LOADER
-    loader = new GLTFLoader();
+    // LOADERS
+    gltfLoader = new GLTFLoader();
+    fbxLoader = new FBXLoader();
     loadModel();
 
     animate();
@@ -100,11 +183,18 @@ const updateFraming = () => {
     // Our models are normalized to 1.0 units high
     const h3d = 1.0;
     const fovRad = (camera.fov * Math.PI) / 180;
-    const distance = h3d / (2 * occupiedRatio * Math.tan(fovRad / 2));
+    // Zoom in a bit more by using a higher occupiedRatio or smaller padding
+    const distance = h3d / (occupiedRatio * Math.tan(fovRad / 2)); 
+    // Removed the '2 *' factor to zoom in closer? 
+    // Actually, distance = (height/2) / tan(fov/2) for full height.
+    // So distance = height / (2 * tan(fov/2)).
+    // I'll keep it but increase occupiedRatio.
+    const aggressiveRatio = Math.max(occupiedRatio, 1.2); 
+    const finalDistance = h3d / (2 * aggressiveRatio * Math.tan(fovRad / 2));
 
     // Center of character vertically (since normalized to 1.0 units height starting from 0)
     const centerHeight = 0.5;
-    camera.position.set(0, centerHeight, distance);
+    camera.position.set(0, centerHeight, finalDistance);
     
     if (controls) {
         controls.target.set(0, centerHeight, 0);
@@ -113,51 +203,97 @@ const updateFraming = () => {
 };
 
 const loadModel = () => {
-    if (!props.modelUrl || !modelGroup) return;
+    if (!modelGroup) return;
 
-    loader.load(props.modelUrl, (gltf) => {
-        // 1. Clear existing model content
-        while(modelGroup.children.length > 0){ 
-            modelGroup.remove(modelGroup.children[0]); 
-        }
+    // Reset current state
+    while(modelGroup.children.length > 0){ 
+        modelGroup.remove(modelGroup.children[0]); 
+    }
+    if (skeletonHelper) {
+        scene.remove(skeletonHelper);
+        skeletonHelper = null;
+    }
+    if (mixer) {
+        mixer.stopAllAction();
+        mixer = null;
+    }
+    activeAnimation.value = null;
+    animations.value = [];
 
-        if (mixer) {
-            mixer.stopAllAction();
-            mixer = null;
-        }
-        activeAnimation.value = null;
-        animations.value = [];
+    if (!props.modelUrl) {
+        updateFraming(); 
+        return;
+    }
 
-        // 2. Add new model
-        const model = gltf.scene;
+    const isFbx = props.modelUrl.toLowerCase().endsWith('.fbx');
+    const loader = isFbx ? fbxLoader : gltfLoader;
+
+    loader.load(props.modelUrl, (object) => {
+        const model = isFbx ? object : object.scene;
         modelGroup.add(model);
 
-        // 3. Normalized Scaling and Centering
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        
-        // Normalize to a standard height of 1.0 units
-        const targetHeight = 1.0;
-        const scaleFactor = targetHeight / (size.y || 1);
-        model.scale.set(scaleFactor, scaleFactor, scaleFactor);
+        // Thick Skeleton Helper
+        skeletonHelper = new ThickSkeletonHelper(model);
+        skeletonHelper.visible = true;
+        scene.add(skeletonHelper);
+        skeletonHelper.update();
 
-        // Re-calculate box and center after scale
-        box.setFromObject(model);
-        const center = box.getCenter(new THREE.Vector3());
+        // Explicitly calculate bounding box including bones
+        const box = new THREE.Box3();
         
-        // Move to origin (centered on XZ, feet at Y=0)
-        model.position.x -= center.x;
-        model.position.z -= center.z;
-        model.position.y -= box.min.y;
+        // 1. Check for meshes
+        const hasMeshes = (obj) => {
+            let found = false;
+            obj.traverse(child => { if (child.isMesh) found = true; });
+            return found;
+        };
 
-        // 4. Animations
-        if (gltf.animations && gltf.animations.length > 0) {
-            mixer = new THREE.AnimationMixer(model);
-            animations.value = gltf.animations;
-            playAnimation(gltf.animations[0]);
+        if (hasMeshes(model)) {
+            box.setFromObject(model);
+        } else {
+            // 2. Fallback to bones if no meshes
+            model.traverse(child => {
+                if (child.isBone) {
+                    // Use world matrix for accurate bone position
+                    const position = new THREE.Vector3();
+                    child.getWorldPosition(position);
+                    box.expandByPoint(position);
+                }
+            });
         }
 
-        // 5. Apply Precise Framing
+        // If still empty (very rare), use a default unit box
+        if (box.isEmpty()) {
+            box.set(new THREE.Vector3(-0.5, 0, -0.5), new THREE.Vector3(0.5, 1, 0.5));
+        }
+        
+        const size = box.getSize(new THREE.Vector3());
+        const targetHeight = 1.0;
+        
+        // MIXAMO FIX: If size is huge (e.g. 100-200 units), scaleFactor will be tiny (0.01)
+        const scaleFactor = targetHeight / (size.y || 1);
+        
+        console.log(`[ThreePreview] Model: ${props.modelUrl}`);
+        console.log(`[ThreePreview] Raw Size:`, size);
+        console.log(`[ThreePreview] Scale Factor:`, scaleFactor);
+
+        model.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+        // Center on X and Z, but keep Y at 0 (standing on grid)
+        const center = box.getCenter(new THREE.Vector3());
+        // We negate the center to move it to (0,0,0), then scale it
+        model.position.x = -center.x * scaleFactor;
+        model.position.z = -center.z * scaleFactor;
+        model.position.y = -box.min.y * scaleFactor; // Bottom of box at Y=0
+
+        // Animations
+        const clips = isFbx ? object.animations : object.animations;
+        if (clips && clips.length > 0) {
+            mixer = new THREE.AnimationMixer(model);
+            animations.value = clips;
+            playAnimation(clips[0]);
+        }
+
         updateFraming();
     }, 
     undefined, 
@@ -179,6 +315,12 @@ const animate = () => {
     const delta = clock.getDelta();
     if (controls) controls.update();
     if (mixer) mixer.update(delta);
+    
+    // Safely update skeleton helper if it exists
+    if (skeletonHelper && typeof skeletonHelper.update === 'function') {
+        skeletonHelper.update();
+    }
+    
     if (renderer && scene && camera) renderer.render(scene, camera);
 };
 
@@ -202,7 +344,7 @@ onUnmounted(() => {
 });
 
 watch(() => props.modelUrl, () => {
-    if (loader && scene) loadModel();
+    if (scene) loadModel();
 });
 </script>
 
@@ -210,24 +352,12 @@ watch(() => props.modelUrl, () => {
     <div class="three-preview">
         <div class="header-overlay">
             <span class="header-title">{{ title || t('clues.edit.media.header_3d') }}</span>
-            <slot name="header-actions"></slot>
+            <div class="header-actions">
+                <slot name="header-actions"></slot>
+            </div>
         </div>
 
         <div ref="container" class="renderer-container"></div>
-
-        <div v-if="animations.length > 0" class="animations-overlay">
-            <div class="animations-list">
-                <Button 
-                    v-for="clip in animations" 
-                    :key="clip.name"
-                    :label="clip.name.toUpperCase()"
-                    :severity="activeAnimation === clip.name ? 'primary' : 'secondary'"
-                    text
-                    class="animation-btn"
-                    @click="playAnimation(clip)"
-                />
-            </div>
-        </div>
 
         <div v-if="!modelUrl" class="no-data-overlay">
             <i class="pi pi-user no-data-icon"></i>
@@ -275,6 +405,21 @@ watch(() => props.modelUrl, () => {
     letter-spacing: 2px;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.icon-only-btn, :deep(.upload-trigger-btn.p-button-icon-only) {
+    padding: 0.5rem !important;
+    height: 2.5rem !important;
+    width: 2.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
 .no-data-overlay {
     position: absolute;
     inset: 0;
@@ -297,45 +442,6 @@ watch(() => props.modelUrl, () => {
     color: var(--color-noir-muted);
     font-size: 0.8rem;
     letter-spacing: 2px;
-}
-
-.animations-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 1rem;
-    background: linear-gradient(to top, rgba(11, 15, 25, 0.9), transparent);
-    z-index: 10;
-}
-
-.animations-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: flex-end;
-}
-
-.animation-btn {
-    font-family: var(--font-mono);
-    font-size: 0.75rem !important;
-    font-weight: bold !important;
-    padding: 0.25rem 0.75rem !important;
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: var(--color-noir-muted) !important;
-    border-radius: 4px;
-}
-
-.animation-btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    color: var(--color-noir-text) !important;
-}
-
-:deep(.p-button-primary).animation-btn {
-    background: rgba(var(--color-noir-accent-rgb), 0.2) !important;
-    border-color: var(--color-noir-accent) !important;
-    color: var(--color-noir-accent) !important;
 }
 
 .scan-btn {

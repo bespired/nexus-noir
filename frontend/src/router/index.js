@@ -109,6 +109,16 @@ const routes = [
         component: () => import('../views/clues/ClueEdit.vue')
     },
     {
+        path: '/animations',
+        name: 'animations',
+        component: () => import('../views/animations/AnimationsIndex.vue')
+    },
+    {
+        path: '/animations/:id/edit',
+        name: 'animation-edit',
+        component: () => import('../views/animations/AnimationEdit.vue')
+    },
+    {
         path: '/notes',
         name: 'notes',
         component: () => import('../views/notes/NotesIndex.vue'),

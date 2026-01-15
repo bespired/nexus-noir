@@ -12,6 +12,8 @@ use App\Http\Controllers\SceneController;
 use App\Http\Controllers\SectorController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\ConfigController;
+use App\Http\Controllers\AnimationController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -19,6 +21,8 @@ Route::get('/user', function (Request $request) {
 
 Route::apiResource('actions', ActionController::class);
 Route::apiResource('characters', CharacterController::class);
+Route::apiResource('animations', AnimationController::class);
+
 Route::apiResource('clues', ClueController::class);
 Route::apiResource('dialogs', DialogController::class);
 Route::apiResource('notes', NoteController::class);
