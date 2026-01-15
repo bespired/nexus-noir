@@ -2,6 +2,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Action;
+use App\Models\Animation;
+use App\Models\AnimationCharacter;
 use App\Models\Character;
 use App\Models\Clue;
 use App\Models\Config;
@@ -53,6 +55,8 @@ class ImportJsonData extends Command
         $this->importConfigs();
         $this->importScenes();
         $this->importMedia();
+        $this->importAnimations();
+        $this->importAnimationCharacter();
 
         // Enable foreign key checks
         Schema::enableForeignKeyConstraints();
@@ -72,6 +76,8 @@ class ImportJsonData extends Command
         Note::truncate();
         Scene::truncate();
         Sector::truncate();
+        Animation::truncate();
+        AnimationCharacter::truncate();
     }
 
     private function importSectors()
@@ -79,15 +85,7 @@ class ImportJsonData extends Command
         $this->info('Importing Sectors...');
         $data = $this->loadJson('sectors.json');
         foreach ($data as $item) {
-            Sector::create([
-                'id'                      => $item['id'],
-                'name'                    => $item['name'],
-                'description'             => $item['description'] ?? null,
-                'visible_clue_conditions' => $item['visible_clue_conditions'] ?? null,
-                'thumb_dimensions'        => isset($item['thumb_dimensions']) ? json_encode($item['thumb_dimensions']) : null,
-                'created_at'              => $item['created_at'] ?? now(),
-                'updated_at'              => $item['updated_at'] ?? now(),
-            ]);
+            Sector::create($item);
         }
     }
 
@@ -133,13 +131,7 @@ class ImportJsonData extends Command
         $this->info('Importing Dialogs...');
         $data = $this->loadJson('dialogs.json');
         foreach ($data as $item) {
-            Dialog::create([
-                'id'         => $item['id'],
-                'title'      => $item['title'] ?? $item['titel'],
-                'tree'       => $item['tree'] ?? null,
-                'created_at' => $item['created_at'] ?? now(),
-                'updated_at' => $item['updated_at'] ?? now(),
-            ]);
+            Dialog::create($item);
         }
     }
 
@@ -148,14 +140,7 @@ class ImportJsonData extends Command
         $this->info('Importing Actions...');
         $data = $this->loadJson('actions.json');
         foreach ($data as $item) {
-            Action::create([
-                'id'          => $item['id'],
-                'name'        => $item['name'],
-                'description' => $item['description'] ?? null,
-                'actions'     => $item['actions'] ?? null,
-                'created_at'  => $item['created_at'] ?? now(),
-                'updated_at'  => $item['updated_at'] ?? now(),
-            ]);
+            Action::create($item);
         }
     }
 
@@ -195,19 +180,7 @@ class ImportJsonData extends Command
         $this->info('Importing Scenes...');
         $data = $this->loadJson('scenes.json');
         foreach ($data as $item) {
-            Scene::create([
-                'id'               => $item['id'],
-                'sector_id'        => $item['sector_id'] ?? null,
-                'title'            => $item['title'] ?? $item['titel'], // Handle both keys just in case
-                'description'      => $item['description'] ?? '',
-                'type'             => $item['type'] ?? 'walkable-area',
-                '2d_gateways'      => $item['2d_gateways'] ?? null,
-                '3d_spawnpoints'   => $item['3d_spawnpoints'] ?? null,
-                'thumb_dimensions' => isset($item['thumb_dimensions']) ? $item['thumb_dimensions'] : null,
-                'data'             => isset($item['data']) ? $item['data'] : null,
-                'created_at'       => $item['created_at'] ?? now(),
-                'updated_at'       => $item['updated_at'] ?? now(),
-            ]);
+            Scene::create($item);
         }
     }
 
@@ -226,6 +199,31 @@ class ImportJsonData extends Command
                 'created_at'     => $item['created_at'] ?? now(),
                 'updated_at'     => $item['updated_at'] ?? now(),
             ]);
+        }
+    }
+
+    private function importAnimations()
+    {
+        $this->info('Importing Animations...');
+        $data = $this->loadJson('animations.json');
+        foreach ($data as $item) {
+            Animation::create([
+                'id'          => $item['id'],
+                'name'        => $item['name'] ?? null,
+                'description' => $item['description'] ?? null,
+                'type'        => $item['type'] ?? 'idle',
+                'created_at'  => $item['created_at'] ?? now(),
+                'updated_at'  => $item['updated_at'] ?? now(),
+            ]);
+        }
+    }
+
+    private function importAnimationCharacter()
+    {
+        $this->info('Importing Animation Character associations...');
+        $data = $this->loadJson('animation_character.json');
+        foreach ($data as $item) {
+            AnimationCharacter::create($item);
         }
     }
 

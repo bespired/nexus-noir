@@ -32,7 +32,7 @@ gives you
 #### Install Nexus Noir assets
 
 Download zip.
-https://drive.google.com/file/d/1cjVkwWUJ0Drq8G0wkUQaafZ3Fvyx-SLU/view?usp=sharing
+https://drive.google.com/file/d/13itV9nYPxxxz_UIMcBHEcKfQAsYob1W7/view?usp=sharing
 
 Put it in the backup folder.
 Then run
