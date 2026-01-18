@@ -15,8 +15,13 @@ class Media extends Model
         'filepad',
         'title',
         'type',
+        'data',
         'imageable_type',
         'imageable_id',
+    ];
+
+    protected $casts = [
+        'data' => 'array',
     ];
 
     public function imageable(): MorphTo

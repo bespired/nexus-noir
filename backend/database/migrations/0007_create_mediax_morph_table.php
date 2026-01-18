@@ -13,7 +13,8 @@ return new class extends Migration
             $table->id();
             $table->string('filepad');
             $table->string('title')->nullable();
-            $table->string('type');           // 2d, 3d (png, jpg, glb)
+            $table->string('type'); // 2d, 3d (png, jpg, glb)
+            $table->json('data')->nullable();
             $table->string('imageable_type'); // Morph class
             $table->integer('imageable_id');
             $table->timestamps();

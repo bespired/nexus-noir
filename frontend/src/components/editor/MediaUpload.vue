@@ -1,6 +1,8 @@
 <script setup>
 import { ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const props = defineProps({
     modelId: {
@@ -37,15 +39,54 @@ const triggerFileInput = () => {
     fileInput.value.click();
 };
 
+const checkForBones = async (file) => {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const contents = e.target.result;
+            const loader = new GLTFLoader();
+            loader.parse(contents, '', (gltf) => {
+                let hasBones = false;
+                gltf.scene.traverse((child) => {
+                    if (child.isBone || (child.isMesh && child.skeleton)) {
+                        hasBones = true;
+                    }
+                });
+                resolve(hasBones);
+            }, (error) => {
+                console.error('Error parsing GLB for bone detection:', error);
+                resolve(false);
+            });
+        };
+        reader.onerror = () => resolve(false);
+        reader.readAsArrayBuffer(file);
+    });
+};
+
 const handleUpload = async () => {
     if (!selectedFile.value) return;
 
     uploading.value = true;
+
+    let metadata = {};
+    const extension = selectedFile.value.name.split('.').pop().toLowerCase();
+    
+    if (extension === 'glb') {
+        const hasBones = await checkForBones(selectedFile.value);
+        if (hasBones) {
+            metadata.hasBones = true;
+        }
+    }
+
     const formData = new FormData();
     formData.append('file', selectedFile.value);
     formData.append('imageable_id', props.modelId);
     formData.append('imageable_type', props.modelType);
     formData.append('title', fileTitle.value);
+    
+    if (Object.keys(metadata).length > 0) {
+        formData.append('data', JSON.stringify(metadata));
+    }
 
     try {
         const response = await fetch('/api/media', {

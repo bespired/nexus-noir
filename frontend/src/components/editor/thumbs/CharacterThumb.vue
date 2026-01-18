@@ -21,6 +21,10 @@ const has3dModel = computed(() => {
     return props.character.media && props.character.media.some(m => m.type === '3d');
 });
 
+const hasBones = computed(() => {
+    return props.character.media && props.character.media.some(m => m.type === '3d' && m.data && m.data.hasBones);
+});
+
 const isPlayable = computed(() => props.character.is_playable);
 </script>
 
@@ -39,14 +43,26 @@ const isPlayable = computed(() => props.character.is_playable);
             <span class="character-thumb__role">{{ character.role }}</span>
             <p class="character-thumb__description">{{ character.description }}</p>
 
+            <div class="character-thumb__badges">
+                <Badge v-if="hasBones"
+                    value="bones"
+                    severity="contrast"
+                    class="character-thumb__badge-item"
+                >
+                    <img src="/icons/bone.svg" class="badge-icon" />
+                </Badge>
+                <Badge v-if="has3dModel"
+                    value="3D"
+                    severity="contrast"
+                    class="character-thumb__badge-item"
+                >
+                    <img src="/icons/3d.svg" class="badge-icon" />GLB
+                </Badge>
+            </div>
+
             <div class="character-thumb__footer">
                 <span class="character-thumb__id">id: {{ character.id }}</span>
                 <div class="character-thumb__actions">
-                    <Badge v-if="has3dModel"
-                        value="3D"
-                        severity="contrast"
-                        class="global-thumb__badge-3d"
-                    />
                     <Button
                         label="EDIT >"
                         severity="warning"
@@ -61,6 +77,12 @@ const isPlayable = computed(() => props.character.is_playable);
 </template>
 
 <style scoped>
+
+.badge-icon {
+    filter: invert(1);
+    min-width: 12px;
+    margin:0 4px;
+}
 .character-thumb {
     background-color: var(--color-noir-panel);
     border: 1px solid var(--color-noir-panel);
@@ -153,20 +175,32 @@ const isPlayable = computed(() => props.character.is_playable);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 1rem;
     border-top: 1px solid var(--color-noir-dark);
     padding-top: 0.5rem;
+}
+
+.character-thumb__badges {
+    display: flex;
+    justify-content: flex-end;
+    /*gap: 0.5rem;*/
+    margin-bottom: 0.5rem;
+    margin-top: 1rem;
+}
+
+.character-thumb__badge-item {
+    font-size: 0.65rem !important;
+    font-weight: bold;
+    background-color: #0b0f19 !important;
+    border: 1px solid #1f2937 !important;
+    color: white !important;
+    border-radius: 4px !important;
+    /*padding: 0.2rem 0.6rem !important;*/
 }
 
 .character-thumb__actions {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-}
-
-.character-thumb__badge-3d {
-    font-size: 0.65rem !important;
-    font-weight: bold;
 }
 
 .character-thumb__id {

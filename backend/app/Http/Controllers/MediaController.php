@@ -14,7 +14,8 @@ class MediaController extends Controller
             'file' => 'required|file|extensions:jpeg,png,jpg,gif,glb,fbx|max:10240',
             'imageable_id' => 'required|integer',
             'imageable_type' => 'required|string',
-            'title' => 'nullable|string'
+            'title' => 'nullable|string',
+            'data' => 'nullable|string'
         ]);
 
         if ($request->hasFile('file')) {
@@ -47,6 +48,7 @@ class MediaController extends Controller
                 'type' => $type,
                 'imageable_type' => $request->imageable_type,
                 'imageable_id' => $request->imageable_id,
+                'data' => $request->data ? json_decode($request->data, true) : null,
             ]);
 
             return response()->json($media, 201);
