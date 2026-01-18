@@ -21,6 +21,8 @@ const deleting = ref(false);
 const showDeleteConfirm = ref(false);
 const showUpload = ref(false);
 const threePreview = ref(null);
+const showSkin = ref(true);
+const showSkeleton = ref(true);
 
 const isVehicle = computed(() => route.path.includes('/vehicles/'));
 const i18nPrefix = computed(() => isVehicle.value ? 'vehicles' : 'characters');
@@ -294,8 +296,32 @@ onMounted(async () => {
                             <TabPanels>
                                 <TabPanel value="0">
                                     <div class="preview-section 3d-section">
-                                        <ThreePreview ref="threePreview" :modelUrl="mediaUrl3d" :title="t(`${i18nPrefix}.edit.media.header_3d`)">
+                                        <ThreePreview
+                                            ref="threePreview"
+                                            :modelUrl="mediaUrl3d"
+                                            :title="t(`${i18nPrefix}.edit.media.header_3d`)"
+                                            :showSkin="showSkin"
+                                            :showSkeleton="showSkeleton"
+                                        >
                                             <template #header-actions>
+                                                <template v-if="current3dMedia && current3dMedia.data?.hasBones" class="flex gap-1 mr-4">
+                                                    <Button
+                                                        :icon="showSkin ? 'pi pi-user' : 'pi pi-user-edit'"
+                                                        :severity="showSkin ? 'primary' : 'secondary'"
+                                                        text
+                                                        class="upload-trigger-btn !px-2"
+                                                        v-tooltip.top="'TOGGLE SKIN'"
+                                                        @click="showSkin = !showSkin"
+                                                    />
+                                                    <Button
+                                                        :icon="showSkeleton ? 'pi pi-share-alt' : 'pi pi-external-link'"
+                                                        :severity="showSkeleton ? 'primary' : 'secondary'"
+                                                        text
+                                                        class="upload-trigger-btn !px-2"
+                                                        v-tooltip.top="'TOGGLE SKELETON'"
+                                                        @click="showSkeleton = !showSkeleton"
+                                                    />
+                                                </template>
                                                 <Button
                                                     v-if="!current3dMedia"
                                                     :label="t(`${i18nPrefix}.edit.media.btn_add_3d`)"
@@ -303,7 +329,7 @@ onMounted(async () => {
                                                     class="upload-trigger-btn"
                                                     @click="triggerUpload('3d')"
                                                 />
-                                                <div v-else class="flex gap-2">
+                                                <template v-else class="flex gap-2">
                                                     <Button
                                                         icon="pi pi-camera"
                                                         severity="secondary"
@@ -319,7 +345,7 @@ onMounted(async () => {
                                                         class="upload-trigger-btn"
                                                         @click="deleteMedia(current3dMedia)"
                                                     />
-                                                </div>
+                                                </template>
                                             </template>
                                         </ThreePreview>
                                     </div>

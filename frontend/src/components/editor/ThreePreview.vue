@@ -15,6 +15,14 @@ const props = defineProps({
     title: {
         type: String,
         default: ''
+    },
+    showSkin: {
+        type: Boolean,
+        default: true
+    },
+    showSkeleton: {
+        type: Boolean,
+        default: true
     }
 });
 
@@ -36,19 +44,19 @@ class ThickSkeletonHelper extends THREE.Group {
         this.model = model;
         this.bones = [];
         this.boneSegments = [];
-        
+
         model.traverse(child => {
             if (child.isBone) this.bones.push(child);
         });
 
-        const material = new THREE.MeshStandardMaterial({ 
-            color: 0x3b82f6, 
-            emissive: 0x3b82f6, 
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x3b82f6,
+            emissive: 0x3b82f6,
             emissiveIntensity: 2,
             metalness: 0.5,
             roughness: 0.2
         });
-        
+
         const cylinderGeo = new THREE.CylinderGeometry(1, 1, 1, 6);
         const sphereGeo = new THREE.SphereGeometry(1, 8, 8);
 
@@ -63,10 +71,10 @@ class ThickSkeletonHelper extends THREE.Group {
                 this.add(cylinder);
                 this.boneSegments.push({ cylinder, bone, parent: bone.parent });
             }
-            
+
             this.boneSegments.push({ sphere, bone });
         });
-        
+
         this.renderOrder = 999;
     }
 
@@ -120,7 +128,7 @@ const init = () => {
     camera.position.set(0, 5, 20);
 
     // RENDERER
-    renderer = new THREE.WebGLRenderer({ 
+    renderer = new THREE.WebGLRenderer({
         antialias: true,
         preserveDrawingBuffer: true
     });
@@ -184,18 +192,18 @@ const updateFraming = () => {
     const h3d = 1.0;
     const fovRad = (camera.fov * Math.PI) / 180;
     // Zoom in a bit more by using a higher occupiedRatio or smaller padding
-    const distance = h3d / (occupiedRatio * Math.tan(fovRad / 2)); 
-    // Removed the '2 *' factor to zoom in closer? 
+    const distance = h3d / (occupiedRatio * Math.tan(fovRad / 2));
+    // Removed the '2 *' factor to zoom in closer?
     // Actually, distance = (height/2) / tan(fov/2) for full height.
     // So distance = height / (2 * tan(fov/2)).
     // I'll keep it but increase occupiedRatio.
-    const aggressiveRatio = Math.max(occupiedRatio, 1.2); 
+    const aggressiveRatio = Math.max(occupiedRatio, 1.2);
     const finalDistance = h3d / (2 * aggressiveRatio * Math.tan(fovRad / 2));
 
     // Center of character vertically (since normalized to 1.0 units height starting from 0)
     const centerHeight = 0.5;
     camera.position.set(0, centerHeight, finalDistance);
-    
+
     if (controls) {
         controls.target.set(0, centerHeight, 0);
         controls.update();
@@ -206,8 +214,8 @@ const loadModel = () => {
     if (!modelGroup) return;
 
     // Reset current state
-    while(modelGroup.children.length > 0){ 
-        modelGroup.remove(modelGroup.children[0]); 
+    while(modelGroup.children.length > 0){
+        modelGroup.remove(modelGroup.children[0]);
     }
     if (skeletonHelper) {
         scene.remove(skeletonHelper);
@@ -221,7 +229,7 @@ const loadModel = () => {
     animations.value = [];
 
     if (!props.modelUrl) {
-        updateFraming(); 
+        updateFraming();
         return;
     }
 
@@ -234,13 +242,18 @@ const loadModel = () => {
 
         // Thick Skeleton Helper
         skeletonHelper = new ThickSkeletonHelper(model);
-        skeletonHelper.visible = true;
+        skeletonHelper.visible = props.showSkeleton;
         scene.add(skeletonHelper);
         skeletonHelper.update();
 
+        // Apply initial skin visibility
+        model.traverse(child => {
+            if (child.isMesh) child.visible = props.showSkin;
+        });
+
         // Explicitly calculate bounding box including bones
         const box = new THREE.Box3();
-        
+
         // 1. Check for meshes
         const hasMeshes = (obj) => {
             let found = false;
@@ -266,13 +279,13 @@ const loadModel = () => {
         if (box.isEmpty()) {
             box.set(new THREE.Vector3(-0.5, 0, -0.5), new THREE.Vector3(0.5, 1, 0.5));
         }
-        
+
         const size = box.getSize(new THREE.Vector3());
         const targetHeight = 1.0;
-        
+
         // MIXAMO FIX: If size is huge (e.g. 100-200 units), scaleFactor will be tiny (0.01)
         const scaleFactor = targetHeight / (size.y || 1);
-        
+
         console.log(`[ThreePreview] Model: ${props.modelUrl}`);
         console.log(`[ThreePreview] Raw Size:`, size);
         console.log(`[ThreePreview] Scale Factor:`, scaleFactor);
@@ -295,8 +308,8 @@ const loadModel = () => {
         }
 
         updateFraming();
-    }, 
-    undefined, 
+    },
+    undefined,
     (error) => {
         console.error(`[ThreePreview] Error loading model: ${props.modelUrl}`, error);
     });
@@ -315,12 +328,12 @@ const animate = () => {
     const delta = clock.getDelta();
     if (controls) controls.update();
     if (mixer) mixer.update(delta);
-    
+
     // Safely update skeleton helper if it exists
     if (skeletonHelper && typeof skeletonHelper.update === 'function') {
         skeletonHelper.update();
     }
-    
+
     if (renderer && scene && camera) renderer.render(scene, camera);
 };
 
@@ -346,6 +359,20 @@ onUnmounted(() => {
 watch(() => props.modelUrl, () => {
     if (scene) loadModel();
 });
+
+watch(() => props.showSkin, (val) => {
+    if (modelGroup) {
+        modelGroup.traverse(child => {
+            if (child.isMesh) child.visible = val;
+        });
+    }
+});
+
+watch(() => props.showSkeleton, (val) => {
+    if (skeletonHelper) {
+        skeletonHelper.visible = val;
+    }
+});
 </script>
 
 <template>
@@ -362,7 +389,7 @@ watch(() => props.modelUrl, () => {
         <div v-if="!modelUrl" class="no-data-overlay">
             <i class="pi pi-user no-data-icon"></i>
             <span class="no-data-text">NO NEURAL DATA FOUND</span>
-            <Button label="INITIALIZE_SCAN" severity="primary" outlined class="scan-btn" />
+            <Badge label="INITIALIZE_SCAN" severity="primary" outlined class="scan-btn" />
         </div>
     </div>
 </template>
