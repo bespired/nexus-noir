@@ -11,7 +11,7 @@ class CharacterController extends Controller
      */
     public function index(Request $request)
     {
-        $query = \App\Models\Character::with('media');
+        $query = \App\Models\Character::with(['media', 'animations']);
 
         if ($request->has('type')) {
             $query->where('type', $request->query('type'));
@@ -33,7 +33,11 @@ class CharacterController extends Controller
 
         $character = \App\Models\Character::create($validated);
 
-        return response()->json($character, 201);
+        if ($request->has('animation_ids')) {
+            $character->animations()->sync($request->input('animation_ids'));
+        }
+
+        return response()->json($character->load(['media', 'animations']), 201);
     }
 
     /**
@@ -41,7 +45,7 @@ class CharacterController extends Controller
      */
     public function show(string $id)
     {
-        return \App\Models\Character::with('media')->findOrFail($id);
+        return \App\Models\Character::with(['media', 'animations'])->findOrFail($id);
     }
 
     /**
@@ -62,7 +66,11 @@ class CharacterController extends Controller
 
         $character->update($validated);
 
-        return response()->json($character);
+        if ($request->has('animation_ids')) {
+            $character->animations()->sync($request->input('animation_ids'));
+        }
+
+        return response()->json($character->load(['media', 'animations']));
     }
 
     /**

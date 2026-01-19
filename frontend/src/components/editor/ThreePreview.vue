@@ -23,6 +23,10 @@ const props = defineProps({
     showSkeleton: {
         type: Boolean,
         default: true
+    },
+    externalAnimationUrl: {
+        type: String,
+        default: null
     }
 });
 
@@ -191,14 +195,12 @@ const updateFraming = () => {
     // Our models are normalized to 1.0 units high
     const h3d = 1.0;
     const fovRad = (camera.fov * Math.PI) / 180;
-    // Zoom in a bit more by using a higher occupiedRatio or smaller padding
-    const distance = h3d / (occupiedRatio * Math.tan(fovRad / 2));
-    // Removed the '2 *' factor to zoom in closer?
-    // Actually, distance = (height/2) / tan(fov/2) for full height.
-    // So distance = height / (2 * tan(fov/2)).
-    // I'll keep it but increase occupiedRatio.
-    const aggressiveRatio = Math.max(occupiedRatio, 1.2);
-    const finalDistance = h3d / (2 * aggressiveRatio * Math.tan(fovRad / 2));
+    
+    // Zoom out to show full body. 
+    // d = (height/2) / tan(fov/2)
+    // We'll use a ratio < 1.0 to add some padding around the character.
+    const comfortableRatio = 0.85; 
+    const finalDistance = h3d / (2 * comfortableRatio * Math.tan(fovRad / 2));
 
     // Center of character vertically (since normalized to 1.0 units height starting from 0)
     const centerHeight = 0.5;
@@ -299,10 +301,12 @@ const loadModel = () => {
         model.position.z = -center.z * scaleFactor;
         model.position.y = -box.min.y * scaleFactor; // Bottom of box at Y=0
 
+        // Create mixer for all models to support external animations
+        mixer = new THREE.AnimationMixer(model);
+
         // Animations
         const clips = isFbx ? object.animations : object.animations;
         if (clips && clips.length > 0) {
-            mixer = new THREE.AnimationMixer(model);
             animations.value = clips;
             playAnimation(clips[0]);
         }
@@ -337,13 +341,151 @@ const animate = () => {
     if (renderer && scene && camera) renderer.render(scene, camera);
 };
 
+const loadExternalAnimation = (url) => {
+    console.log(`[ThreePreview] loadExternalAnimation called with: ${url}`);
+    if (!url) {
+        console.warn('[ThreePreview] No URL provided to loadExternalAnimation');
+        return;
+    }
+    if (!mixer) {
+        console.warn('[ThreePreview] No mixer available to loadExternalAnimation');
+        return;
+    }
+
+    const isFbx = url.toLowerCase().endsWith('.fbx');
+    const loader = isFbx ? fbxLoader : gltfLoader;
+
+    console.log(`[ThreePreview] Using ${isFbx ? 'FBX' : 'GLTF'} loader for external animation`);
+
+    loader.load(url, (object) => {
+        console.log(`[ThreePreview] External animation loaded:`, object);
+        console.log(`[ThreePreview] External object rotation:`, object.rotation);
+        console.log(`[ThreePreview] External object scale:`, object.scale);
+
+        const clips = isFbx ? object.animations : object.animations;
+        if (clips && clips.length > 0) {
+            console.log(`[ThreePreview] Found ${clips.length} clips in external file`);
+            
+            // Log bone names in the animation for comparison
+            if (clips[0].tracks && clips[0].tracks.length > 0) {
+                const trackNames = clips[0].tracks.slice(0, 5).map(t => t.name);
+                console.log(`[ThreePreview] Sample track names in animation:`, trackNames);
+            }
+
+            // Log bone names in the model for comparison
+            const modelBones = [];
+            modelGroup.traverse(child => { if (child.isBone) modelBones.push(child.name); });
+            console.log(`[ThreePreview] Sample bone names in model:`, modelBones.slice(0, 5));
+
+            // Stop current animations
+            mixer.stopAllAction();
+            
+            // Apply the first clip from the external file
+            const clip = clips[0].clone(); // Clone to avoid modifying original if cached
+            
+            const action = mixer.clipAction(clip);
+            action.play();
+            activeAnimation.value = `External: ${clip.name}`;
+            console.log(`[ThreePreview] Playing external animation: ${clip.name}`);
+        } else {
+            console.warn('[ThreePreview] No animation clips found in external file');
+        }
+    }, (xhr) => {
+        console.log(`[ThreePreview] Loading progress: ${ (xhr.loaded / xhr.total * 100) }%`);
+    }, (error) => {
+        console.error(`[ThreePreview] Error loading external animation: ${url}`, error);
+    });
+};
+
 const captureScreenshot = () => {
     if (!renderer || !scene || !camera) return null;
+    renderer.render(scene, camera); // Ensure we capture the current state
     return renderer.domElement.toDataURL('image/png');
 };
 
+const preparePhotoOpp = (options = {}) => {
+    const { forceSkeleton = false, isMugshot = false } = options;
+    
+    if (!modelGroup || !controls || !camera) return;
+
+    // Calculate bounding box
+    let box = new THREE.Box3().setFromObject(modelGroup);
+    
+    // Fallback for models without meshes (skeletons only)
+    if (box.isEmpty()) {
+        modelGroup.traverse(child => {
+            if (child.isBone) {
+                const position = new THREE.Vector3();
+                child.getWorldPosition(position);
+                box.expandByPoint(position);
+            }
+        });
+    }
+
+    // Still empty? Use unit box
+    if (box.isEmpty()) {
+        box.set(new THREE.Vector3(-0.5, 0, -0.5), new THREE.Vector3(0.5, 1, 0.5));
+    }
+
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    // Target calculation: Mugshot targets head, Full shot targets center
+    const viewCenter = new THREE.Vector3(
+        center.x,
+        isMugshot ? box.max.y - (size.y * 0.15) : center.y, 
+        center.z
+    );
+
+    // Set controls target
+    controls.target.copy(viewCenter);
+
+    // Distance calculation: Mugshot is tight, Full shot fits max dimension
+    let distance;
+    if (isMugshot) {
+        distance = size.y * 0.4;
+    } else {
+        const maxDim = Math.max(size.x, size.y, size.z);
+        // Ensure distance is enough to fit the object within FOV (assuming ~45-50 deg FOV)
+        // distance approx size / (2 * tan(fov/2))
+        // Using * 1.5 provides a safe comfortable padding for full view
+        distance = maxDim * 1.5;
+    }
+
+    // 3/4 View: offset on X and Z
+    const angle = -Math.PI / 4; 
+    camera.position.set(
+        viewCenter.x + Math.sin(angle) * distance,
+        viewCenter.y + (isMugshot ? distance * 0.1 : distance * 0.2), 
+        viewCenter.z + Math.cos(angle) * distance
+    );
+
+    controls.update();
+    renderer.render(scene, camera);
+};
+
+let savedCameraPos = null;
+let savedControlsTarget = null;
+
+const saveCameraState = () => {
+    if (!camera || !controls) return;
+    savedCameraPos = camera.position.clone();
+    savedControlsTarget = controls.target.clone();
+};
+
+const restoreCameraState = () => {
+    if (!camera || !controls || !savedCameraPos || !savedControlsTarget) return;
+    camera.position.copy(savedCameraPos);
+    controls.target.copy(savedControlsTarget);
+    controls.update();
+    renderer.render(scene, camera);
+};
+
 defineExpose({
-    captureScreenshot
+    captureScreenshot,
+    preparePhotoOpp,
+    saveCameraState,
+    restoreCameraState
 });
 
 onMounted(() => {
@@ -371,6 +513,12 @@ watch(() => props.showSkin, (val) => {
 watch(() => props.showSkeleton, (val) => {
     if (skeletonHelper) {
         skeletonHelper.visible = val;
+    }
+});
+
+watch(() => props.externalAnimationUrl, (newUrl) => {
+    if (newUrl) {
+        loadExternalAnimation(newUrl);
     }
 });
 </script>

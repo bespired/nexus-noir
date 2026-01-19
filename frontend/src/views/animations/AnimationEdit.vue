@@ -22,6 +22,8 @@ const deleting = ref(false);
 const showDeleteConfirm = ref(false);
 const showUpload = ref(false);
 const threePreview = ref(null);
+const showSkin = ref(true);
+const showSkeleton = ref(true);
 
 const typeOptions = ref([
     { label: 'Mixamo', value: 'mixamo' },
@@ -101,6 +103,10 @@ const handleSave = async () => {
     } finally {
         saving.value = false;
     }
+};
+
+const removeCharacter = (charId) => {
+    animation.value.character_ids = animation.value.character_ids.filter(id => id !== charId);
 };
 
 const handleDelete = () => {
@@ -202,7 +208,21 @@ const triggerUpload = (type) => {
 const handleCaptureScreenshot = async () => {
     if (!threePreview.value) return;
 
+    // Save current camera state
+    threePreview.value.saveCameraState();
+
+    // Prepare Photo-Opp pose and framing
+    // Ensure skeleton is detectable (forceSkeleton: true) 
+    // and use full body view (isMugshot: false [default])
+    threePreview.value.preparePhotoOpp({ 
+        forceSkeleton: true 
+    });
+
     const dataUrl = threePreview.value.captureScreenshot();
+    
+    // Restore camera state
+    threePreview.value.restoreCameraState();
+
     if (!dataUrl) return;
 
     const res = await fetch(dataUrl);
@@ -302,8 +322,30 @@ onMounted(async () => {
                             <TabPanels>
                                 <TabPanel value="0">
                                     <div class="preview-section 3d-section">
-                                        <ThreePreview ref="threePreview" :modelUrl="mediaUrl3d" :title="t('animations.edit.media.header_3d')">
+                                        <ThreePreview 
+                                            ref="threePreview" 
+                                            :modelUrl="mediaUrl3d" 
+                                            :title="t('animations.edit.media.header_3d')"
+                                            :showSkin="showSkin"
+                                            :showSkeleton="showSkeleton"
+                                        >
                                             <template #header-actions>
+                                                <Button
+                                                    icon="pi pi-user"
+                                                    :severity="showSkin ? 'primary' : 'secondary'"
+                                                    text
+                                                    class="toggle-btn"
+                                                    v-tooltip.top="'TOGGLE_SKIN'"
+                                                    @click="showSkin = !showSkin"
+                                                />
+                                                <Button
+                                                    icon="pi pi-share-alt"
+                                                    :severity="showSkeleton ? 'primary' : 'secondary'"
+                                                    text
+                                                    class="toggle-btn"
+                                                    v-tooltip.top="'TOGGLE_SKELETON'"
+                                                    @click="showSkeleton = !showSkeleton"
+                                                />
                                                 <Button
                                                     v-if="!current3dMedia"
                                                     :label="t('animations.edit.media.btn_add_3d')"
@@ -395,14 +437,22 @@ onMounted(async () => {
 
                     <div class="field">
                         <label for="characters">{{ t('animations.edit.label_characters') }}</label>
-                        <MultiSelect
-                            v-model="animation.character_ids"
-                            :options="characters"
-                            optionLabel="name"
-                            optionValue="id"
-                            class="noir-input noir-select"
-                            display="chip"
-                        />
+                        <div class="badge-view-container card shadow-lg">
+                            <div class="badge-list">
+                                <template v-if="animation.character_ids && animation.character_ids.length > 0">
+                                    <div v-for="charId in animation.character_ids" :key="charId" class="animation-badge">
+                                        <span class="badge-text">{{ characters.find(c => c.id === charId)?.name || charId }}</span>
+                                        <i class="pi pi-times-circle remove-icon" @click="removeCharacter(charId)"></i>
+                                    </div>
+                                </template>
+                                <div v-else class="no-badges-text">
+                                    NO CHARACTERS ASSIGNED
+                                </div>
+                            </div>
+                            <div class="badge-view-actions">
+                                <i class="pi pi-chevron-down"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -531,5 +581,61 @@ onMounted(async () => {
 
 :deep(.p-select-label), :deep(.p-multiselect-label) {
     color: white !important;
+}
+
+/* Badge View Styles */
+.badge-view-container {
+    background-color: #0b0f19;
+    border: 1px solid #1a1f2e;
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 3rem;
+    border-radius: 4px;
+}
+
+.badge-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.animation-badge {
+    background-color: #ffffff;
+    color: #000000;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-weight: bold;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+.remove-icon {
+    font-size: 1rem;
+    cursor: pointer;
+    color: #000000;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.remove-icon:hover {
+    opacity: 1;
+}
+
+.no-badges-text {
+    color: var(--color-noir-muted);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+.badge-view-actions {
+    color: var(--color-noir-muted);
+    margin-left: 1rem;
 }
 </style>

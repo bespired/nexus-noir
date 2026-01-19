@@ -22,7 +22,10 @@ const showDeleteConfirm = ref(false);
 const showUpload = ref(false);
 const threePreview = ref(null);
 const showSkin = ref(true);
-const showSkeleton = ref(true);
+const showSkeleton = ref(false);
+const animations = ref([]);
+const activeAnimationUrl = ref(null);
+const loadingAnimations = ref(false);
 
 const isVehicle = computed(() => route.path.includes('/vehicles/'));
 const i18nPrefix = computed(() => isVehicle.value ? 'vehicles' : 'characters');
@@ -32,7 +35,11 @@ const fetchCharacter = async () => {
     try {
         const response = await fetch(`/api/characters/${characterId}`);
         if (!response.ok) throw new Error('Failed to fetch character');
-        character.value = await response.json();
+        const data = await response.json();
+        
+        // Map animations to animation_ids for MultiSelect
+        data.animation_ids = data.animations ? data.animations.map(a => a.id) : [];
+        character.value = data;
     } catch (error) {
         console.error(error);
         toast.add({
@@ -44,6 +51,19 @@ const fetchCharacter = async () => {
         router.push(backRoute.value);
     } finally {
         loading.value = false;
+    }
+};
+
+const fetchAnimations = async () => {
+    loadingAnimations.value = true;
+    try {
+        const response = await fetch('/api/animations');
+        if (!response.ok) throw new Error('Failed to fetch animations');
+        animations.value = await response.json();
+    } catch (error) {
+        console.error('Error fetching animations:', error);
+    } finally {
+        loadingAnimations.value = false;
     }
 };
 
@@ -189,10 +209,22 @@ const triggerUpload = (type) => {
 const handleCaptureScreenshot = async () => {
     if (!threePreview.value) return;
 
-    const dataUrl = threePreview.value.captureScreenshot();
-    if (!dataUrl) return;
+    // Save current camera state
+    threePreview.value.saveCameraState();
 
-    // Convert base64 to blob
+    // Prepare Photo-Opp pose and framing
+    // Only use mugshot mode (tight head zoom) for characters, not vehicles
+    threePreview.value.preparePhotoOpp({ 
+        isMugshot: !isVehicle.value 
+    });
+
+    const dataUrl = threePreview.value.captureScreenshot();
+    
+    // Restore camera state
+    threePreview.value.restoreCameraState();
+
+    if (!dataUrl) return;
+   // Convert base64 to blob
     const res = await fetch(dataUrl);
     const blob = await res.blob();
     const file = new File([blob], `thumb_${characterId}.png`, { type: 'image/png' });
@@ -244,10 +276,31 @@ const activeTab = ref("0");
 
 onMounted(async () => {
     await fetchCharacter();
+    await fetchAnimations();
     if (!current3dMedia.value && current2dMedia.value) {
         activeTab.value = "1";
     }
 });
+
+const getAnimationUrl = (anim) => {
+    if (!anim.media || anim.media.length === 0) return null;
+    
+    // First try to find by explicit type
+    let media = anim.media.find(m => m.type === '3d');
+    
+    // Fallback: check extensions if no '3d' type found (for older records)
+    if (!media) {
+        media = anim.media.find(m => {
+            const ext = m.filepad.split('.').pop().toLowerCase();
+            return ['glb', 'fbx'].includes(ext);
+        });
+    }
+
+    if (!media) return null;
+    const file = media.filepad;
+    if (file.startsWith('http')) return file;
+    return `/storage/${file}`;
+};
 </script>
 
 <template>
@@ -302,6 +355,7 @@ onMounted(async () => {
                                             :title="t(`${i18nPrefix}.edit.media.header_3d`)"
                                             :showSkin="showSkin"
                                             :showSkeleton="showSkeleton"
+                                            :externalAnimationUrl="activeAnimationUrl"
                                         >
                                             <template #header-actions>
                                                 <template v-if="current3dMedia && current3dMedia.data?.hasBones" class="flex gap-1 mr-4">
@@ -348,6 +402,24 @@ onMounted(async () => {
                                                 </template>
                                             </template>
                                         </ThreePreview>
+
+                                        <div v-if="current3dMedia && current3dMedia.data?.hasBones && animations.length > 0" class="external-animations">
+                                            <div class="animation-toolbar mb-4 flex justify-between items-center">
+                                                <span class="text-xs font-mono text-gray-500">EXTERNAL NEURAL LOOPS:</span>
+                                            </div>
+                                            <div class="animation-buttons">
+                                                <Button
+                                                    v-for="anim in animations"
+                                                    :key="anim.id"
+                                                    :label="anim.name.toUpperCase()"
+                                                    :severity="activeAnimationUrl === getAnimationUrl(anim) ? 'primary' : 'secondary'"
+                                                    size="small"
+                                                    outlined
+                                                    class="anim-btn"
+                                                    @click="activeAnimationUrl = getAnimationUrl(anim)"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </TabPanel>
                                 <TabPanel value="1">
@@ -412,6 +484,19 @@ onMounted(async () => {
                     <div class="field checkbox-field">
                         <Checkbox id="is_playable" v-model="character.is_playable" :binary="true" />
                         <label for="is_playable" class="checkbox-label">PLAYER_CONTROL_ACCESS</label>
+                    </div>
+
+                    <div v-if="!isVehicle" class="field">
+                        <label for="animations">ANIMATIONS</label>
+                        <MultiSelect
+                            v-model="character.animation_ids"
+                            :options="animations"
+                            optionLabel="name"
+                            optionValue="id"
+                            class="noir-input noir-select"
+                            placeholder="SELECT ANIMATIONS"
+                            display="chip"
+                        />
                     </div>
                 </div>
             </div>
@@ -486,5 +571,25 @@ onMounted(async () => {
     font-weight: bold !important;
     font-size: 0.8rem !important;
     color: var(--color-noir-accent) !important;
+}
+
+.external-animations {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(11, 15, 25, 0.5);
+    border: 1px solid var(--color-noir-dark);
+    border-radius: 4px;
+}
+
+.animation-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.anim-btn {
+    font-family: var(--font-mono);
+    font-size: 0.7rem !important;
+    letter-spacing: 1px;
 }
 </style>
