@@ -137,7 +137,7 @@ class CleanupAssets extends Command
             'artwork/scene',
             'artwork/character',
             'artwork/clue',
-            // 'artwork/animation', // EXCLUDED FOR SAFETY during migration
+            'artwork/animation', 
         ];
 
         $disk = Storage::disk('public');
