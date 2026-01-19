@@ -39,8 +39,22 @@ class MediaController extends Controller
             }
 
             // Generate a filename
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs($folder, $filename, 'public');
+            $originalName = $file->getClientOriginalName();
+
+            // Remove extension for cleaning
+            $nameWithoutExt = pathinfo($originalName, PATHINFO_FILENAME);
+
+            // Remove leading timestamps (digits + underscore)
+            $nameWithoutExt = preg_replace('/^\d+_/', '', $nameWithoutExt);
+
+            // Remove _compressed suffix
+            $nameWithoutExt = preg_replace('/_compressed$/i', '', $nameWithoutExt);
+
+            // Sanitize remaining characters (optional, but good practice)
+            $nameWithoutExt = preg_replace('/[^a-zA-Z0-9\-\_]/', '', $nameWithoutExt);
+
+            $cleanFilename = time() . '_' . $nameWithoutExt . '.' . $extension;
+            $path = $file->storeAs($folder, $cleanFilename, 'public');
 
             $media = Media::create([
                 'filepad' => $path,

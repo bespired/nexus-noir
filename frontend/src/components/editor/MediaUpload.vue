@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
 const props = defineProps({
     modelId: {
@@ -33,6 +34,23 @@ const fileInput = ref(null);
 
 const onFileSelect = (event) => {
     selectedFile.value = event.target.files[0];
+    
+    // Auto-clean filename for title
+    if (selectedFile.value) {
+        let name = selectedFile.value.name;
+        
+        // Remove file extension
+        name = name.substring(0, name.lastIndexOf('.')) || name;
+        
+        // Remove leading timestamp (digits + underscore)
+        // e.g. 1768758514_sumo-man -> sumo-man
+        name = name.replace(/^\d+_/, '');
+        
+        // Remove "_compressed" suffix (case insensitive)
+        name = name.replace(/_compressed$/i, '');
+        
+        fileTitle.value = name;
+    }
 };
 
 const triggerFileInput = () => {
@@ -44,7 +62,11 @@ const checkForBones = async (file) => {
         const reader = new FileReader();
         reader.onload = async (e) => {
             const contents = e.target.result;
+            const dracoLoader = new DRACOLoader();
+            dracoLoader.setDecoderPath('/draco/');
+            
             const loader = new GLTFLoader();
+            loader.setDRACOLoader(dracoLoader);
             loader.parse(contents, '', (gltf) => {
                 let hasBones = false;
                 gltf.scene.traverse((child) => {

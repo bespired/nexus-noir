@@ -21,8 +21,13 @@ const deleting = ref(false);
 const showDeleteConfirm = ref(false);
 const showUpload = ref(false);
 const threePreview = ref(null);
-const showSkin = ref(true);
-const showSkeleton = ref(false);
+const viewMode = ref('skin');
+const viewOptions = ref([
+    { icon: 'pi pi-user', value: 'skin' },
+    { icon: 'pi pi-share-alt', value: 'skeleton' }
+]);
+const showSkin = computed(() => viewMode.value === 'skin');
+const showSkeleton = computed(() => viewMode.value === 'skeleton');
 const animations = ref([]);
 const activeAnimationUrl = ref(null);
 const loadingAnimations = ref(false);
@@ -355,26 +360,26 @@ const getAnimationUrl = (anim) => {
                                             :title="t(`${i18nPrefix}.edit.media.header_3d`)"
                                             :showSkin="showSkin"
                                             :showSkeleton="showSkeleton"
+
                                             :externalAnimationUrl="activeAnimationUrl"
+                                            :framingScale="isVehicle ? 0.5 : 0.85"
                                         >
                                             <template #header-actions>
                                                 <template v-if="current3dMedia && current3dMedia.data?.hasBones" class="flex gap-1 mr-4">
-                                                    <Button
-                                                        :icon="showSkin ? 'pi pi-user' : 'pi pi-user-edit'"
-                                                        :severity="showSkin ? 'primary' : 'secondary'"
-                                                        text
-                                                        class="upload-trigger-btn !px-2"
-                                                        v-tooltip.top="'TOGGLE SKIN'"
-                                                        @click="showSkin = !showSkin"
-                                                    />
-                                                    <Button
-                                                        :icon="showSkeleton ? 'pi pi-share-alt' : 'pi pi-external-link'"
-                                                        :severity="showSkeleton ? 'primary' : 'secondary'"
-                                                        text
-                                                        class="upload-trigger-btn !px-2"
-                                                        v-tooltip.top="'TOGGLE SKELETON'"
-                                                        @click="showSkeleton = !showSkeleton"
-                                                    />
+                                                    <SelectButton
+                                                        v-model="viewMode"
+                                                        :options="viewOptions"
+                                                        optionLabel="value"
+                                                        optionValue="value"
+                                                        dataKey="value"
+                                                        aria-labelledby="custom"
+                                                        :allowEmpty="false"
+                                                        class="noir-toggle"
+                                                    >
+                                                        <template #option="slotProps">
+                                                            <i :class="slotProps.option.icon"></i>
+                                                        </template>
+                                                    </SelectButton>
                                                 </template>
                                                 <Button
                                                     v-if="!current3dMedia"
@@ -592,5 +597,15 @@ const getAnimationUrl = (anim) => {
     font-family: var(--font-mono);
     font-size: 0.7rem !important;
     letter-spacing: 1px;
+}
+
+:deep(.noir-toggle .p-togglebutton.p-togglebutton-checked) {
+    background-color: var(--color-noir-accent) !important;
+    border-color: var(--color-noir-accent) !important;
+    color: #000 !important;
+}
+
+:deep(.noir-toggle .p-togglebutton.p-togglebutton-checked::before) {
+    box-shadow: none !important;
 }
 </style>

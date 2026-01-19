@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { useI18n } from 'vue-i18n';
@@ -27,6 +28,10 @@ const props = defineProps({
     externalAnimationUrl: {
         type: String,
         default: null
+    },
+    framingScale: {
+        type: Number,
+        default: 0.85
     }
 });
 
@@ -167,7 +172,12 @@ const init = () => {
     controls.autoRotateSpeed = 2.0;
 
     // LOADERS
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('/draco/');
+    
     gltfLoader = new GLTFLoader();
+    gltfLoader.setDRACOLoader(dracoLoader);
+    
     fbxLoader = new FBXLoader();
     loadModel();
 
@@ -199,7 +209,8 @@ const updateFraming = () => {
     // Zoom out to show full body. 
     // d = (height/2) / tan(fov/2)
     // We'll use a ratio < 1.0 to add some padding around the character.
-    const comfortableRatio = 0.85; 
+    // We'll use a ratio < 1.0 to add some padding around the character.
+    const comfortableRatio = props.framingScale; 
     const finalDistance = h3d / (2 * comfortableRatio * Math.tan(fovRad / 2));
 
     // Center of character vertically (since normalized to 1.0 units height starting from 0)
