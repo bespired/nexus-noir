@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Console\Commands;
 
 use App\Models\Action;
@@ -85,7 +86,7 @@ class ImportJsonData extends Command
         $this->info('Importing Sectors...');
         $data = $this->loadJson('sectors.json');
         foreach ($data as $item) {
-            Sector::create($item);
+            (new Sector())->forceFill($item)->save();
         }
     }
 
@@ -94,7 +95,7 @@ class ImportJsonData extends Command
         $this->info('Importing Characters...');
         $data = $this->loadJson('characters.json');
         foreach ($data as $item) {
-            Character::create([
+            (new Character())->forceFill([
                 'id'          => $item['id'],
                 'name'        => $item['name'],
                 'role'        => $item['role'],
@@ -105,7 +106,7 @@ class ImportJsonData extends Command
                 'type'        => $item['type'] ?? 'persoon',
                 'created_at'  => $item['created_at'] ?? now(),
                 'updated_at'  => $item['updated_at'] ?? now(),
-            ]);
+            ])->save();
         }
     }
 
@@ -114,7 +115,7 @@ class ImportJsonData extends Command
         $this->info('Importing Clues...');
         $data = $this->loadJson('clues.json');
         foreach ($data as $item) {
-            Clue::create([
+            (new Clue())->forceFill([
                 'id'          => $item['id'],
                 'title'       => $item['title'] ?? $item['titel'],
                 'description' => $item['description'],
@@ -122,7 +123,7 @@ class ImportJsonData extends Command
                 'initial'     => $item['initial'] ?? null,
                 'created_at'  => $item['created_at'] ?? now(),
                 'updated_at'  => $item['updated_at'] ?? now(),
-            ]);
+            ])->save();
         }
     }
 
@@ -131,7 +132,7 @@ class ImportJsonData extends Command
         $this->info('Importing Dialogs...');
         $data = $this->loadJson('dialogs.json');
         foreach ($data as $item) {
-            Dialog::create($item);
+            (new Dialog())->forceFill($item)->save();
         }
     }
 
@@ -140,7 +141,7 @@ class ImportJsonData extends Command
         $this->info('Importing Actions...');
         $data = $this->loadJson('actions.json');
         foreach ($data as $item) {
-            Action::create($item);
+            (new Action())->forceFill($item)->save();
         }
     }
 
@@ -149,14 +150,14 @@ class ImportJsonData extends Command
         $this->info('Importing Notes...');
         $data = $this->loadJson('notes.json');
         foreach ($data as $item) {
-            Note::create([
+            (new Note())->forceFill([
                 'id'         => $item['id'],
                 'title'      => $item['title'] ?? $item['titel'],
                 'content'    => $item['content'],
                 'is_done'    => $item['is_done'] ?? false,
                 'created_at' => $item['created_at'] ?? now(),
                 'updated_at' => $item['updated_at'] ?? now(),
-            ]);
+            ])->save();
         }
     }
 
@@ -165,13 +166,13 @@ class ImportJsonData extends Command
         $this->info('Importing Configs...');
         $data = $this->loadJson('configs.json');
         foreach ($data as $item) {
-            Config::create([
+            (new Config())->forceFill([
                 'id'         => $item['id'],
                 'key'        => $item['key'],
                 'value'      => $item['value'] ?? null,
                 'created_at' => $item['created_at'] ?? now(),
                 'updated_at' => $item['updated_at'] ?? now(),
-            ]);
+            ])->save();
         }
     }
 
@@ -180,7 +181,7 @@ class ImportJsonData extends Command
         $this->info('Importing Scenes...');
         $data = $this->loadJson('scenes.json');
         foreach ($data as $item) {
-            Scene::create($item);
+            (new Scene())->forceFill($item)->save();
         }
     }
 
@@ -189,16 +190,17 @@ class ImportJsonData extends Command
         $this->info('Importing Media...');
         $data = $this->loadJson('mediax.json');
         foreach ($data as $item) {
-            Media::create([
+            (new Media())->forceFill([
                 'id'             => $item['id'],
                 'filepad'        => $item['filepad'] ?? $item['bestandspad'], // Mapping bestandspad -> filepad
-                'title'          => $item['title'] ?? $item['titel'] ?? null,
+                'title'          => $this->determineMediaTitle($item),
                 'type'           => $this->determineMediaType($item['filepad'] ?? $item['bestandspad']),
+                'data'           => $item['data'] ?? null,
                 'imageable_type' => $item['imageable_type'],
                 'imageable_id'   => $item['imageable_id'],
                 'created_at'     => $item['created_at'] ?? now(),
                 'updated_at'     => $item['updated_at'] ?? now(),
-            ]);
+            ])->save();
         }
     }
 
@@ -207,14 +209,14 @@ class ImportJsonData extends Command
         $this->info('Importing Animations...');
         $data = $this->loadJson('animations.json');
         foreach ($data as $item) {
-            Animation::create([
+            (new Animation())->forceFill([
                 'id'          => $item['id'],
                 'name'        => $item['name'] ?? null,
                 'description' => $item['description'] ?? null,
                 'type'        => $item['type'] ?? 'idle',
                 'created_at'  => $item['created_at'] ?? now(),
                 'updated_at'  => $item['updated_at'] ?? now(),
-            ]);
+            ])->save();
         }
     }
 
@@ -223,15 +225,16 @@ class ImportJsonData extends Command
         $this->info('Importing Animation Character associations...');
         $data = $this->loadJson('animation_character.json');
         foreach ($data as $item) {
-            AnimationCharacter::create($item);
+            (new AnimationCharacter())->forceFill($item)->save();
         }
     }
 
     private function loadJson($filename)
     {
         $path = base_path('../backup/json/' . $filename);
-        if (! File::exists($path)) {
+        if (!File::exists($path)) {
             $this->warn("File not found: $path");
+
             return [];
         }
 
@@ -240,6 +243,7 @@ class ImportJsonData extends Command
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             $this->error("JSON Error in $filename: " . json_last_error_msg());
+
             return [];
         }
 
@@ -255,6 +259,33 @@ class ImportJsonData extends Command
         if (in_array(strtolower($extension), ['glb', 'gltf'])) {
             return '3d';
         }
+
         return 'unknown';
+    }
+
+    private function determineMediaTitle($item)
+    {
+        $title = $item['title'] ?? null;
+
+        if ($title === null && isset($item['imageable_type']) && isset($item['imageable_id'])) {
+            $modelClass = $item['imageable_type'];
+            if (class_exists($modelClass)) {
+                $model = $modelClass::find($item['imageable_id']);
+                if ($model) {
+                    $title = $model->title ?? $model->name ?? null;
+                }
+            }
+        }
+
+        if ($title) {
+            // Remove extension
+            $title = pathinfo($title, PATHINFO_FILENAME);
+            // Replace kebab or snake case with spaces
+            $title = str_replace(['-', '_'], ' ', $title);
+            // Title case
+            $title = mb_convert_case($title, MB_CASE_TITLE, "UTF-8");
+        }
+
+        return $title;
     }
 }

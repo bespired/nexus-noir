@@ -33,7 +33,7 @@ class MediaController extends Controller
                 $folder = "artwork/{$modelName}";
 
                 // Fallback for unexpected types
-                if (!in_array($modelName, ['clue', 'character', 'scene', 'sector'])) {
+                if (!in_array($modelName, ['clue', 'character', 'scene', 'sector', 'animation'])) {
                     $folder = 'artwork/general';
                 }
             }

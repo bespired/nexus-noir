@@ -36,7 +36,7 @@ const fetchCharacter = async () => {
         const response = await fetch(`/api/characters/${characterId}`);
         if (!response.ok) throw new Error('Failed to fetch character');
         const data = await response.json();
-        
+
         // Map animations to animation_ids for MultiSelect
         data.animation_ids = data.animations ? data.animations.map(a => a.id) : [];
         character.value = data;
@@ -214,12 +214,12 @@ const handleCaptureScreenshot = async () => {
 
     // Prepare Photo-Opp pose and framing
     // Only use mugshot mode (tight head zoom) for characters, not vehicles
-    threePreview.value.preparePhotoOpp({ 
-        isMugshot: !isVehicle.value 
+    threePreview.value.preparePhotoOpp({
+        isMugshot: !isVehicle.value
     });
 
     const dataUrl = threePreview.value.captureScreenshot();
-    
+
     // Restore camera state
     threePreview.value.restoreCameraState();
 
@@ -284,10 +284,10 @@ onMounted(async () => {
 
 const getAnimationUrl = (anim) => {
     if (!anim.media || anim.media.length === 0) return null;
-    
+
     // First try to find by explicit type
     let media = anim.media.find(m => m.type === '3d');
-    
+
     // Fallback: check extensions if no '3d' type found (for older records)
     if (!media) {
         media = anim.media.find(m => {
@@ -404,8 +404,8 @@ const getAnimationUrl = (anim) => {
                                         </ThreePreview>
 
                                         <div v-if="current3dMedia && current3dMedia.data?.hasBones && animations.length > 0" class="external-animations">
-                                            <div class="animation-toolbar mb-4 flex justify-between items-center">
-                                                <span class="text-xs font-mono text-gray-500">EXTERNAL NEURAL LOOPS:</span>
+                                            <div class="animation-toolbar">
+                                                {{ t('common.sidebar.animations') }}:
                                             </div>
                                             <div class="animation-buttons">
                                                 <Button
@@ -413,8 +413,6 @@ const getAnimationUrl = (anim) => {
                                                     :key="anim.id"
                                                     :label="anim.name.toUpperCase()"
                                                     :severity="activeAnimationUrl === getAnimationUrl(anim) ? 'primary' : 'secondary'"
-                                                    size="small"
-                                                    outlined
                                                     class="anim-btn"
                                                     @click="activeAnimationUrl = getAnimationUrl(anim)"
                                                 />
@@ -581,6 +579,9 @@ const getAnimationUrl = (anim) => {
     border-radius: 4px;
 }
 
+.animation-toolbar {
+    padding: 0 0 1em;
+}
 .animation-buttons {
     display: flex;
     flex-wrap: wrap;
