@@ -12,8 +12,14 @@ const loading = ref(true);
 const error = ref(null);
 
 const debugInfo = ref(['DEBUG CONSOLE'])
+const debugMode = ref(false); // Toggle for visual debugging
 
-const loadScene = async (sceneId) => {
+const toggleDebug = () => {
+    debugMode.value = !debugMode.value;
+    debuggerInfo(`DEBUG MODE: ${debugMode.value ? 'ON' : 'OFF'}`);
+};
+
+const loadScene = async (sceneId, targetSpawnPoint = null) => {
     if (!sceneId) return;
     loading.value = true;
     error.value = null;
@@ -24,7 +30,8 @@ const loadScene = async (sceneId) => {
         if (!response.ok) throw new Error(`Scene ${sceneId} not found`);
 
         const sceneData = await response.json();
-        currentScene.value = sceneData;
+        // Merge transient state
+        currentScene.value = { ...sceneData, targetSpawnPoint };
 
         if (sceneData.type === 'vue-component' && sceneData.data?.component?.name) {
             const compPath = sceneData.data.component.name;
@@ -44,7 +51,11 @@ const loadScene = async (sceneId) => {
                 error.value = `Component not found: ${compPath}`;
             }
         } else if (sceneData.type === 'walkable-area') {
+
+            debuggerInfo('LOAD SCENE WalkableAreaScene')
+
             currentSceneComponent.value = markRaw(WalkableAreaScene);
+
         } else {
             // Fallback or other types
             currentSceneComponent.value = null;
@@ -66,7 +77,7 @@ const handleNextScene = (payload) => {
     console.log("Scene complete, payload:", payload);
     if (payload && payload.targetSceneId) {
         debuggerInfo('GOTO SCENE ' + payload.targetSceneId)
-        loadScene(payload.targetSceneId);
+        loadScene(payload.targetSceneId, payload.targetSpawnPoint);
     }
 };
 
@@ -106,8 +117,15 @@ onMounted(async () => {
     <div v-else-if="currentSceneComponent" class="scene-presenter">
         <component
             :is="currentSceneComponent"
-            v-bind="currentScene.data?.data || {}"
+            :key="currentScene.id"
+            v-bind="currentScene.data?.data || currentScene" 
+            :id="currentScene.id"
+            :sector_id="currentScene.sector_id"
+            :media="currentScene.media"
             :scene="currentScene"
+            :is_engine="true" 
+            :debug="debugMode"
+            :targetSpawnPoint="currentScene.targetSpawnPoint" 
             :nextSceneId="currentScene.data?.nextSceneId"
             @next-scene="handleNextScene"
         />
@@ -121,6 +139,11 @@ onMounted(async () => {
   </div>
 
   <div class="debug-console" v-if="emanator">
+      <div class="debug-controls mb-2">
+          <button @click="toggleDebug" :class="{'active': debugMode}">
+              <i class="pi pi-eye"></i> TOGGLE DEBUG
+          </button>
+      </div>
       <div v-for="line in debugInfo">{{ line }} </div>
   </div>
 </template>
@@ -136,6 +159,27 @@ onMounted(async () => {
     font-size: 12px;
     background: rgba(0, 0, 0, 0.4);
     pointer-events: none;
+    z-index: 9999;
+  }
+  
+  .debug-controls {
+      pointer-events: auto;
+      margin-bottom: 8px;
+  }
+  
+  .debug-controls button {
+      background: rgba(0, 255, 0, 0.2);
+      border: 1px solid lime;
+      color: lime;
+      padding: 4px 8px;
+      font-size: 10px;
+      cursor: pointer;
+      font-family: monospace;
+  }
+  
+  .debug-controls button.active {
+      background: lime;
+      color: black;
   }
 
 #nexus-noir-game {

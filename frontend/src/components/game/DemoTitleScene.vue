@@ -4,7 +4,7 @@ import { defineProps, defineEmits } from 'vue';
 import ClickButton from './ClickButton.vue';
 
 const props = defineProps({
-    title:       { type: String, default: 'CYBER NOIR' },
+    title:       { type: String, default: 'NEXUS NOIR' },
     subtitle:    { type: String, default: 'Press Start' },
     nextSceneId: { type: [String, Number], default: null }
 });

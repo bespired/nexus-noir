@@ -147,7 +147,7 @@ onMounted(() => {
     align-items: center;
     justify-content: center;
     height: 100vh;
-    width: 100vw;
+    /*width: 100vw;*/
     background: radial-gradient(circle at center, #0f0000 0%, #000 100%);
     color: white;
     padding: 40px;
