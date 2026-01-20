@@ -8,7 +8,7 @@ const props = defineProps({
     currentSectorId: { type: [String, Number], default: 1 } // Default to 1 for testing
 });
 
-const emit = defineEmits(['scene-complete']);
+const emit = defineEmits(['next-scene']);
 
 const sectors  = ref([]);
 const loading  = ref(true);
@@ -84,7 +84,7 @@ const handleSectorHover = (sector) => {
 const handleSectorClick = (sector) => {
     // 1. Determine Entry Scene
     let targetSceneId = null;
-    
+
     // Check for explicit entry scene, otherwise fall back logic
     if (sector.entry_scene_id) {
         targetSceneId = sector.entry_scene_id;
@@ -100,11 +100,11 @@ const handleSectorClick = (sector) => {
 
     // Log for local HUD
     addLog(`INITIATING JUMP TO SECTOR ${sector.id} (SCENE ${targetSceneId})...`, 'SYS');
-    
+
     // Emit for Engine/Emulator
-    emit('scene-complete', { 
+    emit('next-scene', {
         targetSceneId: targetSceneId,
-        sectorData: sector 
+        sectorData: sector
     });
 };
 
@@ -154,14 +154,14 @@ const fetchSectors = async () => {
         const response = await fetch('/api/sectors');
         if (!response.ok) throw new Error('API Error');
         const data = await response.json();
-        
+
         // Map and parse the data to match component expectations
         sectors.value = data.map(s => {
             let dimensions = { x:0, y:0, width:150, height:100 };
             try {
                 if (s.thumb_dimensions) {
-                    dimensions = typeof s.thumb_dimensions === 'string' 
-                        ? JSON.parse(s.thumb_dimensions) 
+                    dimensions = typeof s.thumb_dimensions === 'string'
+                        ? JSON.parse(s.thumb_dimensions)
                         : s.thumb_dimensions;
                 }
             } catch(e) { console.error("Dim parse error", e); }
@@ -194,7 +194,7 @@ const fetchSectors = async () => {
 // Based on a 1536 x 1024 coordinate system from the editor
 const getSectorStyle = (sector) => {
     if (!sector.imgUrl) return { display: 'none' };
-    
+
     let background = "linear-gradient(to top, rgb(0,0,0), transparent)";
     const url = resolveImgUrl(sector.imgUrl);
 
@@ -221,8 +221,8 @@ const isSectorOpen = (id) => {
         return props.opensectors.includes(Number(id));
     }
     // Default show all if no restrictions passed
-    return true; 
-    
+    return true;
+
     // Or restore progress logic:
     // let fid= parseInt(id)
     // return progress.value.discovered.includes(fid)
@@ -288,7 +288,7 @@ const isSectorOpen = (id) => {
                                 >
                                     <div class="node-border"></div>
                                     <div class="node-name">{{ sector.name }}</div>
-                                    
+
                                     <!-- Current Location Marker -->
                                     <div v-if="sector.id == currentSectorId" class="current-location-marker">
                                         <div class="pulse-ring"></div>
@@ -348,6 +348,7 @@ const isSectorOpen = (id) => {
     position: relative;
     width: auto;
     height: 88vh;
+    margin-top: -12vh;
     max-width: 95vw;
     aspect-ratio: 4 / 3;
     transform: rotateY(-8deg) rotateX(3deg);

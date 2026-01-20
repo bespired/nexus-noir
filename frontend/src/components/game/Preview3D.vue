@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { useI18n } from 'vue-i18n';
 
@@ -69,7 +70,10 @@ const init = () => {
     controls.autoRotateSpeed = 2.0;
 
     // LOADER
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('/draco/');
     loader = new GLTFLoader();
+    loader.setDRACOLoader(dracoLoader);
     loadModel();
 
     animate();

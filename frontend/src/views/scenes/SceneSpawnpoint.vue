@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/editor/EditViewHeader.vue';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const route = useRoute();
@@ -237,7 +238,13 @@ const initThree = () => {
     // Load Model
     if (glbUrl.value) {
         console.log("Loading GLB from:", glbUrl.value);
+        
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('/draco/');
+
         loader = new GLTFLoader();
+        loader.setDRACOLoader(dracoLoader);
+        
         loader.load(glbUrl.value, (gltf) => {
             console.log("GLB Loaded successfully");
             glbModel = gltf.scene;

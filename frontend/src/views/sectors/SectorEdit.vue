@@ -8,6 +8,8 @@ import ConfirmationModal from '@components/editor/modals/ConfirmationModal.vue';
 import SceneThumb from '@components/editor/thumbs/SceneThumb.vue';
 import ClueThumb from '@components/editor/thumbs/ClueThumb.vue';
 
+import MediaUpload from '@components/editor/MediaUpload.vue';
+
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
@@ -23,6 +25,7 @@ const allScenes = ref([]);
 const allClues = ref([]);
 const showScenePicker = ref(false);
 const showCluePicker = ref(false);
+const showUploadModal = ref(false);
 const showDeleteConfirm = ref(false);
 
 const fetchSector = async () => {
@@ -136,6 +139,11 @@ const linkScene = async (scene) => {
 
         // Refresh local state
         const updatedScene = await response.json();
+        // Preserve media from the original object so thumbnail shows immediately
+        if (scene.media) {
+            updatedScene.media = scene.media;
+        }
+        
         if (!sector.value.scenes) sector.value.scenes = [];
         sector.value.scenes.push(updatedScene);
         showScenePicker.value = false;
@@ -184,8 +192,27 @@ const unlinkClue = async (clueId) => {
     await handleSave();
 };
 
+const handleMediaUploaded = (media) => {
+    // If sector has no media array, create it
+    if (!sector.value.media) sector.value.media = [];
+    
+    // Prepend new media so it becomes the hero (assuming [0] is used)
+    sector.value.media.unshift(media);
+    showUploadModal.value = false;
+};
+
+const sceneFilter = ref("");
+
 const availableScenes = computed(() => {
-    return allScenes.value.filter(s => s.sector_id != sectorId);
+    let list = allScenes.value.filter(s => s.sector_id != sectorId);
+    if (sceneFilter.value) {
+        const q = sceneFilter.value.toLowerCase();
+        list = list.filter(s => 
+            s.title.toLowerCase().includes(q) || 
+            String(s.id).includes(q)
+        );
+    }
+    return list;
 });
 
 const availableClues = computed(() => {
@@ -240,6 +267,16 @@ onMounted(fetchSector);
                             <InputText v-model="sector.description" class="noir-input hero-input desc-input" />
                         </div>
                     </div>
+                    <div class="hero-actions">
+                        <Button
+                            icon="pi pi-camera"
+                            rounded
+                            text
+                            class="update-image-btn"
+                            v-tooltip.left="'Update Sector Image'"
+                            @click="showUploadModal = true"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -276,6 +313,12 @@ onMounted(fetchSector);
 
         <!-- PICKER MODALS -->
         <Dialog v-model:visible="showScenePicker" :header="t('sectors.edit.pickers.scene_title')" modal :style="{ width: '50vw' }" class="noir-dialog">
+            <div class="picker-search">
+                <span class="p-input-icon-left full-width">
+                    <i class="pi pi-search" />
+                    <InputText v-model="sceneFilter" placeholder="Filter scenes..." class="noir-input full-width" autofocus />
+                </span>
+            </div>
             <div class="picker-list">
                 <div v-for="scene in availableScenes" :key="scene.id" class="picker-item" @click="linkScene(scene)">
                     <span class="picker-item__name">{{ scene.title }}</span>
@@ -301,6 +344,16 @@ onMounted(fetchSector);
             @accept="confirmDelete"
             :message="t('sectors.edit.confirm_delete')"
         />
+
+        <Dialog v-model:visible="showUploadModal" header=" " modal class="noir-dialog media-dialog" :style="{ width: '50vw' }">
+            <MediaUpload
+                :modelId="sectorId"
+                modelType="App\Models\Sector"
+                label="UPDATE SECTOR IMAGE"
+                @uploaded="handleMediaUploaded"
+                @close="showUploadModal = false"
+            />
+        </Dialog>
     </div>
 </template>
 
@@ -463,4 +516,32 @@ onMounted(fetchSector);
     color: var(--color-noir-muted);
     font-style: italic;
 }
+
+.picker-search {
+    margin-bottom: 1rem;
+
+}
+.picker-search input {
+    width: calc(100% - 48px);
+    margin-left:18px
+}
+
+.hero-actions {
+    margin-left: auto;
+}
+
+.update-image-btn {
+    color: rgba(255, 255, 255, 0.5) !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    width: 3rem !important;
+    height: 3rem !important;
+}
+
+.update-image-btn:hover {
+    color: #fff !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
 </style>
