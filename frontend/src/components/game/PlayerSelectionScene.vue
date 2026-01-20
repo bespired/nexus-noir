@@ -1,4 +1,5 @@
 <script setup>
+// game vue
 import { ref, onMounted, computed } from 'vue';
 import ThreePreview from './Preview3D.vue';
 import ClickButton from './ClickButton.vue';

@@ -20,10 +20,9 @@ const deleting = ref(false);
 
 const fetchInitialData = async () => {
     try {
-        const [sceneRes, scenesRes, configRes] = await Promise.all([
+        const [sceneRes, scenesRes] = await Promise.all([
             fetch(`/api/scenes/${sceneId}`),
-            fetch('/api/scenes'),
-            fetch('/api/configs/vue_components')
+            fetch('/api/scenes')
         ]);
 
         if (!sceneRes.ok) throw new Error('Failed to fetch scene');
@@ -40,15 +39,21 @@ const fetchInitialData = async () => {
 
         scenes.value = await scenesRes.json();
 
-        const componentsConfig = await configRes.json();
-        if (componentsConfig && componentsConfig.value) {
-            try {
-                vueComponents.value = JSON.parse(componentsConfig.value);
-            } catch (e) {
-                console.error("Failed to parse vue_components config", e);
-                vueComponents.value = [];
+        // Dynamically load game components
+        const componentFiles = import.meta.glob('@components/game/*.vue', { query: '?raw', eager: true });
+        const loadedComponents = [];
+        
+        for (const path in componentFiles) {
+            const content = componentFiles[path].default;
+            // Check for the marker
+            if (content && (content.includes('// game vue') || content.includes('//game vue'))) {
+                 const fileName = path.split('/').pop().replace('.vue', '');
+                 // Format label: "DemoTitleScene" -> "Demo Title Scene"
+                 const label = fileName.replace(/([A-Z])/g, ' $1').trim();
+                 loadedComponents.push({ name: fileName, label });
             }
         }
+        vueComponents.value = loadedComponents;
     } catch (error) {
         console.error(error);
         toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load data', life: 3000 });

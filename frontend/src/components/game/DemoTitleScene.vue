@@ -1,4 +1,5 @@
 <script setup>
+// game vue
 import { defineProps, defineEmits } from 'vue';
 import ClickButton from './ClickButton.vue';
 
