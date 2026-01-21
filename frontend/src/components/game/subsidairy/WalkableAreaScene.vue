@@ -1496,6 +1496,7 @@ const runAction = async (action, actorId = null) => {
                 if (sp) {
                     if (targetActor) {
                         targetActor.targetPos.set(sp.x, sp.y, sp.z);
+                        targetActor.targetRotation = sp.direction ?? sp.rotation ?? null;
                         targetActor.isWalking = true;
                         await new Promise(resolve => {
                             const check = setInterval(() => {
@@ -1505,6 +1506,7 @@ const runAction = async (action, actorId = null) => {
                         });
                     } else if (actorId === null && playableCharacter) {
                         targetPosition.set(sp.x, sp.y, sp.z);
+                        targetRotation.value = sp.direction ?? sp.rotation ?? null;
                         isWalking.value = true;
                         await new Promise(resolve => {
                             const check = setInterval(() => {
