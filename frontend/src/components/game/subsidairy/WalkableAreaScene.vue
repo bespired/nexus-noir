@@ -6,33 +6,22 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
 import { useGameAssets } from '../composables/useGameAssets';
+import { useDialogue }   from '../composables/useDialogue';
 
-const slugify = (text) => {
-    if (!text) return '';
-    return text.toString().toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^\w-]+/g, '')
-        .replace(/--+/g, '-')
-        .replace(/^-+/, '')
-        .replace(/-+$/, '');
-};
+// const slugify = (text) => {
+//     if (!text) return '';
+//     return text.toString().toLowerCase()
+//         .replace(/\s+/g, '-')
+//         .replace(/[^\w-]+/g, '')
+//         .replace(/--+/g, '-')
+//         .replace(/^-+/, '')
+//         .replace(/-+$/, '');
+// };
 
 const props = defineProps({
-    id: [Number, String], // Scene ID
-    sector_id: [Number, String],
-    titel: String,
-    type: String,
-    data: Object,
-    location: Object,
-    scene_personages: Array,
-    gateways: Array,
-    spawn_points: Object,
-    media: Array, // Added media prop
-    // Transient props
-    targetSpawnPoint: String,
-    isLanded: Boolean,
-    debug: Boolean,
-    is_engine: Boolean // New prop to force engine/fullscreen mode
+    // is_engine can stay as an optional prop if we want to force it,
+    // but typically it's derived from whether we are in the GameEngine
+    is_engine: { type: Boolean, default: true }
 });
 
 const emit = defineEmits(['next-scene']);
@@ -49,16 +38,18 @@ const allAnimations = computed(() => store.state.game.animations);
 const loading = computed(() => store.state.game.loading);
 const error = computed(() => store.state.game.error);
 
-const isEngine = ref(props.is_engine || false); // Initialize from prop
+const isEngine = ref(props.is_engine);
 // Update if prop changes
 watch(() => props.is_engine, (val) => {
     isEngine.value = val;
     updateDimensions();
 });
 
-// Use prop if available
-const sectorId = computed(() => props.sector_id);
-const sceneId = computed(() => props.id);
+// Access data from store
+const sectorId = computed(() => currentScene.value?.sector_id);
+const sceneId = computed(() => currentScene.value?.id);
+const debug = computed(() => store.state.game.debug);
+const targetSpawnPoint = computed(() => store.state.game.targetSpawnPoint);
 
 const getImageUrl = resolveAssetUrl;
 
@@ -72,19 +63,13 @@ const gameState = reactive({
 });
 
 
-// Dialogue & Behavior System
-const activeDialogue = ref(null);
-const currentNodeId = ref('start');
-const typewriterText = ref('');
-const showDialogueOptions = ref(false);
-const typewriterInterval = ref(null);
-const dialogueNPCName = ref('');
-let dialogueResolve = null;
+// let dialogueResolve = null; // Removed as it's now in composable
 
 const spawnedNPCs = reactive({});
 const npcModes = reactive({}); // Stores: 'HIDDEN', 'IDLE', 'SEQUENCE'
 const isBehaviorActive = ref(false); // Global behavior lock
 const lastTriggeredGateway = ref(null);
+const storeLastTriggeredId = computed(() => store.state.game.lastTriggeredGatewayId);
 const lastExecutedBehaviorGateway = ref(null);
 
 // Three.js refs
@@ -111,11 +96,13 @@ const hasLandedInSession = () => {
         return stored === 'true';
     } catch(e) { return false; }
 };
-const landingDone = ref(!!props.isLanded || hasLandedInSession());
+const landingDone = ref(hasLandedInSession());
+
+// let dialogueResolve = null; // Removed as it's now in composable
 
 const markLandingComplete = () => {
     landingDone.value = true;
-    if (props.sector_id) {
+    if (sectorId.value) {
          try { sessionStorage.setItem(landingSessionKey.value, 'true'); } catch(e) {}
     }
 };
@@ -130,19 +117,57 @@ const createLoader = () => {
 let targetPointMesh = null;
 const pendingGateway = ref(null);
 const currentLoadingSceneId = ref(null);
-
-const gateways = computed(() => {
-    return currentScene.value?.gateways || currentScene.value?.['2d_gateways'] || props.gateways || [];
+// Resolved gateways (merging store data + location data)
+const currentGateways = computed(() => {
+    return currentScene.value?.gateways || currentScene.value?.['2d_gateways'] || [];
 });
 
-const sceneTriggers = computed(() => gateways.value);
+const sceneTriggers = computed(() => currentGateways.value);
 const behaviorLog = ref([]);
 const targetRotation = ref(null); // Direction in degrees
 
+// Dialogue & Behavior System (Initialized after dependencies)
+const {
+    activeDialogue,
+    currentNodeId,
+    typewriterText,
+    showDialogueOptions,
+    dialogueNPCName,
+    startDialogue,
+    playNode,
+    selectOption,
+    closeDialogue,
+    runAction,
+    fetchRobustData
+} = useDialogue({
+    isEngine,
+    playableCharacter: computed({
+        get: () => playableCharacter,
+        set: (val) => { playableCharacter = val; }
+    }),
+    spawnedNPCs,
+    npcModes,
+    isWalking,
+    targetPosition,
+    targetRotation,
+    isBehaviorActive,
+    behaviorLog,
+    sectorId,
+    currentScene,
+    actions,
+    targetPointMesh: computed(() => targetPointMesh),
+    emit,
+    resolveAssetUrl,
+    swapScene: (gateway) => swapScene(gateway),
+    gameState,
+    allPersonages,
+    settings
+});
+
 const activeBehaviors = computed(() => {
-    if (!gateways.value) return [];
+    if (!currentGateways.value) return [];
     // Map 'behavior_id' (legacy) or 'action_id' (new)
-    const behaviorIds = [...new Set(gateways.value.map(gw => gw.behavior_id || gw.action_id).filter(id => id))];
+    const behaviorIds = [...new Set(currentGateways.value.map(gw => gw.behavior_id || gw.action_id).filter(id => id))];
     return actions.value.filter(g => behaviorIds.includes(g.id));
 });
 
@@ -155,19 +180,19 @@ const isCaution = ref(false);
 // Scaling & Visibility refs
 const characterScale = ref(0.5);
 const vehicleScale = ref(0.5);
-const show3DHelpers = ref(false);
+const show3DHelpers = ref(store.state.game.debug);
 const sunIntensity = ref(1.0);
 const ambientIntensity = ref(0.8);
 const currentSpawnPoints = ref([]);
 
-watch(() => props.debug, (val) => {
+// Debug Helpers
+watch(debug, (val) => {
     show3DHelpers.value = !!val;
 }, { immediate: true });
 
 const VIEW_WIDTH = 1216;
 const VIEW_HEIGHT = 832;
 const ASPECT_RATIO = VIEW_WIDTH / VIEW_HEIGHT;
-
 
 
 // Responsive Logic
@@ -197,7 +222,7 @@ const updateDimensions = () => {
         // Use the container's actual size if mounted, otherwise fallback to window
         const w = (canvasContainer.value && canvasContainer.value.clientWidth) || window.innerWidth;
         const h = (canvasContainer.value && canvasContainer.value.clientHeight) || window.innerHeight;
-        
+
         containerWidth.value = w;
         containerHeight.value = h;
 
@@ -253,6 +278,7 @@ const updateDimensions = () => {
 
 onMounted(async () => {
     console.log("[DEBUG] WalkableAreaScene mounted");
+    blockTriggers.value = true;
 
     window.addEventListener('resize', updateDimensions);
     initThree();
@@ -261,11 +287,12 @@ onMounted(async () => {
     updateDimensions(); // Call after initThree to apply zoom/size
     if (currentScene.value) {
         console.log("[DEBUG] Loading Scene GLB...");
-        await loadSceneGLB(currentScene.value, props.targetSpawnPoint);
+        await loadSceneGLB(currentScene.value, targetSpawnPoint.value);
         console.log("[DEBUG] loadSceneGLB complete");
     } else {
         console.warn("[DEBUG] No currentScene to load");
     }
+    blockTriggers.value = false;
 });
 
 onUnmounted(() => {
@@ -339,7 +366,18 @@ const loadSceneGLB = (sceneData, targetSpawnLabel = null) => {
             return;
         }
 
+        if (currentLoadingSceneId.value === sceneData.id) {
+            console.log("[DEBUG] Scene already loading or loaded:", sceneData.id);
+            return resolve();
+        }
+
         currentLoadingSceneId.value = sceneData.id;
+
+        // Guard: ensure THREE scene is initialized
+        if (!scene) {
+            console.warn("[DEBUG] THREE Scene not initialized, skipping GLB load.");
+            return resolve();
+        }
 
         // 1. Cleanup before loading
         if (currentGltf) { scene.remove(currentGltf);
@@ -493,13 +531,6 @@ const loadSceneGLB = (sceneData, targetSpawnLabel = null) => {
                     spawnNPCs(spList, sceneData.id).then(() => {
                         if (currentLoadingSceneId.value !== sceneData.id) return resolve();
 
-                        // Anti-loop: If we spawned inside a gateway, mark it as already triggered
-                        const entryGw = getGatewayAtPosition();
-                        if (entryGw) {
-                            console.log(`[DEBUG] Anti-loop: Spawned inside gateway ${entryGw.target_scene_id}. Ignoring first trigger.`);
-                            lastTriggeredGateway.value = entryGw;
-                        }
-
                         if (typeof spawnDebugHelpers === 'function') {
                             spawnDebugHelpers(spawnPoints);
                         }
@@ -609,7 +640,7 @@ const spawnCharacter = (spawnPoint, sceneId) => {
                     customGlb = p.threefile;
                 } else if (p.name) {
                     characterName = p.name;
-             
+
                 }
             } catch (e) {
                 console.warn("Failed to parse player_character from localStorage", e);
@@ -664,16 +695,30 @@ const spawnCharacter = (spawnPoint, sceneId) => {
             playableCharacter.rotation.y = THREE.MathUtils.degToRad(spawnPoint.direction || 0);
             scene.add(playableCharacter);
 
+            // Anti-loop: If we spawned inside a gateway, mark it as already triggered
+            // CRITICAL: Ensure camera and character matrices are updated before projection check
+            if (camera) {
+                camera.updateMatrixWorld(true);
+                camera.updateProjectionMatrix();
+            }
+            playableCharacter.updateMatrixWorld(true);
+
+            const entryGw = getGatewayAtPosition();
+            if (entryGw) {
+                console.log(`[DEBUG] Anti-loop: Spawned inside gateway ${entryGw.target_scene_id}. Ignoring first trigger.`);
+                lastTriggeredGateway.value = entryGw;
+            }
+
             // Reset actions
             for (const key in characterActions) delete characterActions[key];
 
             // Setup Animations - External vs Embedded
             characterMixer = new THREE.AnimationMixer(playableCharacter);
-            
+
             // 1. Try Loading External Animations from Personage Data
             let externalAnimationsLoaded = false;
             const personageData = allPersonages.value.find(p => p.name === characterName || p.id === characterName);
-            
+
             console.log(`[ANIM DEBUG] Character Name: '${characterName}'`);
             if (personageData) {
                  // Safe stringify to avoid circular errors if any
@@ -695,7 +740,7 @@ const spawnCharacter = (spawnPoint, sceneId) => {
 
             // Expanded lookup: Check 'animations' array (pivot or full) OR 'media' array
             let rawAnims = personageData?.animations || [];
-            
+
             // If rawAnims contains objects with 'id' but no 'filepad'/'path', try to resolve from allAnimations
             rawAnims = rawAnims.map(anim => {
                 if ((!anim.filepad && !anim.url && !anim.path) || anim.pivot) {
@@ -713,17 +758,17 @@ const spawnCharacter = (spawnPoint, sceneId) => {
             });
 
             const mediaAnims = (personageData?.media || []).filter(m => m.type === 'animation' || (m.filepad && m.filepad.endsWith('.glb')));
-            
+
             const candidateAnimations = [...rawAnims, ...mediaAnims];
 
             if (candidateAnimations.length > 0) {
                 console.log(`[ANIM] Found ${candidateAnimations.length} candidate animations.`);
-                
+
                 // Helper to load animation clip
                 const loadClip = async (anim) => {
                     // Try filepad, url, or fallback to 'path'
                     let path = anim.filepad || anim.url || anim.path;
-                    
+
                     // If no direct path, check media relation
                     if (!path && anim.media && Array.isArray(anim.media) && anim.media.length > 0) {
                         const glb = anim.media.find(m => m.filepad && (m.filepad.endsWith('.glb') || m.filepad.endsWith('.gltf') || m.type === 'threefile')) || anim.media[0];
@@ -735,24 +780,24 @@ const spawnCharacter = (spawnPoint, sceneId) => {
 
                     const animUrl = resolveAssetUrl(path);
                     const rawName = (anim.type || anim.name || anim.label || 'idle');
-                    
+
                     if (!animUrl) {
                         console.warn(`[ANIM] No file path found for animation:`, rawName);
                         console.log(`[ANIM DEBUG] Keys available:`, Object.keys(anim));
                         return;
                     }
-                    
+
                     return new Promise(resolveAnim => {
                         loader.load(animUrl, (animGltf) => {
                             console.log(`[ANIM] GLB loaded for ${rawName}. Anims found: ${animGltf.animations ? animGltf.animations.length : 0}`);
-                            
+
                             if (animGltf.animations && animGltf.animations.length > 0) {
                                 const clip = animGltf.animations[0]; // Assume 1 clip per file
-                                if (!clip) { 
+                                if (!clip) {
                                     console.warn(`[ANIM] Clip undefined for ${rawName}`);
-                                    resolveAnim(); return; 
+                                    resolveAnim(); return;
                                 }
-                                
+
                                 console.log(`[ANIM] Clip Name: ${clip.name}, Duration: ${clip.duration}, Tracks: ${clip.tracks.length}`);
 
                                  let actionKey = anim.mixer_name || null;
@@ -799,8 +844,8 @@ const spawnCharacter = (spawnPoint, sceneId) => {
                     else if (characterActions['walk']) playAnimation('walk'); // Fallback
                 });
 
-            } 
-            
+            }
+
             // 2. Fallback to Embedded Animations if no external ones found (or as supplement)
             if (!externalAnimationsLoaded && gltf.animations && gltf.animations.length > 0) {
                  console.log(`[ANIM] Using embedded animations for ${characterName}`);
@@ -1094,7 +1139,7 @@ const onMapClick = (e) => {
         console.log(`[CLICK DEBUG] Standard Mode. Screen: ${screenX.toFixed(2)}%, ${screenY.toFixed(2)}%`);
     }
 
-    const clickedGateway = gateways.value ?.find(gw => {
+    const clickedGateway = currentGateways.value ?.find(gw => {
         const hit = screenX >= gw.x && screenX <= gw.x + gw.width &&
         screenY >= gw.y && screenY <= gw.y + gw.height;
         if (hit) console.log(`[CLICK DEBUG] Hit Gateway: ${gw.label || gw.target_scene_id}`);
@@ -1128,9 +1173,9 @@ const onMapClick = (e) => {
         if (currentSpawnPoints.value && currentSpawnPoints.value.length > 0) {
             let nearest = null;
             let minDist = Infinity;
-            
+
             console.log(`[CLICK DEBUG] Fallback: Searching nearest 3D spawnpoint for gateway: ${clickedGateway.label}`);
-            
+
             currentSpawnPoints.value.forEach(p => {
                 const vec = new THREE.Vector3(p.x, p.y, p.z);
                 vec.project(camera);
@@ -1174,7 +1219,7 @@ const onMapClick = (e) => {
         targetPosition.copy(moveTarget);
         isWalking.value = true;
         pendingGateway.value = clickedGateway || null;
-        
+
         // Capture direction if we clicked a spawnpoint (direct or fallback)
         // 'nearest' might be set from the fallback logic above
         if (typeof nearest !== 'undefined' && nearest && (nearest.direction !== undefined || nearest.rotation !== undefined)) {
@@ -1199,126 +1244,23 @@ const onMapClick = (e) => {
 
 
 
-const startDialogue = (dialoogId) => {
-
-    return new Promise(async (resolve) => {
-        try {
-            dialogueResolve = resolve;
-
-            let res;
-            if (isEngine.value && importedDialogs) {
-                // Find in imported JS array
-                res = importedDialogs.find(d => String(d.id) === String(dialoogId));
-            }
-
-            if (!res) {
-                res = await fetchRobustData(`dialogues/${dialoogId}.json`, `dialogen/${dialoogId}`);
-            }
-
-            activeDialogue.value = res;
-            dialogueNPCName.value = activeDialogue.value.personage?.name || 'NPC';
-
-            // Turn player towards NPC
-            if (playableCharacter && activeDialogue.value.personage_id) {
-                const speakerId = activeDialogue.value.personage_id;
-                const speaker = spawnedNPCs[speakerId];
-                if (speaker && speaker.mesh) {
-                    const targetPos = speaker.mesh.position.clone();
-                    targetPos.y = playableCharacter.position.y; // Lock Y
-                    playableCharacter.lookAt(targetPos);
-                    console.log(`[DIALOGUE] Player turning to face speaker ${speakerId}`);
-                }
-            }
-
-            // Default to 'root', or fallback to first key
-            const nodeKeys = Object.keys(activeDialogue.value.tree ?.nodes || {});
-            currentNodeId.value = nodeKeys.includes('root') ? 'root' : nodeKeys[0];
-
-            console.log(`[DIALOGUE] Starting dialogue ${dialoogId} at node: ${currentNodeId.value}`);
-
-            if (currentNodeId.value) {
-                playNode(currentNodeId.value);
-            } else {
-                console.warn("[DIALOGUE] No nodes found in dialogue tree.");
-                closeDialogue();
-            }
-        } catch (e) {
-            console.error("Failed to load dialogue", e);
-            resolve();
-        }
-    });
-};
-
-const playNode = async (nodeId) => {
-    if (nodeId === '[END]' || nodeId === 'END') {
-        closeDialogue();
-        return;
-    }
-
-    const node = activeDialogue.value.tree.nodes[nodeId];
-    if (!node) {
-        console.warn(`[DIALOGUE] Node ${nodeId} not found.`);
-        return;
-    }
-
-    currentNodeId.value = nodeId;
-    showDialogueOptions.value = false;
-
-    // Execute node-level actions
-    const actions = node.actions || node.nodeActions || [];
-    if (actions.length > 0) {
-        console.log(`[DIALOGUE] Executing ${actions.length} actions for node ${nodeId}`);
-        for (const action of actions) {
-            await runAction(action);
-        }
-    }
-
-    typewriterText.value = '';
-    if (typewriterInterval.value) clearInterval(typewriterInterval.value);
-    let charIndex = 0;
-    const fullText = node.text;
-    typewriterInterval.value = setInterval(() => {
-        typewriterText.value += fullText[charIndex];
-        charIndex++;
-        if (charIndex >= fullText.length) {
-            clearInterval(typewriterInterval.value);
-            showDialogueOptions.value = true;
-        }
-    }, 30);
-};
-
-const selectOption = async (option, actorId = null) => {
-    if (option.actions ?.length > 0) {
-        for (const action of option.actions) {
-            await runAction(action, actorId);
-        }
-    }
-    if (option.actions ?.some(a => a.type === 'END TALK')) {
-        closeDialogue();
-        return;
-    }
-    if (option.next) playNode(option.next);
-    else closeDialogue();
-};
-
-const closeDialogue = () => {
-    activeDialogue.value = null;
-    currentNodeId.value = 'start';
-    typewriterText.value = '';
-    showDialogueOptions.value = false;
-    if (typewriterInterval.value) clearInterval(typewriterInterval.value);
-    if (dialogueResolve) {
-        dialogueResolve();
-        dialogueResolve = null;
-    }
-};
+// Dialogue functions extracted to useDialogue
 
 const isSwapping = ref(false);
 const blockTriggers = ref(false);
 
-watch(() => props.id, async (newId) => {
+// When the scene changes, we trigger a reload
+watch(sceneId, async (newId) => {
     if (newId) {
-        console.log(`[DEBUG] Scene ID changed to ${newId}, reloading...`);
+        console.log(`[DEBUG] Scene ID changed to ${newId}, checking readiness...`);
+
+        // If scene isn't ready yet, onMounted will handle the initial load
+        if (!scene) {
+            console.log("[DEBUG] Scene not ready, watcher deferring to onMounted.");
+            return;
+        }
+
+        console.log(`[DEBUG] Scene ID ${newId} reload starting via watcher.`);
         // Reset all states
         isWalking.value = false;
         pendingGateway.value = null;
@@ -1327,11 +1269,11 @@ watch(() => props.id, async (newId) => {
         blockTriggers.value = true;
 
         // Clear landing status if ID changed (App.vue manages isLanded prop)
-        landingDone.value = !!props.isLanded || hasLandedInSession();
+        landingDone.value = hasLandedInSession();
 
         // Cleanup and reload
-        await fetchData();
-        await loadSceneGLB(currentScene.value, props.targetSpawnPoint);
+        // A. Load Visual Elements
+        await loadSceneGLB(currentScene.value, targetSpawnPoint.value);
 
         // check position after reload to ensure we aren't stuck in a loop
         const entryGw = getGatewayAtPosition();
@@ -1434,14 +1376,17 @@ const triggerGateway = async (gateway, isForced = false) => {
         console.log(`[TRIGGER] Emitting next-scene for target: ${gateway.target_scene_id}`);
         emit('next-scene', {
             targetSceneId: gateway.target_scene_id,
-            targetSpawnPoint: gateway.target_spawn_point
+            targetSpawnPoint: gateway.target_spawn_point,
+            lastTriggeredGatewayId: gateway.id
         });
 
         // Also fallback to internal swap if no one handles it or if in a mode that needs it
         // In Engine mode, the parent likely reloads us with new props, effectively resetting.
-        isSwapping.value = true;
-        await swapScene(gateway);
-        isSwapping.value = false;
+        if (!isEngine.value) {
+            isSwapping.value = true;
+            await swapScene(gateway);
+            isSwapping.value = false;
+        }
         return;
     }
 
@@ -1452,128 +1397,16 @@ const triggerGateway = async (gateway, isForced = false) => {
 
 
 
-const runAction = async (action, actorId = null) => {
-    const type = action.type;
-    const params = action.params || {};
-    const value = action.value;
-    const targetActor = actorId ? spawnedNPCs[actorId] : null;
-
-    console.log(`Running action ${type} for ${actorId || 'player'}`);
-
-    switch (type) {
-        case 'GIVE CLUE':
-        case 'GEEF AANWIJZING':
-            const clueId = value || params.clue_id || params.id;
-            console.log(`[ACTION] Emitting give-clue for: ${clueId}`);
-            emit('give-clue', clueId);
-            break;
-        case 'SET GAME TAG':
-            const tag = value || params.tag;
-            if (tag && !gameState.tags.includes(tag)) {
-                gameState.tags.push(tag);
-                console.log("tag_acquired")
-            }
-            break;
-        case 'REMOVE GAME TAG':
-            const rtag = value || params.tag;
-            gameState.tags = gameState.tags.filter(t => t !== rtag);
-            break;
-        case 'WAIT':
-        case 'WAIT x SECONDS':
-        case 'idle':
-            const duration = parseFloat(params.duration || value || 2);
-            await new Promise(res => setTimeout(res, duration * 1000));
-            break;
-        case 'WALK TO SPAWNPOINT':
-        case 'walk_to':
-        case 'WALK_TO':
-            const spName = params.spawn_point || value;
-            if (spName) {
-                const currentSectorId = sectorId.value;
-                const locSpawnPoints = currentScene.value.location ?.spawn_points || {};
-                const spawnPoints = locSpawnPoints[currentSectorId] || locSpawnPoints[Number(currentSectorId)] || [];
-                const sp = spawnPoints.find(p => p.name === spName || p.id === spName);
-                if (sp) {
-                    if (targetActor) {
-                        targetActor.targetPos.set(sp.x, sp.y, sp.z);
-                        targetActor.targetRotation = sp.direction ?? sp.rotation ?? null;
-                        targetActor.isWalking = true;
-                        await new Promise(resolve => {
-                            const check = setInterval(() => {
-                                if (!targetActor.isWalking) { clearInterval(check);
-                                    resolve(); }
-                            }, 100);
-                        });
-                    } else if (actorId === null && playableCharacter) {
-                        targetPosition.set(sp.x, sp.y, sp.z);
-                        targetRotation.value = sp.direction ?? sp.rotation ?? null;
-                        isWalking.value = true;
-                        await new Promise(resolve => {
-                            const check = setInterval(() => {
-                                if (!isWalking.value) { clearInterval(check);
-                                    resolve(); }
-                            }, 100);
-                        });
-                    }
-                }
-            }
-            break;
-        case 'START DIALOG':
-        case 'START_DIALOGUE':
-        case 'talk':
-            const dialId = params.dialoog_id || value;
-            if (dialId) await startDialogue(dialId);
-            break;
-        case 'PLAY_ANIMATION':
-        case 'ANIMATION':
-            const animName = params.animation || value;
-            if (targetActor && targetActor.actions[animName]) {
-                const nextAction = targetActor.actions[animName];
-                nextAction.reset().play();
-                // Wait for animation? For now just play
-                await new Promise(res => setTimeout(res, 500));
-            }
-            break;
-        case 'LOOK_AT_TARGET':
-        case 'LOOK_AT':
-        case 'look_at':
-            const lookTargetName = params.target || value || 'player';
-            let lookAtPos = null;
-
-            if (lookTargetName === 'player' && playableCharacter) {
-                lookAtPos = playableCharacter.position.clone();
-            } else {
-                // Find NPC by name or ID
-                const otherNpc = Object.values(spawnedNPCs).find(n =>
-                    n.name.toLowerCase() === lookTargetName.toLowerCase() ||
-                    String(n.id) === String(lookTargetName)
-                );
-                if (otherNpc && otherNpc.mesh) {
-                    lookAtPos = otherNpc.mesh.position.clone();
-                }
-            }
-
-            if (targetActor && targetActor.mesh && lookAtPos) {
-                // Only rotate on Y axis
-                const normalizedLookAt = new THREE.Vector3(lookAtPos.x, targetActor.mesh.position.y, lookAtPos.z);
-                targetActor.mesh.lookAt(normalizedLookAt);
-                // Sub-wait to ensure rotation is "seen" before next action
-                await new Promise(res => setTimeout(res, 300));
-            }
-            break;
-
-
-        case 'GOTO SCENE':
-            const scId = value || params.scene_id;
-            if (scId) await swapScene({ target_scene_id: parseInt(scId) });
-            break;
-    }
-};
+// runAction extracted to useDialogue
 
 
 
 const getGatewayAtPosition = () => {
-    if (!currentScene.value || !gateways.value || !playableCharacter) return null;
+    if (!currentScene.value || !currentGateways.value || !playableCharacter || !camera) return null;
+
+    // Sync matrices before projection to ensure accurate coordinates from first frame
+    camera.updateMatrixWorld(true);
+    playableCharacter.updateMatrixWorld(true);
 
     // Project character position to screen space
     const vector = playableCharacter.position.clone();
@@ -1608,8 +1441,12 @@ const getGatewayAtPosition = () => {
         screenY = -(vector.y - 1) / 2 * 100;
     }
 
-    for (const gw of gateways.value) {
+    for (const gw of currentGateways.value) {
         if (screenX >= gw.x && screenX <= gw.x + gw.width && screenY >= gw.y && screenY <= gw.y + gw.height) {
+            // Check store-based anti-loop FIRST
+            if (isEngine.value && storeLastTriggeredId.value && String(gw.id) === String(storeLastTriggeredId.value)) {
+                 continue;
+            }
             return gw;
         }
     }
@@ -1668,7 +1505,7 @@ const swapScene = async (gateway) => {
 };
 
 const checkGateways = () => {
-    if (!currentScene.value || !gateways.value || !playableCharacter || isSwapping.value || blockTriggers.value) return;
+    if (!currentScene.value || !currentGateways.value || !playableCharacter || isSwapping.value || blockTriggers.value) return;
 
     const found = getGatewayAtPosition();
 
@@ -1679,11 +1516,12 @@ const checkGateways = () => {
         if (!pendingGateway.value) {
             lastTriggeredGateway.value = null;
             lastExecutedBehaviorGateway.value = null;
+            if (isEngine.value && storeLastTriggeredId.value) {
+                store.commit('game/SET_LAST_TRIGGERED_GATEWAY_ID', null);
+            }
         }
     }
 };
-
-
 
 
 
@@ -1723,7 +1561,7 @@ const animate = () => {
                 npc.isWalking = false;
                 if (npc.actions.walk) npc.actions.walk.stop();
                 if (npc.actions.idle) npc.actions.idle.play();
-                
+
                 // Apply target rotation if any
                 if (npc.targetRotation !== null && npc.mesh) {
                     console.log(`[ANIMATE] Applying NPC target rotation for ${npc.name}: ${npc.targetRotation}`);
@@ -1747,7 +1585,7 @@ const animate = () => {
             checkGateways();
         } else {
             isWalking.value = false;
-            
+
             // Apply target rotation if any
             if (targetRotation.value !== null && playableCharacter) {
                 console.log(`[ANIMATE] Applying target rotation: ${targetRotation.value}`);
@@ -1839,7 +1677,7 @@ const backgroundImageUrl = computed(() => {
 });
 
 const gatewaysToDraw = computed(() => {
-    return gateways.value;
+    return currentGateways.value;
 });
 
 const debugOverlayStyle = computed(() => {

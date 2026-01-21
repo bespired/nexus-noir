@@ -46,6 +46,9 @@ export default {
             scenes: [],
             sectors: [],
             currentScene: null,
+            targetSpawnPoint: null,
+            debug: false,
+            lastTriggeredGatewayId: null,
             loading: false,
             error: null
         }
@@ -62,6 +65,15 @@ export default {
         },
         SET_ERROR(state, error) {
             state.error = error;
+        },
+        SET_TARGET_SPAWN_POINT(state, target) {
+            state.targetSpawnPoint = target;
+        },
+        SET_DEBUG(state, debug) {
+            state.debug = debug;
+        },
+        SET_LAST_TRIGGERED_GATEWAY_ID(state, id) {
+            state.lastTriggeredGatewayId = id;
         }
     },
     actions: {
@@ -114,9 +126,11 @@ export default {
                 commit('SET_LOADING', false);
             }
         },
-        async fetchScene({ commit }, sceneId) {
+        async fetchScene({ commit }, { sceneId, targetSpawnPoint = null, lastTriggeredGatewayId = null }) {
             if (!sceneId) return;
             commit('SET_LOADING', true);
+            commit('SET_TARGET_SPAWN_POINT', targetSpawnPoint);
+            commit('SET_LAST_TRIGGERED_GATEWAY_ID', lastTriggeredGatewayId);
             try {
                 const sceneRes = await fetchRobustData(`scenes/${sceneId}`);
                 commit('SET_CURRENT_SCENE', sceneRes);

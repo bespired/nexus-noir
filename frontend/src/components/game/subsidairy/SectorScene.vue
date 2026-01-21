@@ -4,9 +4,7 @@ import { ref, onMounted, onUnmounted, computed, defineProps, defineEmits } from 
 import { useStore } from 'vuex';
 
 const props = defineProps({
-    nextSceneId: { type: [String, Number], default: null },
-    opensectors: { type: Array, default: () => [] }, // IDs passed from editor
-    currentSectorId: { type: [String, Number], default: 1 } // Default to 1 for testing
+    opensectors: { type: Array, default: () => [] } // Still used for filtering in some contexts
 });
 
 const emit = defineEmits(['next-scene']);
@@ -14,6 +12,10 @@ const store = useStore();
 
 const loading = computed(() => store.state.game.loading);
 const sectorsDataRaw = computed(() => store.state.game.sectors);
+const currentScene = computed(() => store.state.game.currentScene);
+const currentSectorId = computed(() => currentScene.value?.sector_id || 1);
+const nextSceneId = computed(() => currentScene.value?.data?.nextSceneId);
+
 const progress = ref({ discovered: [] });
 const gpsCoords = ref({ x: '0000', y: '0000', zone: 'N-0' }); // HUD Stats
 const sectorLog = ref([]); // Persistent Log

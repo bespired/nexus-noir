@@ -14,19 +14,22 @@ const error = computed(() => store.state.game.error);
 
 const currentSceneComponent = shallowRef(null);
 const debugInfo = ref(['DEBUG CONSOLE'])
-const debugMode = ref(false); // Toggle for visual debugging
+const debugMode = computed({
+    get: () => store.state.game.debug,
+    set: (val) => store.commit('game/SET_DEBUG', val)
+});
 
 const toggleDebug = () => {
     debugMode.value = !debugMode.value;
     debuggerInfo(`DEBUG MODE: ${debugMode.value ? 'ON' : 'OFF'}`);
 };
 
-const loadScene = async (sceneId, targetSpawnPoint = null) => {
+const loadScene = async (sceneId, targetSpawnPoint = null, lastTriggeredGatewayId = null) => {
     if (!sceneId) return;
     
     try {
         debuggerInfo('LOAD ID ' + sceneId)
-        const sceneData = await store.dispatch('game/fetchScene', sceneId);
+        const sceneData = await store.dispatch('game/fetchScene', { sceneId, targetSpawnPoint, lastTriggeredGatewayId });
         if (!sceneData) return;
 
         // Merge transient state (we keep this local as it's engine-specific)
@@ -65,7 +68,7 @@ const handleNextScene = (payload) => {
     console.log("Scene complete, payload:", payload);
     if (payload && payload.targetSceneId) {
         debuggerInfo('GOTO SCENE ' + payload.targetSceneId)
-        loadScene(payload.targetSceneId, payload.targetSpawnPoint);
+        loadScene(payload.targetSceneId, payload.targetSpawnPoint, payload.lastTriggeredGatewayId);
     }
 };
 
@@ -105,15 +108,6 @@ onMounted(async () => {
         <component
             :is="currentSceneComponent"
             :key="currentScene.id"
-            v-bind="currentScene.data?.data || currentScene" 
-            :id="currentScene.id"
-            :sector_id="currentScene.sector_id"
-            :media="currentScene.media"
-            :scene="currentScene"
-            :is_engine="true" 
-            :debug="debugMode"
-            :targetSpawnPoint="currentScene.targetSpawnPoint" 
-            :nextSceneId="currentScene.data?.nextSceneId"
             @next-scene="handleNextScene"
         />
     </div>
