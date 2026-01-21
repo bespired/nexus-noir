@@ -40,7 +40,7 @@ const fetchInitialData = async () => {
         scenes.value = await scenesRes.json();
 
         // Dynamically load game components
-        const componentFiles = import.meta.glob('@components/game/*.vue', { query: '?raw', eager: true });
+        const componentFiles = import.meta.glob('@components/game/subsidairy/*.vue', { query: '?raw', eager: true });
         const loadedComponents = [];
         
         for (const path in componentFiles) {

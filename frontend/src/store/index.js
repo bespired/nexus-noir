@@ -1,4 +1,5 @@
 import { createStore } from 'vuex'
+import game from '../components/game/store/game'
 
 const store = createStore({
     state() {
@@ -8,6 +9,9 @@ const store = createStore({
     },
     getters: {
         'auth/isAuthenticated': (state) => !!state.user
+    },
+    modules: {
+        game
     }
 })
 

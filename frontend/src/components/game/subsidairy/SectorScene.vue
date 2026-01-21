@@ -1,6 +1,7 @@
 <script setup>
 // game vue
-import { ref, onMounted, onUnmounted, defineProps, defineEmits } from 'vue';
+import { ref, onMounted, onUnmounted, computed, defineProps, defineEmits } from 'vue';
+import { useStore } from 'vuex';
 
 const props = defineProps({
     nextSceneId: { type: [String, Number], default: null },
@@ -9,9 +10,10 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['next-scene']);
+const store = useStore();
 
-const sectors  = ref([]);
-const loading  = ref(true);
+const loading = computed(() => store.state.game.loading);
+const sectorsDataRaw = computed(() => store.state.game.sectors);
 const progress = ref({ discovered: [] });
 const gpsCoords = ref({ x: '0000', y: '0000', zone: 'N-0' }); // HUD Stats
 const sectorLog = ref([]); // Persistent Log
@@ -123,73 +125,42 @@ const updateGps = (e) => {
 
 // --- Lifecycle & Data ---
 
+const sectors = computed(() => {
+    return sectorsDataRaw.value.map(s => {
+        let dimensions = { x:0, y:0, width:150, height:100 };
+        try {
+            if (s.thumb_dimensions) {
+                dimensions = typeof s.thumb_dimensions === 'string'
+                    ? JSON.parse(s.thumb_dimensions)
+                    : s.thumb_dimensions;
+            }
+        } catch(e) { console.error("Dim parse error", e); }
+
+        // Find 2D artwork
+        let imgUrl = null;
+        if (s.media && s.media.length > 0) {
+            const art = s.media.find(m => m.type === '2d');
+            if (art) imgUrl = art.filepad;
+        }
+
+        return {
+            ...s,
+            x: dimensions.x,
+            y: dimensions.y,
+            width: dimensions.width,
+            height: dimensions.height,
+            imgUrl: imgUrl
+        };
+    });
+});
+
 onMounted(async () => {
     addLog('SYSTEM INITIALIZED', 'SYS');
     addLog('CONNECTING TO SAT-LINK...', 'NET');
     setTimeout(() => addLog('CONNECTION ESTABLISHED', 'OK'), 800);
     startRandomLogs();
     loadProgress();
-    await fetchSectors();
 });
-
-onUnmounted(() => {
-    if (hoverTimer) clearTimeout(hoverTimer);
-    if (randomLogTimer) clearTimeout(randomLogTimer);
-});
-
-const loadProgress = () => {
-    const saved = localStorage.getItem('cyber-noir-progress');
-    if (saved) {
-        try {
-            progress.value = JSON.parse(saved);
-        } catch (e) {
-            console.error("Failed to load progress", e);
-        }
-    }
-};
-
-const fetchSectors = async () => {
-    loading.value = true;
-    try {
-        const response = await fetch('/api/sectors');
-        if (!response.ok) throw new Error('API Error');
-        const data = await response.json();
-
-        // Map and parse the data to match component expectations
-        sectors.value = data.map(s => {
-            let dimensions = { x:0, y:0, width:150, height:100 };
-            try {
-                if (s.thumb_dimensions) {
-                    dimensions = typeof s.thumb_dimensions === 'string'
-                        ? JSON.parse(s.thumb_dimensions)
-                        : s.thumb_dimensions;
-                }
-            } catch(e) { console.error("Dim parse error", e); }
-
-            // Find 2D artwork
-            let imgUrl = null;
-            if (s.media && s.media.length > 0) {
-                const art = s.media.find(m => m.type === '2d');
-                if (art) imgUrl = art.filepad;
-            }
-
-            return {
-                ...s,
-                x: dimensions.x,
-                y: dimensions.y,
-                width: dimensions.width,
-                height: dimensions.height,
-                imgUrl: imgUrl
-            };
-        });
-
-    } catch (e) {
-        console.error("Failed to fetch sectors", e);
-        addLog("CONNECTION FAILED: OFFLINE MODE", "ERR");
-    } finally {
-        loading.value = false;
-    }
-};
 
 // Based on a 1536 x 1024 coordinate system from the editor
 const getSectorStyle = (sector) => {

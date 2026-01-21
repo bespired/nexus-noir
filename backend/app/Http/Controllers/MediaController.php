@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\Storage;
 
 class MediaController extends Controller
 {
+    public function index()
+    {
+        return Media::all();
+    }
+
     public function store(Request $request)
     {
         $request->validate([

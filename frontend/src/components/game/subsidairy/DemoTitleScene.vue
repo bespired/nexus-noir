@@ -1,20 +1,25 @@
 <script setup>
 // game vue
-import { defineProps, defineEmits } from 'vue';
-import ClickButton from './ClickButton.vue';
+import { defineProps, defineEmits, computed } from 'vue';
+import { useStore } from 'vuex';
+import ClickButton from '../helpers/ClickButton.vue';
 
 const props = defineProps({
     title:       { type: String, default: 'NEXUS NOIR' },
-    subtitle:    { type: String, default: 'Press Start' },
     nextSceneId: { type: [String, Number], default: null }
 });
 
 const emit = defineEmits(['next-scene']);
+const store = useStore();
 
-const start = () => {
-    // E.g. play a sound, then emit
-    console.log("Emitting next scene:", props.nextSceneId);
-    emit('next-scene', { targetSceneId: props.nextSceneId });
+const displayTitle = computed(() => {
+    return store.state.game.configs.game_title || props.title;
+});
+
+const startDemo = () => {
+    emit('next-scene', {
+        targetSceneId: props.nextSceneId
+    });
 };
 </script>
 
@@ -104,8 +109,8 @@ const start = () => {
 </style>
 
 <template>
-    <div class="titles-container" @click="start" >
-        <h1 class="line-anim delay-8 red pulse">{{ title }}</h1>
+    <div class="titles-container" @click="startDemo" >
+        <h1 class="line-anim delay-8 red pulse">{{ displayTitle }}</h1>
 
         <p class="line-anim delay-1">
             <span class="red">Replicants</span> zijn bio-geëngineerde mensen, ontworpen door de Tyrell Corporation voor gebruik buiten de aarde. Hun verbeterde kracht maakte hen tot ideale slavenarbeiders.
@@ -127,7 +132,7 @@ const start = () => {
             <ClickButton
                 label="INITIALIZE_SEQUENCE"
                 buttonType="red"
-                @click="start"
+                @click="startDemo"
             />
         </div>
     </div>

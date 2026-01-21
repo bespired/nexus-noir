@@ -1,21 +1,12 @@
 <script setup>
+// game vue
 import { ref, onMounted, onUnmounted, computed, reactive, watch, defineProps, defineEmits } from 'vue';
+import { useStore } from 'vuex';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-
-
-import { useGameAssets } from '../../composables/useGameAssets';
-import { useSceneData } from '../../composables/useSceneData';
-
-const { resolveAssetUrl, getVehicleGlbUrl, getPersonageGlbUrl } = useGameAssets();
-const { 
-    sectorData, scenesInSector, currentScene, settings, allPersonages, actions, allAnimations, loading, error,
-    loadContext, fetchRobustData 
-} = useSceneData();
-
-const getImageUrl = resolveAssetUrl;
+import { useGameAssets } from '../composables/useGameAssets';
 
 const slugify = (text) => {
     if (!text) return '';
@@ -26,8 +17,6 @@ const slugify = (text) => {
         .replace(/^-+/, '')
         .replace(/-+$/, '');
 };
-
-
 
 const props = defineProps({
     id: [Number, String], // Scene ID
@@ -47,6 +36,20 @@ const props = defineProps({
     is_engine: Boolean // New prop to force engine/fullscreen mode
 });
 
+const emit = defineEmits(['next-scene']);
+
+const store = useStore();
+const { resolveAssetUrl, getPersonageGlbUrl } = useGameAssets();
+
+// State from store
+const currentScene = computed(() => store.state.game.currentScene);
+const allPersonages = computed(() => store.state.game.characters);
+const actions = computed(() => store.state.game.actions);
+const settings = computed(() => store.state.game.configs);
+const allAnimations = computed(() => store.state.game.animations);
+const loading = computed(() => store.state.game.loading);
+const error = computed(() => store.state.game.error);
+
 const isEngine = ref(props.is_engine || false); // Initialize from prop
 // Update if prop changes
 watch(() => props.is_engine, (val) => {
@@ -54,15 +57,11 @@ watch(() => props.is_engine, (val) => {
     updateDimensions();
 });
 
-const emit = defineEmits(['next-scene']);
-
 // Use prop if available
 const sectorId = computed(() => props.sector_id);
 const sceneId = computed(() => props.id);
 
-// Data refs
-// Data refs used to be here (sectorData etc), now from useSceneData
-
+const getImageUrl = resolveAssetUrl;
 
 const getCharacterGlbUrl = (name) => {
     const p = allPersonages.value.find(pers => pers.name === name);
@@ -253,10 +252,6 @@ const updateDimensions = () => {
 onMounted(async () => {
     console.log("[DEBUG] WalkableAreaScene mounted");
 
-
-    await fetchData();
-    console.log("[DEBUG] fetchData complete. Scene:", currentScene.value);
-
     window.addEventListener('resize', updateDimensions);
     initThree();
     console.log("[DEBUG] initThree complete");
@@ -276,9 +271,6 @@ onUnmounted(() => {
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     if (renderer) renderer.dispose();
 });
-const fetchData = async () => {
-    await loadContext(props);
-};
 
 const initThree = () => {
     if (!canvasContainer.value) return;
@@ -762,14 +754,16 @@ const spawnCharacter = (spawnPoint, sceneId) => {
                                 
                                 console.log(`[ANIM] Clip Name: ${clip.name}, Duration: ${clip.duration}, Tracks: ${clip.tracks.length}`);
 
-                                const rawNameLower = rawName.toLowerCase();
-                                let actionKey = null;
+                                 let actionKey = anim.mixer_name || null;
 
-                                if (rawNameLower.includes('walk') || rawNameLower.includes('loop')) actionKey = 'walk';
-                                else if (rawNameLower.includes('idle') || rawNameLower.includes('stand')) actionKey = 'idle';
-                                else if (rawNameLower.includes('talk') || rawNameLower.includes('speak')) actionKey = 'talk';
-                                else if (rawNameLower.includes('caut') || rawNameLower.includes('sneak')) actionKey = 'caution';
-                                else actionKey = rawNameLower; // Fallback
+                                 if (!actionKey) {
+                                     const rawNameLower = rawName.toLowerCase();
+                                     if (rawNameLower.includes('walk') || rawNameLower.includes('loop')) actionKey = 'walk';
+                                     else if (rawNameLower.includes('idle') || rawNameLower.includes('stand')) actionKey = 'idle';
+                                     else if (rawNameLower.includes('talk') || rawNameLower.includes('speak')) actionKey = 'talk';
+                                     else if (rawNameLower.includes('caut') || rawNameLower.includes('sneak')) actionKey = 'caution';
+                                     else actionKey = rawNameLower; // Fallback
+                                 }
 
                                 if (actionKey) {
                                     try {

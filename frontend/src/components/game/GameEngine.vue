@@ -1,16 +1,18 @@
 <script setup>
-import { ref, onMounted, shallowRef, defineAsyncComponent, markRaw } from 'vue';
-import WalkableAreaScene from './WalkableAreaScene.vue';
+import { ref, onMounted, shallowRef, defineAsyncComponent, markRaw, computed } from 'vue';
+import { useStore } from 'vuex';
+import WalkableAreaScene from './subsidairy/WalkableAreaScene.vue';
 
 const props = defineProps({
     emanator: { type: Boolean, default: false },
 });
 
-const currentScene = ref(null);
-const currentSceneComponent = shallowRef(null);
-const loading = ref(true);
-const error = ref(null);
+const store = useStore();
+const currentScene = computed(() => store.state.game.currentScene);
+const loading = computed(() => store.state.game.loading);
+const error = computed(() => store.state.game.error);
 
+const currentSceneComponent = shallowRef(null);
 const debugInfo = ref(['DEBUG CONSOLE'])
 const debugMode = ref(false); // Toggle for visual debugging
 
@@ -21,50 +23,36 @@ const toggleDebug = () => {
 
 const loadScene = async (sceneId, targetSpawnPoint = null) => {
     if (!sceneId) return;
-    loading.value = true;
-    error.value = null;
-
+    
     try {
         debuggerInfo('LOAD ID ' + sceneId)
-        const response = await fetch(`/api/scenes/${sceneId}`);
-        if (!response.ok) throw new Error(`Scene ${sceneId} not found`);
+        const sceneData = await store.dispatch('game/fetchScene', sceneId);
+        if (!sceneData) return;
 
-        const sceneData = await response.json();
-        // Merge transient state
-        currentScene.value = { ...sceneData, targetSpawnPoint };
-
+        // Merge transient state (we keep this local as it's engine-specific)
+        // Actually, we should probably just pass targetSpawnPoint as a prop
+        
         if (sceneData.type === 'vue-component' && sceneData.data?.component?.name) {
             const compPath = sceneData.data.component.name;
-            // Name example: "game/DemoTitleScene.vue"
-            // Since we are in src/components/game, we strip "game/" and ".vue"
             const cleanName = compPath.replace('game/', '').replace('.vue', '');
 
             debuggerInfo('LOAD SCENE ' + cleanName)
 
             try {
-                // Vite dynamic import hint: needs a relatively static path
                 currentSceneComponent.value = defineAsyncComponent(() =>
-                    import(`./${cleanName}.vue`)
+                    import(`./subsidairy/${cleanName}.vue`)
                 );
             } catch (e) {
                 console.error(`Failed to load component: ${compPath}`, e);
-                error.value = `Component not found: ${compPath}`;
             }
         } else if (sceneData.type === 'walkable-area') {
-
             debuggerInfo('LOAD SCENE WalkableAreaScene')
-
             currentSceneComponent.value = markRaw(WalkableAreaScene);
-
         } else {
-            // Fallback or other types
             currentSceneComponent.value = null;
         }
     } catch (err) {
-        console.error("Error loading scene:", err);
-        error.value = err.message;
-    } finally {
-        loading.value = false;
+        console.error("Error loading scene in engine:", err);
     }
 };
 
@@ -82,18 +70,17 @@ const handleNextScene = (payload) => {
 };
 
 onMounted(async () => {
-    // Fetch opening scene ID from config
+    // 1. Fetch all global game data
+    await store.dispatch('game/fetchAllData');
+
+    // 2. Fetch opening scene ID from config
     try {
-        const configRes = await fetch('/api/configs/opening_scene');
-        if (configRes.ok) {
-            const config = await configRes.json();
-            if (config && config.value) {
-                await loadScene(config.value);
-            }
+        const openingSceneId = store.state.game.configs.opening_scene;
+        if (openingSceneId) {
+            await loadScene(openingSceneId);
         }
     } catch (err) {
         console.error("Failed to load opening scene config", err);
-        error.value = "Failed to load engine configuration";
     }
 });
 </script>

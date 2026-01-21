@@ -1,32 +1,24 @@
 <script setup>
 // game vue
-import { ref, onMounted, computed } from 'vue';
-import ThreePreview from './Preview3D.vue';
-import ClickButton from './ClickButton.vue';
+import { ref, computed } from 'vue';
+import { useStore } from 'vuex';
+import ThreePreview from '../helpers/Preview3D.vue';
+import ClickButton from '../helpers/ClickButton.vue';
 
 const props = defineProps({
     nextSceneId: { type: [String, Number], default: null }
 });
 
 const emit = defineEmits(['next-scene']);
+const store = useStore();
 
-const characters = ref([]);
+const characters = computed(() => {
+    // Filter for playable characters from global store
+    return store.state.game.characters.filter(c => c.is_playable && c.type === 'person');
+});
+
 const currentIndex = ref(0);
-const loading = ref(true);
-
-const loadCharacters = async () => {
-    try {
-        const response = await fetch('/api/characters');
-        if (!response.ok) throw new Error('Failed to fetch characters');
-        const data = await response.json();
-
-        // Filter for playable characters
-        characters.value = data.filter(c => c.is_playable && c.type === 'person');
-        loading.value = false;
-    } catch (err) {
-        console.error('Failed to load character data:', err);
-    }
-};
+const loading = computed(() => store.state.game.loading);
 
 const currentCharacter = computed(() => characters.value[currentIndex.value] || null);
 
@@ -62,10 +54,6 @@ const getGlbUrl = (character) => {
     }
     return '';
 };
-
-onMounted(() => {
-    loadCharacters();
-});
 </script>
 
 <template>

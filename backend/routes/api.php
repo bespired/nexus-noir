@@ -29,7 +29,7 @@ Route::apiResource('notes', NoteController::class);
 Route::post('scenes/batch-update', [SceneController::class, 'batchUpdate']);
 Route::apiResource('scenes', SceneController::class);
 Route::apiResource('sectors', SectorController::class);
-Route::apiResource('media', MediaController::class)->only(['store', 'destroy']);
+Route::apiResource('media', MediaController::class)->only(['index', 'store', 'destroy']);
 Route::get('configs', [ConfigController::class, 'index']);
 Route::get('configs/{key}', [ConfigController::class, 'show']);
 Route::put('configs/{key}', [ConfigController::class, 'update']);
