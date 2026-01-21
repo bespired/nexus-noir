@@ -143,16 +143,26 @@ const sectors = computed(() => {
             if (art) imgUrl = art.filepad;
         }
 
+        // Attach scenes from global store if not already present
+        const sectorScenes = s.scenes || store.state.game.scenes.filter(scene => scene.sector_id === s.id);
+
         return {
             ...s,
             x: dimensions.x,
             y: dimensions.y,
             width: dimensions.width,
             height: dimensions.height,
-            imgUrl: imgUrl
+            imgUrl: imgUrl,
+            scenes: sectorScenes
         };
     });
 });
+
+const loadProgress = () => {
+    // Stub for future progress loading
+    addLog('LOADING PLAYER PROGRESS...', 'SYS');
+    // progress.value = ...
+};
 
 onMounted(async () => {
     addLog('SYSTEM INITIALIZED', 'SYS');

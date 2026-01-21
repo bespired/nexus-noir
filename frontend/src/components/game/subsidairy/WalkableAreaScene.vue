@@ -1,5 +1,4 @@
 <script setup>
-// game vue
 import { ref, onMounted, onUnmounted, computed, reactive, watch, defineProps, defineEmits } from 'vue';
 import { useStore } from 'vuex';
 import * as THREE from 'three';
@@ -132,15 +131,18 @@ let targetPointMesh = null;
 const pendingGateway = ref(null);
 const currentLoadingSceneId = ref(null);
 
-const activeGateway = computed(() => getGatewayAtPosition());
+const gateways = computed(() => {
+    return currentScene.value?.gateways || currentScene.value?.['2d_gateways'] || props.gateways || [];
+});
 
-const sceneTriggers = computed(() => currentScene.value ?.gateways || []);
+const sceneTriggers = computed(() => gateways.value);
 const behaviorLog = ref([]);
+const targetRotation = ref(null); // Direction in degrees
 
 const activeBehaviors = computed(() => {
-    if (!currentScene.value ?.gateways) return [];
+    if (!gateways.value) return [];
     // Map 'behavior_id' (legacy) or 'action_id' (new)
-    const behaviorIds = [...new Set(currentScene.value.gateways.map(gw => gw.behavior_id || gw.action_id).filter(id => id))];
+    const behaviorIds = [...new Set(gateways.value.map(gw => gw.behavior_id || gw.action_id).filter(id => id))];
     return actions.value.filter(g => behaviorIds.includes(g.id));
 });
 
@@ -379,9 +381,9 @@ const loadSceneGLB = (sceneData, targetSpawnLabel = null) => {
                     const isFloor = child.name.toLowerCase() === 'floor' || child.name.toLowerCase() === 'plane';
 
                     if (isFloor) {
-                        child.material = new THREE.ShadowMaterial({
-                            opacity: show3DHelpers.value ? 0.3 : 0.4
-                        });
+                        child.material = show3DHelpers.value
+                            ? new THREE.MeshPhongMaterial({ color: 0x00ffff, transparent: true, opacity: 0.3 })
+                            : new THREE.ShadowMaterial({ opacity: 0.4 });
                         child.receiveShadow = true;
                         child.name = 'floor';
                     } else {
@@ -607,8 +609,7 @@ const spawnCharacter = (spawnPoint, sceneId) => {
                     customGlb = p.threefile;
                 } else if (p.name) {
                     characterName = p.name;
-                } else if (p.name) {
-                    characterName = p.name;
+             
                 }
             } catch (e) {
                 console.warn("Failed to parse player_character from localStorage", e);
@@ -1024,6 +1025,7 @@ const spawnNPCs = async (scenePersonages, sceneId) => {
                 actions: actions,
                 behavior_id: sp.behavior_id || sp.behaviorId || null,
                 targetPos: new THREE.Vector3(spawnPos.x, spawnPos.y, spawnPos.z),
+                targetRotation: null,
                 isWalking: false
             };
             npcModes[p.id] = 'IDLE';
@@ -1092,7 +1094,7 @@ const onMapClick = (e) => {
         console.log(`[CLICK DEBUG] Standard Mode. Screen: ${screenX.toFixed(2)}%, ${screenY.toFixed(2)}%`);
     }
 
-    const clickedGateway = currentScene.value ?.gateways ?.find(gw => {
+    const clickedGateway = gateways.value ?.find(gw => {
         const hit = screenX >= gw.x && screenX <= gw.x + gw.width &&
         screenY >= gw.y && screenY <= gw.y + gw.height;
         if (hit) console.log(`[CLICK DEBUG] Hit Gateway: ${gw.label || gw.target_scene_id}`);
@@ -1119,26 +1121,18 @@ const onMapClick = (e) => {
     );
 
     if (floorIntersect) {
-
         moveTarget = floorIntersect.point.clone();
     } else if (clickedGateway) {
-        // B. Fallback: Waypoints (ONLY if a gateway was clicked but no floor detected)
-        const currentSectorId = sectorId.value;
-        const allSpawnPoints = currentScene.value.location ?.spawn_points || {};
-        const spawnPoints = allSpawnPoints[currentSectorId] || allSpawnPoints[Number(currentSectorId)] || [];
-        
-        console.log(`[CLICK DEBUG] Fallback Triggered.`);
-        console.log(`[CLICK DEBUG] SectorID: ${currentSectorId} (Type: ${typeof currentSectorId})`);
-        console.log(`[CLICK DEBUG] Location SpawnPoints Keys: ${Object.keys(allSpawnPoints).join(', ')}`);
-        console.log(`[CLICK DEBUG] Found ${spawnPoints.length} candidate spawn points.`);
-
-        const waypoints = spawnPoints; // Use all available points as candidates
-
-        if (waypoints.length > 0) {
+        // B. Fallback: Nearest Spawnpoint (ONLY if a gateway was clicked but no floor detected)
+        // Project all known 3D spawnpoints to 2D and find the one closest to the click
+        if (currentSpawnPoints.value && currentSpawnPoints.value.length > 0) {
             let nearest = null;
             let minDist = Infinity;
-            waypoints.forEach(wp => {
-                const vec = new THREE.Vector3(wp.x, wp.y, wp.z);
+            
+            console.log(`[CLICK DEBUG] Fallback: Searching nearest 3D spawnpoint for gateway: ${clickedGateway.label}`);
+            
+            currentSpawnPoints.value.forEach(p => {
+                const vec = new THREE.Vector3(p.x, p.y, p.z);
                 vec.project(camera);
 
                 let wpX, wpY;
@@ -1162,10 +1156,12 @@ const onMapClick = (e) => {
                 const d = Math.sqrt(Math.pow(screenX - wpX, 2) + Math.pow(screenY - wpY, 2));
                 if (d < minDist) {
                     minDist = d;
-                    nearest = wp;
+                    nearest = p;
                 }
             });
+
             if (nearest) {
+                console.log(`[CLICK DEBUG] Fallback Hit: Closest point is '${nearest.name || nearest.type}' at dist ${minDist.toFixed(2)}%`);
                 moveTarget = new THREE.Vector3(nearest.x, nearest.y, nearest.z);
             }
         }
@@ -1178,6 +1174,15 @@ const onMapClick = (e) => {
         targetPosition.copy(moveTarget);
         isWalking.value = true;
         pendingGateway.value = clickedGateway || null;
+        
+        // Capture direction if we clicked a spawnpoint (direct or fallback)
+        // 'nearest' might be set from the fallback logic above
+        if (typeof nearest !== 'undefined' && nearest && (nearest.direction !== undefined || nearest.rotation !== undefined)) {
+            targetRotation.value = nearest.direction ?? nearest.rotation ?? null;
+            console.log(`[CLICK DEBUG] Captured target rotation: ${targetRotation.value}`);
+        } else {
+            targetRotation.value = null;
+        }
 
         if (targetPointMesh) {
             targetPointMesh.position.copy(targetPosition);
@@ -1188,6 +1193,7 @@ const onMapClick = (e) => {
         console.log(`[CLICK DEBUG] No valid move target found. ClickedGateway: ${clickedGateway ? 'YES' : 'NO'}`);
         // Explicitly clear if clicking "outside" everything
         pendingGateway.value = null;
+        targetRotation.value = null;
     }
 };
 
@@ -1565,7 +1571,7 @@ const runAction = async (action, actorId = null) => {
 
 
 const getGatewayAtPosition = () => {
-    if (!currentScene.value || !currentScene.value.gateways || !playableCharacter) return null;
+    if (!currentScene.value || !gateways.value || !playableCharacter) return null;
 
     // Project character position to screen space
     const vector = playableCharacter.position.clone();
@@ -1600,7 +1606,7 @@ const getGatewayAtPosition = () => {
         screenY = -(vector.y - 1) / 2 * 100;
     }
 
-    for (const gw of currentScene.value.gateways) {
+    for (const gw of gateways.value) {
         if (screenX >= gw.x && screenX <= gw.x + gw.width && screenY >= gw.y && screenY <= gw.y + gw.height) {
             return gw;
         }
@@ -1660,7 +1666,7 @@ const swapScene = async (gateway) => {
 };
 
 const checkGateways = () => {
-    if (!currentScene.value || !currentScene.value.gateways || !playableCharacter || isSwapping.value || blockTriggers.value) return;
+    if (!currentScene.value || !gateways.value || !playableCharacter || isSwapping.value || blockTriggers.value) return;
 
     const found = getGatewayAtPosition();
 
@@ -1732,6 +1738,14 @@ const animate = () => {
             checkGateways();
         } else {
             isWalking.value = false;
+            
+            // Apply target rotation if any
+            if (targetRotation.value !== null && playableCharacter) {
+                console.log(`[ANIMATE] Applying target rotation: ${targetRotation.value}`);
+                playableCharacter.rotation.y = THREE.MathUtils.degToRad(targetRotation.value);
+                targetRotation.value = null; // Clear after applying
+            }
+
             if (targetPointMesh) targetPointMesh.visible = false;
 
             if (pendingGateway.value) {
@@ -1757,13 +1771,12 @@ watch(show3DHelpers, (newVal) => {
         if (child.isMesh) {
             const isFloor = child.name === 'floor';
             if (isFloor) {
-                if (child.material.isShadowMaterial) {
-                    child.material.opacity = newVal ? 0.3 : 0.4;
-                } else {
-                    child.material.opacity = newVal ? 0.3 : 0.001;
-                }
-                child.material.transparent = true;
-                child.material.colorWrite = true;
+                const oldMat = child.material;
+                child.material = newVal
+                    ? new THREE.MeshPhongMaterial({ color: 0x00ffff, transparent: true, opacity: 0.3 })
+                    : new THREE.ShadowMaterial({ opacity: 0.4 });
+                child.receiveShadow = true;
+                if (oldMat) oldMat.dispose();
             } else {
                 child.material.opacity = newVal ? 0.3 : 0;
                 child.material.transparent = newVal; // Use transparent for helpers, opaque for mask
@@ -1817,7 +1830,7 @@ const backgroundImageUrl = computed(() => {
 });
 
 const gatewaysToDraw = computed(() => {
-    return currentScene.value?.gateways || props.gateways || [];
+    return gateways.value;
 });
 
 const debugOverlayStyle = computed(() => {
