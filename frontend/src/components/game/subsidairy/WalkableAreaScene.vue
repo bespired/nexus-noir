@@ -1723,6 +1723,13 @@ const animate = () => {
                 npc.isWalking = false;
                 if (npc.actions.walk) npc.actions.walk.stop();
                 if (npc.actions.idle) npc.actions.idle.play();
+                
+                // Apply target rotation if any
+                if (npc.targetRotation !== null && npc.mesh) {
+                    console.log(`[ANIMATE] Applying NPC target rotation for ${npc.name}: ${npc.targetRotation}`);
+                    npc.mesh.rotation.y = THREE.MathUtils.degToRad(npc.targetRotation);
+                    npc.targetRotation = null; // Clear after applying
+                }
             }
         }
     });
