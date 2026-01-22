@@ -127,21 +127,42 @@ const spawnPointTypes = [
 ];
 
 const getSpawnpointsByType = (type) => {
-    const points = [];
+    const uniquePoints = new Map();
+    console.log(`[DEBUG] Searching for spawnpoints of type: '${type}' in ${scenes.value.length} scenes.`);
+    
     scenes.value.forEach(scene => {
-        if (scene['3d_spawnpoints']) {
+        if (scene['3d_spawnpoints'] && Array.isArray(scene['3d_spawnpoints'])) {
             scene['3d_spawnpoints'].forEach(sp => {
                 if (!type || sp.type === type) {
-                    points.push({
-                        label: `${scene.title} - ${sp.name}`,
-                        value: sp.name,
-                        scene_id: scene.id,
-                        type: sp.type
-                    });
+                    const name = sp.name;
+                    if (!uniquePoints.has(name)) {
+                        uniquePoints.set(name, {
+                            name: name,
+                            type: sp.type,
+                            count: 0,
+                            scenes: []
+                        });
+                    }
+                    const entry = uniquePoints.get(name);
+                    entry.count++;
+                    if (entry.scenes.length < 3) entry.scenes.push(scene.title);
                 }
             });
         }
     });
+
+    const points = Array.from(uniquePoints.values()).map(entry => {
+        let label = entry.name;
+        // Optional: Add context if needed, but keeping it clean as per request
+        // if (entry.count > 1) label += ` (${entry.count} scenes)`;
+        return {
+            label: label,
+            value: entry.name,
+            type: entry.type
+        };
+    });
+
+    console.log(`[DEBUG] Found ${points.length} unique spawnpoints.`);
     return points;
 };
 

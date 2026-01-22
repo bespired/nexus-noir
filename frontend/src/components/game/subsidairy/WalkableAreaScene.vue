@@ -8,15 +8,6 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { useGameAssets } from '../composables/useGameAssets';
 import { useDialogue }   from '../composables/useDialogue';
 
-// const slugify = (text) => {
-//     if (!text) return '';
-//     return text.toString().toLowerCase()
-//         .replace(/\s+/g, '-')
-//         .replace(/[^\w-]+/g, '')
-//         .replace(/--+/g, '-')
-//         .replace(/^-+/, '')
-//         .replace(/-+$/, '');
-// };
 
 const props = defineProps({
     // is_engine can stay as an optional prop if we want to force it,
@@ -24,7 +15,7 @@ const props = defineProps({
     is_engine: { type: Boolean, default: true }
 });
 
-const emit = defineEmits(['next-scene']);
+const emit = defineEmits(['next-scene', 'debug']);
 
 const store = useStore();
 const { resolveAssetUrl, getPersonageGlbUrl } = useGameAssets();
@@ -71,6 +62,7 @@ const isBehaviorActive = ref(false); // Global behavior lock
 const lastTriggeredGateway = ref(null);
 const storeLastTriggeredId = computed(() => store.state.game.lastTriggeredGatewayId);
 const lastExecutedBehaviorGateway = ref(null);
+const lastDialogueCloseTime = ref(0); // To prevent click through
 
 // Three.js refs
 const canvasContainer = ref(null);
@@ -86,8 +78,9 @@ let playableCharacter = null;
 let vehicle = null;
 const isWalking = ref(false);
 const targetPosition = new THREE.Vector3();
-const characterSpeed = 2.0;
+const characterSpeed = 1.7;
 const landingSessionKey = computed(() => `sector_landed_${ sectorId.value }`);
+
 const hasLandedInSession = () => {
     try {
         const key = landingSessionKey.value;
@@ -96,6 +89,7 @@ const hasLandedInSession = () => {
         return stored === 'true';
     } catch(e) { return false; }
 };
+
 const landingDone = ref(hasLandedInSession());
 
 // let dialogueResolve = null; // Removed as it's now in composable
@@ -114,9 +108,11 @@ const createLoader = () => {
     loader.setDRACOLoader(dracoLoader);
     return loader;
 };
+
 let targetPointMesh = null;
 const pendingGateway = ref(null);
 const currentLoadingSceneId = ref(null);
+
 // Resolved gateways (merging store data + location data)
 const currentGateways = computed(() => {
     return currentScene.value?.gateways || currentScene.value?.['2d_gateways'] || [];
@@ -133,12 +129,12 @@ const {
     typewriterText,
     showDialogueOptions,
     dialogueNPCName,
+    optionsToDisplay,
     startDialogue,
     playNode,
     selectOption,
     closeDialogue,
-    runAction,
-    fetchRobustData
+    runAction
 } = useDialogue({
     isEngine,
     playableCharacter: computed({
@@ -161,7 +157,15 @@ const {
     swapScene: (gateway) => swapScene(gateway),
     gameState,
     allPersonages,
-    settings
+    settings,
+    allDialogs: computed(() => store.state.game.dialogs)
+});
+
+watch(activeDialogue, (newVal) => {
+    if (!newVal) {
+        lastDialogueCloseTime.value = Date.now();
+        console.log(`[DIALOGUE] Closed at ${lastDialogueCloseTime.value}`);
+    }
 });
 
 const activeBehaviors = computed(() => {
@@ -211,7 +215,7 @@ const containerStyle = computed(() => {
         };
     }
     return {
-        width: containerWidth.value + 'px',
+        width:  containerWidth.value + 'px',
         height: containerHeight.value + 'px'
     };
 });
@@ -220,7 +224,7 @@ const updateDimensions = () => {
     // In engine mode, we fill the screen (or available parent)
     if (isEngine.value) {
         // Use the container's actual size if mounted, otherwise fallback to window
-        const w = (canvasContainer.value && canvasContainer.value.clientWidth) || window.innerWidth;
+        const w = (canvasContainer.value && canvasContainer.value.clientWidth)  || window.innerWidth;
         const h = (canvasContainer.value && canvasContainer.value.clientHeight) || window.innerHeight;
 
         containerWidth.value = w;
@@ -250,7 +254,7 @@ const updateDimensions = () => {
     const verticalOffset = 200;
     const sidebarWidth = window.innerWidth >= 1024 ? 384 + 32 : 0;
 
-    const maxWidth = window.innerWidth - 64 - sidebarWidth;
+    const maxWidth  = window.innerWidth - 64 - sidebarWidth;
     const maxHeight = window.innerHeight - verticalOffset;
 
     let newWidth = maxWidth;
@@ -473,7 +477,7 @@ const loadSceneGLB = (sceneData, targetSpawnLabel = null) => {
             const specificSpawn = targetSpawnLabel ? (findByName(targetSpawnLabel) || spawnPoints.find(p => String(p.personage_id) === String(targetSpawnLabel))) : null;
             const landingSpawn = findByName('landing');
             const personageSpawn = spawnPoints.find(p => p.type === 'personage');
-            const anyWaypoint = spawnPoints.find(p => p.type === 'waypoint');
+            const anyWaypoint    = spawnPoints.find(p => p.type === 'waypoint');
 
             const charSpawnPoint = specificSpawn ||
                               (!landingDone.value ? landingSpawn : null) ||
@@ -626,6 +630,21 @@ const spawnVehicle = (spawnPoint, animate = true) => {
         });
     });
 };
+const getMixerKey = (anim, clipName) => {
+    if (anim?.mixer_name) return anim.mixer_name;
+    const name = (clipName || anim?.name || anim?.label || "").toLowerCase();
+    if (name.includes('walk') || name.includes('loop') || name.includes('run')) return 'walk';
+    if (name.includes('idle') || name.includes('stand') || name.includes('breath')) return 'idle';
+    if (name.includes('talk') || name.includes('speak') || name.includes('chat')) return 'talk';
+    if (name.includes('caut') || name.includes('sneak') || name.includes('crouch')) return 'caution';
+    if (name.includes('dance')) return 'dance';
+    // Deep fallback for mixamo names like "mixamo.com"
+    if (name.includes('mixamo')) {
+        if (name.includes('walk')) return 'walk';
+        if (name.includes('idle')) return 'idle';
+    }
+    return name || 'idle';
+};
 
 const spawnCharacter = (spawnPoint, sceneId) => {
     return new Promise((resolve) => {
@@ -674,21 +693,9 @@ const spawnCharacter = (spawnPoint, sceneId) => {
 
             playableCharacter = gltf.scene;
 
-            // Dynamic Scaling Logic: Measure model height
-            const bbox = new THREE.Box3().setFromObject(playableCharacter);
-            const size = new THREE.Vector3();
-            bbox.getSize(size);
-            const rawHeight = size.y;
-
             let scale = spawnPoint.scale || characterScale.value;
 
-            // If the model is huge (e.g. > 20 units), it's likely the animated version needing 0.01 multiplier
-            if (rawHeight > 20) {
-                console.log(`Dynamic scaling: Huge model detected (height: ${rawHeight.toFixed(2)}). Applying 0.01 correction.`);
-                scale = scale * 0.01;
-            } else {
-                console.log(`Dynamic scaling: Standard model detected (height: ${rawHeight.toFixed(2)}). Using base scale: ${scale}.`);
-            }
+            console.log(`Using base scale: ${scale}.`);
 
             playableCharacter.scale.set(scale, scale, scale);
             playableCharacter.position.set(spawnPoint.x, spawnPoint.y, spawnPoint.z);
@@ -800,16 +807,7 @@ const spawnCharacter = (spawnPoint, sceneId) => {
 
                                 console.log(`[ANIM] Clip Name: ${clip.name}, Duration: ${clip.duration}, Tracks: ${clip.tracks.length}`);
 
-                                 let actionKey = anim.mixer_name || null;
-
-                                 if (!actionKey) {
-                                     const rawNameLower = rawName.toLowerCase();
-                                     if (rawNameLower.includes('walk') || rawNameLower.includes('loop')) actionKey = 'walk';
-                                     else if (rawNameLower.includes('idle') || rawNameLower.includes('stand')) actionKey = 'idle';
-                                     else if (rawNameLower.includes('talk') || rawNameLower.includes('speak')) actionKey = 'talk';
-                                     else if (rawNameLower.includes('caut') || rawNameLower.includes('sneak')) actionKey = 'caution';
-                                     else actionKey = rawNameLower; // Fallback
-                                 }
+                                 const actionKey = getMixerKey(anim, clip.name);
 
                                 if (actionKey) {
                                     try {
@@ -886,7 +884,7 @@ const spawnCharacter = (spawnPoint, sceneId) => {
     });
 };
 
-const playAnimation = (name, duration = 0.5) => {
+const playAnimation = (name, duration = 0.2) => {
     console.log(`[ANIM] playAnimation called for: ${name}. Available: ${Object.keys(characterActions).join(', ')}`);
     const nextAction = characterActions[name];
     if (!nextAction) {
@@ -977,7 +975,7 @@ const spawnDebugHelpers = (spawnPoints) => {
         debugHelpers.push(sphere);
 
         // Arrow for direction
-        const dir = new THREE.Vector3(0, 0, -1);
+        const dir = new THREE.Vector3(0, 0, 1);
         dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(p.direction || 0));
         const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(p.x, p.y + 0.1, p.z), 0.5, 0x00ff00);
         scene.add(arrow);
@@ -1010,8 +1008,15 @@ const spawnNPCs = async (scenePersonages, sceneId) => {
     if (!scenePersonages || scenePersonages.length === 0) return;
 
     const currentSectorId = sectorId.value;
-    const allSpawnPoints = currentScene.value.location ?.spawn_points || {};
-    const spawnPoints = allSpawnPoints[currentSectorId] || allSpawnPoints[Number(currentSectorId)] || [];
+    
+    // Use the same logic as loadSceneGLB: Prioritize 3d_spawnpoints
+    let spawnPoints = currentScene.value['3d_spawnpoints'] || [];
+    
+    if (spawnPoints.length === 0 && currentScene.value.location && currentScene.value.location.spawn_points) {
+         const allSpawnPoints = currentScene.value.location.spawn_points || {};
+         const locPoints = allSpawnPoints[currentSectorId] || allSpawnPoints[Number(currentSectorId)] || [];
+         if (locPoints.length > 0) spawnPoints = [...locPoints];
+    }
 
     for (const sp of scenePersonages) {
         try {
@@ -1019,13 +1024,58 @@ const spawnNPCs = async (scenePersonages, sceneId) => {
             const p = sp.personage;
             if (!p) continue;
 
-            // Find assigned spawn point
-            const spawnPos = spawnPoints.find(point => point.name === sp.spawn_point_name || point.id === sp.spawn_point_name) ||
-                spawnPoints.find(point => String(point.personage_id) === String(sp.personage_id)) ||
-                spawnPoints.find(point => point.type === 'personage') ||
-                { x: 0, y: 0, z: 0 };
+            // Find assigned spawn point with detailed logging
+            let matchType = 'fallback';
+            let spawnPos = spawnPoints.find(point => {
+                if (point.name === sp.spawn_point_name || point.id === sp.spawn_point_name) {
+                    matchType = 'explicit_name';
+                    return true;
+                }
+                return false;
+            });
 
-            console.log(`[SPAWN] NPC ${p.name} (ID:${p.id}) assigned to point: ${spawnPos.name || spawnPos.id || 'fallback'} at ${spawnPos.x}, ${spawnPos.y}, ${spawnPos.z}`);
+            if (!spawnPos) {
+                // FUZZY NAME MATCH: Check if any spawnpoint name contains the NPC name
+                spawnPos = spawnPoints.find(point => {
+                    if (point.name && point.name.toLowerCase().includes(p.name.toLowerCase())) {
+                        matchType = 'fuzzy_name_match';
+                        return true;
+                    }
+                    return false;
+                });
+            }
+
+            if (!spawnPos) {
+                spawnPos = spawnPoints.find(point => {
+                    if (String(point.personage_id) === String(sp.personage_id)) {
+                        matchType = 'personage_id_link';
+                        return true;
+                    }
+                    return false;
+                });
+            }
+
+            if (!spawnPos) {
+                 spawnPos = spawnPoints.find(point => {
+                    if (point.type === 'npc') { // Fixed: was 'personage', editor uses 'npc'
+                        matchType = 'generic_npc_type_fallback';
+                        return true;
+                    }
+                    return false;
+                 });
+            }
+
+            if (!spawnPos) {
+                spawnPos = { x: 0, y: 0, z: 0 };
+                matchType = 'Coordinate Zero (No match found)';
+            }
+
+            console.log(`[SPAWN DIAGNOSTIC] NPC: '${p.name}' (ID: ${p.id})`);
+            console.log(`[SPAWN DIAGNOSTIC]   - Reason Spawned: Found in 'scene_personages' list.`);
+            console.log(`[SPAWN DIAGNOSTIC]   - Requested Point: '${sp.spawn_point_name}'`);
+            console.log(`[SPAWN DIAGNOSTIC]   - Match Method: ${matchType}`);
+            console.log(`[SPAWN DIAGNOSTIC]   - Final Location: ${spawnPos.x}, ${spawnPos.y}, ${spawnPos.z}`);
+            console.log(`[SPAWN DIAGNOSTIC]   - Scale Applied: ${spawnPos.scale || characterScale.value}`);
 
             const charUrl = getCharacterGlbUrl(p.name);
             if (!charUrl) continue;
@@ -1038,12 +1088,7 @@ const spawnNPCs = async (scenePersonages, sceneId) => {
             const mesh = gltf.scene;
 
 
-            // Apply scaling
-            const bbox = new THREE.Box3().setFromObject(mesh);
-            const size = new THREE.Vector3();
-            bbox.getSize(size);
             let scale = spawnPos.scale || characterScale.value;
-            if (size.y > 20) scale *= 0.01;
             mesh.scale.set(scale, scale, scale);
             mesh.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
             mesh.rotation.y = THREE.MathUtils.degToRad(spawnPos.direction || 0);
@@ -1051,23 +1096,64 @@ const spawnNPCs = async (scenePersonages, sceneId) => {
             scene.add(mesh);
 
             let mixer = null;
-            let actions = {};
-            if (gltf.animations ?.length > 0) {
+            let npcActions = {};
+            
+            // 1. Load External Animations if linked
+            const personageAnims = (p.animations || []).map(anim => {
+                // If ID-only, try to resolve from global allAnimations
+                if (!anim.filepad && anim.id) {
+                    const globalAnim = allAnimations.value.find(ga => ga.id === anim.id);
+                    if (globalAnim) return { ...anim, ...globalAnim };
+                }
+                return anim;
+            });
+
+            if (personageAnims.length > 0) {
                 mixer = new THREE.AnimationMixer(mesh);
+                const animLoader = createLoader();
+                
+                await Promise.all(personageAnims.map(async (anim) => {
+                    const path = anim.filepad || anim.url || anim.path;
+                    if (!path) return;
+                    
+                    const animUrl = resolveAssetUrl(path);
+                    try {
+                        const animGltf = await new Promise((res, rej) => animLoader.load(animUrl, res, undefined, rej));
+                        if (animGltf.animations?.length > 0) {
+                            const clip = animGltf.animations[0];
+                            const actionKey = getMixerKey(anim, clip.name);
+                            console.log(`[NPC ANIM DEBUG] NPC ${p.name}: Assigned '${actionKey}' for clip '${clip.name}' (External)`);
+                            
+                            npcActions[actionKey] = mixer.clipAction(clip);
+                        }
+                    } catch (e) {
+                        console.warn(`[NPC ANIM] Failed to load anim for ${p.name}: ${animUrl}`, e);
+                    }
+                }));
+            }
+
+            // 2. Fallback/Supplement with Embedded Animations
+            if (gltf.animations?.length > 0) {
+                if (!mixer) mixer = new THREE.AnimationMixer(mesh);
                 gltf.animations.forEach(clip => {
                     const name = clip.name.toLowerCase();
-                    if (name.startsWith('walk')) actions.walk = mixer.clipAction(clip);
-                    if (name.startsWith('idle')) actions.idle = mixer.clipAction(clip);
+                    const actionKey = getMixerKey(null, clip.name);
+                    console.log(`[NPC ANIM DEBUG] NPC ${p.name}: Assigned '${actionKey}' for clip '${clip.name}' (Embedded)`);
+ 
+                    if (actionKey && !npcActions[actionKey]) {
+                        npcActions[actionKey] = mixer.clipAction(clip);
+                    }
                 });
-                if (actions.idle) actions.idle.play();
             }
+
+            if (npcActions.idle) npcActions.idle.play();
 
             spawnedNPCs[p.id] = {
                 id: p.id,
                 name: p.name,
                 mesh: mesh,
                 mixer: mixer,
-                actions: actions,
+                actions: npcActions,
                 behavior_id: sp.behavior_id || sp.behaviorId || null,
                 targetPos: new THREE.Vector3(spawnPos.x, spawnPos.y, spawnPos.z),
                 targetRotation: null,
@@ -1104,7 +1190,14 @@ watch(vehicleScale, (newScale) => {
 });
 
 const onMapClick = (e) => {
-    if (activeDialogue.value) return;
+    const timeSinceDialogue = Date.now() - lastDialogueCloseTime.value;
+    if (activeDialogue.value || timeSinceDialogue < 300) return;
+    
+    // Check if clicking UI elements
+    if (e.target.closest('.dialogue-layer') || e.target.closest('.npc-dialogue-box') || e.target.closest('.options-container')) {
+        return;
+    }
+
     if (!playableCharacter || !landingDone.value) return;
 
 
@@ -1284,41 +1377,84 @@ watch(sceneId, async (newId) => {
 }, { immediate: true });
 
 const triggerGateway = async (gateway, isForced = false) => {
-    console.log("[DEBUG] triggerGateway called:", gateway, "isForced:", isForced);
+    // 0. Spam Prevention: Return silently if we are still standing in the same triggered gateway
+    if (!isForced && (lastExecutedBehaviorGateway.value === gateway || lastTriggeredGateway.value === gateway)) {
+        return; 
+    }
+
+    console.log("[DEBUG] triggerGateway called:", gateway.label || gateway.id, "isForced:", isForced);
     if (isSwapping.value) return;
+
+    console.log(`[DEBUG] triggerGateway processing: Label='${gateway.label}', ID='${gateway.id}', BehaviorID='${gateway.behavior_id}'`);
+    console.log('[DEBUG] Gateway keys:', Object.keys(gateway));
 
     const type = gateway.type || (gateway.target_scene_id ? 'gateway' : 'trigger');
 
-    // 1. Behavioral Logic (SYSTEM_TRIGGER or Gateway with behavior)
-    if (gateway.behavior_id && (!isBehaviorActive.value || isForced)) {
+    // 1. Action/Behavior Logic (SYSTEM_TRIGGER or Gateway with action)
+    // Supports: action_id (new), behavior_id (old), gedrag_id (legacy Dutch)
+    const targetId = gateway.action_id || gateway.behavior_id || gateway.gedrag_id;
+
+    if (targetId && (!isBehaviorActive.value || isForced)) {
+        console.log(`[DEBUG] Action/Behavior ID present: ${targetId}. isForced: ${isForced}`);
+        
+        // Fix: Initialize actors array
+        let actors = [];
+
         if (isForced || lastExecutedBehaviorGateway.value !== gateway) {
 
-            const behavior = actions.value.find(g => g.id === gateway.behavior_id);
-
-            // Find matching spawned NPCs
-            const spRelation = currentScene.value ?.scene_personages || currentScene.value ?.scenePersonages || currentScene.value ?.npc || [];
-            const targetGedragId = String(gateway.behavior_id);
-
-            const sceneP = spRelation.filter(sp => String(sp.behavior_id || sp.behaviorId) === targetGedragId);
-            const targetIds = sceneP.map(sp => String(sp.personage_id || sp.personageId));
-
-            let actors = Object.values(spawnedNPCs).filter(n =>
-                targetIds.includes(String(n.id)) ||
-                String(n.behavior_id) === targetGedragId
-            );
-
-            // FUZZY MATCH FALLBACK: If no actors found by ID, try matching NPC name into behavior name
-            if (actors.length === 0 && behavior) {
-                const behaviorName = behavior.name.toLowerCase();
-                actors = Object.values(spawnedNPCs).filter(n =>
-                    behaviorName.includes(n.name.toLowerCase())
-                );
-                if (actors.length > 0) {
-                    console.log(`[TRIGGER] Fuzzy-matched actors by name:`, actors.map(a => a.name));
-                }
+            // Safety check: Are actions loaded?
+            console.log(`[DEBUG] Loaded actions count: ${actions.value ? actions.value.length : 0}`);
+            if (!actions.value || actions.value.length === 0) {
+                 const err = `[TRIGGER ERROR] No actions loaded in scene. Cannot execute ID: ${targetId}`;
+                 console.error(err);
+                 emit('debug', err);
+                 lastExecutedBehaviorGateway.value = gateway; 
+                 return;
             }
 
+            const behavior = actions.value.find(g => String(g.id) === String(targetId));
+            
+            if (!behavior) {
+                 const err = `[TRIGGER ERROR] Action ID ${targetId} not found in actions list.`;
+                 console.warn(err, actions.value.map(a => a.id));
+                 emit('debug', err);
+                 lastExecutedBehaviorGateway.value = gateway; 
+                 return;
+            }
 
+            // 1. Look for actors using gateway's direct target_personage_id (from UI)
+            if (gateway.target_personage_id) {
+                const directActor = spawnedNPCs[gateway.target_personage_id];
+                if (directActor) actors.push(directActor);
+            }
+
+            // 2. Fallback: Matching Types or IDs from Behavior
+            if (actors.length === 0) {
+                 // Find matching spawned NPCs via Scene Personages relation
+                const spRelation = currentScene.value ?.scene_personages || currentScene.value ?.scenePersonages || currentScene.value ?.npc || [];
+                const targetGedragId = String(targetId); // Use the resolved ID
+    
+                const sceneP = spRelation.filter(sp => String(sp.behavior_id || sp.behaviorId || sp.action_id || sp.actionId) === targetGedragId);
+                const targetIds = sceneP.map(sp => String(sp.personage_id || sp.personageId));
+    
+                const filtered = Object.values(spawnedNPCs).filter(n =>
+                    targetIds.includes(String(n.id)) ||
+                    String(n.behavior_id) === targetGedragId
+                );
+                actors.push(...filtered);
+            }
+
+            // 3. Fallback: Fuzzy Name Match
+            if (actors.length === 0 && behavior) {
+                const behaviorName = behavior.name.toLowerCase();
+                const fuzzy = Object.values(spawnedNPCs).filter(n =>
+                    behaviorName.includes(n.name.toLowerCase())
+                );
+                 actors.push(...fuzzy);
+            }
+            
+            // Deduplicate
+            actors = [...new Set(actors)];
 
             if (behavior && actors.length > 0) {
                 console.log(`[TRIGGER] Executing ${behavior.name} for actors:`, actors.map(a => a.name));
@@ -1326,9 +1462,7 @@ const triggerGateway = async (gateway, isForced = false) => {
                 lastExecutedBehaviorGateway.value = gateway;
 
                 const logMsg = `${isForced ? 'MANUAL' : 'TRG'}: ${gateway.label || 'SYSTEM'} -> ${behavior.name}`;
-
-                behaviorLog.value.unshift({ time: new Date().toLocaleTimeString(), msg: logMsg });
-                if (behaviorLog.value.length > 5) behaviorLog.value.pop();
+                emit('debug', logMsg); 
 
                 for (const actor of actors) {
                     npcModes[actor.id] = 'SEQUENCE';
@@ -1341,8 +1475,7 @@ const triggerGateway = async (gateway, isForced = false) => {
                         actor.currentActionIndex = index;
                     }
                     const actionLog = `ACT [${index + 1}/${behavior.actions.length}]: ${action.type}`;
-                    behaviorLog.value.unshift({ time: new Date().toLocaleTimeString(), msg: actionLog });
-                    if (behaviorLog.value.length > 8) behaviorLog.value.pop();
+                    emit('debug', actionLog);
 
                     await Promise.all(actors.map(actor => runAction(action, actor.id)));
                 }
@@ -1356,11 +1489,16 @@ const triggerGateway = async (gateway, isForced = false) => {
 
                 isBehaviorActive.value = false;
             } else {
-                console.warn(`[TRIGGER] Failed to start behavior ${gateway.behavior_id}:`, {
-                    behaviorFound: !!behavior,
-                    actorsFound: actors.length,
-                    availableNPCs: Object.values(spawnedNPCs).map(n => ({ id: n.id, name: n.name, behaviorId: n.behavior_id }))
+                // FAILURE CASE
+                // Mark as executed anyway to prevent infinite loop (re-triggering every frame)
+                lastExecutedBehaviorGateway.value = gateway;
+                
+                const failMsg = `[TRIGGER FAIL] Behavior: ${behavior ? behavior.name : 'Unknown'}. No Actors found.`;
+                console.warn(failMsg, { 
+                    gwTargetId: gateway.target_personage_id, 
+                    spawnedNPCs: Object.keys(spawnedNPCs) 
                 });
+                emit('debug', failMsg);
             }
         }
     }
@@ -1553,9 +1691,17 @@ const animate = () => {
                 npc.mesh.lookAt(lookPos);
                 const dir = new THREE.Vector3().subVectors(npc.targetPos, npc.mesh.position).normalize();
                 npc.mesh.position.add(dir.multiplyScalar(characterSpeed * delta));
-                if (npc.actions.walk && !npc.actions.walk.isRunning()) {
-                    if (npc.actions.idle) npc.actions.idle.stop();
-                    npc.actions.walk.play();
+                const walkAction = npc.actions.walk || npc.actions.loop || Object.values(npc.actions).find(a => a._clip.name.toLowerCase().includes('walk'));
+
+                if (walkAction) {
+                    if (!walkAction.isRunning()) {
+                        console.log(`[ANIM] NPC ${npc.name} walking. Actions keys:`, Object.keys(npc.actions));
+                        if (npc.actions.idle) npc.actions.idle.stop();
+                        walkAction.play();
+                    }
+                } else if (!npc._warnedNoWalk) {
+                    console.warn(`[ANIM] NPC ${npc.name} is walking but has NO 'walk' action. Available keys:`, Object.keys(npc.actions));
+                    npc._warnedNoWalk = true;
                 }
             } else {
                 npc.isWalking = false;
@@ -1704,8 +1850,11 @@ const debugOverlayStyle = computed(() => {
 </script>
 <template>
     <div class="scene-container" :style="containerStyle" @click="onMapClick">
+
         <img v-if="backgroundImageUrl" :src="backgroundImageUrl" class="scene-background" alt="Background" />
+
         <div ref="canvasContainer" class="three-canvas-container"></div>
+
         <div v-if="!landingDone" class="landing-overlay">
             system_init_landing
         </div>
@@ -1731,11 +1880,12 @@ const debugOverlayStyle = computed(() => {
                 </g>
             </svg>
         </div>
+
         <div v-if="activeDialogue" class="dialogue-layer">
             <div class="dialogue-content">
                 <!-- NPC Dialogue Box -->
                 <transition name="fade">
-                    <div v-if="typewriterText" class="npc-dialogue-box">
+                    <div v-if="typewriterText" class="npc-dialogue-box" @click.stop>
                         <div class="npc-name">
                             {{ dialogueNPCName || 'contact' }}
                         </div>
@@ -1747,7 +1897,7 @@ const debugOverlayStyle = computed(() => {
                 <!-- Player Options -->
                 <transition name="slide-up">
                     <div v-if="showDialogueOptions" class="options-container">
-                        <button v-for="(option, idx) in activeDialogue.tree.nodes[currentNodeId].options" :key="idx" @click="selectOption(option)" class="option-button">
+                        <button v-for="(option, idx) in optionsToDisplay" :key="idx" @click.stop="selectOption(option)" class="option-button">
                             <div class="option-text-wrapper">
                                 <span class="option-number">[{{ String(idx + 1).padStart(2, '0') }}]</span>
                                 <span class="option-label">{{ option.text }}</span>

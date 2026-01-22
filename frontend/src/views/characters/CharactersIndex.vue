@@ -60,7 +60,14 @@ onMounted(() => {
     <div class="characters-view">
         <div class="view-header">
             <h1 class="view-title">{{ t('common.views.characters.title') }}</h1>
-            <Button :label="t('common.actions.new')" severity="warning" class="new-btn" @click="showCreateModal = true" />
+
+            <div class="header-actions">
+                <Button label="Lineup" icon="pi pi-map" severity="info" class="map-view-btn"
+                    @click="$router.push('/characters/lineup')" />
+                <Button :label="t('common.actions.new')" severity="warning" class="new-btn"
+                    @click="showCreateModal = true" />
+            </div>
+
             <Select
                 v-model="sortBy"
                 :options="sortOptions"
@@ -71,7 +78,7 @@ onMounted(() => {
             />
         </div>
 
-        <CreateCharacterModal 
+        <CreateCharacterModal
             v-model:visible="showCreateModal"
             @created="onCharacterCreated"
         />
@@ -93,6 +100,12 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     height: 100%;
+}
+
+.header-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 0.5rem;
 }
 
 .characters-grid {

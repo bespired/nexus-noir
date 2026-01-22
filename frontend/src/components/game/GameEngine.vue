@@ -108,7 +108,9 @@ onMounted(async () => {
         <component
             :is="currentSceneComponent"
             :key="currentScene.id"
+            v-bind="currentScene.data"
             @next-scene="handleNextScene"
+            @debug="debuggerInfo"
         />
     </div>
 

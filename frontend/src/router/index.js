@@ -6,7 +6,7 @@ const routes = [
         name: 'dashboard',
         component: () => import('../views/DashboardView.vue'), // Assuming a DashboardView exists or we create a placeholder
         // Fallback if DashboardView doesn't exist yet, we can keep the inline template for now or create the file
-        // component: { template: '<div>Dashboard Content</div>' } 
+        // component: { template: '<div>Dashboard Content</div>' }
     },
     {
         path: '/emanator',
@@ -82,6 +82,11 @@ const routes = [
         path: '/characters',
         name: 'characters',
         component: () => import('../views/characters/CharactersIndex.vue')
+    },
+    {
+        path: '/characters/lineup',
+        name: 'characters-lineup',
+        component: () => import('../views/characters/CharactersLineup.vue')
     },
     {
         path: '/characters/:id/edit',

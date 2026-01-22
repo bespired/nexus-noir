@@ -1,4 +1,4 @@
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import * as THREE from 'three';
 
 /**
@@ -23,7 +23,8 @@ export function useDialogue({
     swapScene,
     gameState,
     allPersonages,
-    settings
+    settings,
+    allDialogs // Added
 }) {
     const activeDialogue = ref(null);
     const currentNodeId = ref('start');
@@ -33,21 +34,13 @@ export function useDialogue({
     const dialogueNPCName = ref('');
     let dialogueResolve = null;
 
-    // Helper for fetching data (matching logic in WalkableAreaScene)
-    const fetchRobustData = async (path, alt) => {
-        try {
-            const res = await fetch(`/api/${path}`);
-            if (!res.ok) throw new Error(`API fail: ${res.status}`);
-            return await res.json();
-        } catch (e) {
-            console.warn(`Fetch failed for ${path}, trying ${alt}`, e);
-            if (alt) {
-                const res = await fetch(`/api/${alt}`);
-                if (!res.ok) throw new Error(`API fallback fail: ${res.status}`);
-                return await res.json();
-            }
-            throw e;
+    const findNode = (nodeId) => {
+        const nodes = activeDialogue.value?.tree?.nodes;
+        if (!nodes) return null;
+        if (Array.isArray(nodes)) {
+            return nodes.find(n => String(n.id) === String(nodeId)) || nodes[nodeId];
         }
+        return nodes[nodeId];
     };
 
     const startDialogue = (dialoogId) => {
@@ -55,20 +48,20 @@ export function useDialogue({
             try {
                 dialogueResolve = resolve;
 
-                let res;
-                // Note: importedDialogs is assumed to be global or available in window scope if not passed
-                const globalImportedDialogs = window.importedDialogs || null;
+                // 1. Look in store-provided dialogues first (modern way)
+                let res = allDialogs.value?.find(d => String(d.id) === String(dialoogId));
 
-                if (isEngine.value && globalImportedDialogs) {
-                    res = globalImportedDialogs.find(d => String(d.id) === String(dialoogId));
+                // 2. Fallback to global window object (Engine compat)
+                if (!res && window.importedDialogs) {
+                    res = window.importedDialogs.find(d => String(d.id) === String(dialoogId));
                 }
 
                 if (!res) {
-                    res = await fetchRobustData(`dialogues/${dialoogId}.json`, `dialogen/${dialoogId}`);
+                    throw new Error(`Dialogue ID ${dialoogId} not found in store or local cache.`);
                 }
 
                 activeDialogue.value = res;
-                dialogueNPCName.value = activeDialogue.value.personage?.name || 'NPC';
+                dialogueNPCName.value = activeDialogue.value.personage?.name || activeDialogue.value.title || 'NPC';
 
                 // Turn player towards NPC
                 if (playableCharacter.value && activeDialogue.value.personage_id) {
@@ -82,12 +75,22 @@ export function useDialogue({
                     }
                 }
 
-                const nodeKeys = Object.keys(activeDialogue.value.tree?.nodes || {});
-                currentNodeId.value = nodeKeys.includes('root') ? 'root' : nodeKeys[0];
+                const nodes = activeDialogue.value.tree?.nodes || {};
+                let startNodeId = null;
+
+                if (Array.isArray(nodes)) {
+                    const rootNode = nodes.find(n => n.id === 'root' || n.type === 'root' || n.id === 'start');
+                    startNodeId = rootNode ? rootNode.id : (nodes[0]?.id || 0);
+                } else {
+                    const nodeKeys = Object.keys(nodes);
+                    startNodeId = nodeKeys.includes('root') ? 'root' : (nodeKeys.includes('start') ? 'start' : nodeKeys[0]);
+                }
+
+                currentNodeId.value = startNodeId;
 
                 console.log(`[DIALOGUE] Starting dialogue ${dialoogId} at node: ${currentNodeId.value}`);
 
-                if (currentNodeId.value) {
+                if (currentNodeId.value !== null) {
                     playNode(currentNodeId.value);
                 } else {
                     console.warn("[DIALOGUE] No nodes found in dialogue tree.");
@@ -102,13 +105,16 @@ export function useDialogue({
 
     const playNode = async (nodeId) => {
         if (nodeId === '[END]' || nodeId === 'END') {
+            console.log("[DIALOGUE] Ending dialogue.");
             closeDialogue();
             return;
         }
 
-        const node = activeDialogue.value.tree.nodes[nodeId];
+        console.log(`[DIALOGUE DEBUG] playNode called for ID: ${nodeId}`);
+        const node = findNode(nodeId);
         if (!node) {
             console.warn(`[DIALOGUE] Node ${nodeId} not found.`);
+            console.log(`[DIALOGUE DEBUG] Available nodes:`, activeDialogue.value?.tree?.nodes);
             return;
         }
 
@@ -116,7 +122,12 @@ export function useDialogue({
         showDialogueOptions.value = false;
 
         // Execute node-level actions
-        const nodeActions = node.actions || node.nodeActions || [];
+        let nodeActions = node.actions || node.nodeActions || [];
+        // Support single action string
+        if (node.action && typeof node.action === 'string') {
+            nodeActions = [...nodeActions, { type: node.action }];
+        }
+
         if (nodeActions.length > 0) {
             console.log(`[DIALOGUE] Executing ${nodeActions.length} actions for node ${nodeId}`);
             for (const action of nodeActions) {
@@ -128,6 +139,8 @@ export function useDialogue({
         if (typewriterInterval.value) clearInterval(typewriterInterval.value);
         let charIndex = 0;
         const fullText = node.text || '';
+        console.log(`[DIALOGUE DEBUG] Typing text (${fullText.length} chars)`);
+
         typewriterInterval.value = setInterval(() => {
             if (fullText[charIndex]) {
                 typewriterText.value += fullText[charIndex];
@@ -135,22 +148,27 @@ export function useDialogue({
             charIndex++;
             if (charIndex >= fullText.length) {
                 clearInterval(typewriterInterval.value);
+                console.log(`[DIALOGUE DEBUG] Typing finished. Options found: ${node.options?.length || 0}`);
                 showDialogueOptions.value = true;
             }
         }, 30);
     };
 
     const selectOption = async (option, actorId = null) => {
-        if (option.actions?.length > 0) {
-            for (const action of option.actions) {
+        // Handle actions (array) or action (string)
+        const optActions = option.actions || (option.action ? [{ type: option.action }] : []);
+
+        if (optActions.length > 0) {
+            for (const action of optActions) {
                 await runAction(action, actorId);
             }
         }
-        if (option.actions?.some(a => a.type === 'END TALK')) {
+        if (optActions.some(a => a.type === 'END TALK' || a.type === 'end')) {
             closeDialogue();
             return;
         }
-        if (option.next) playNode(option.next);
+        const next = option.next || option.next_node;
+        if (next && next !== '_end') playNode(next);
         else closeDialogue();
     };
 
@@ -168,50 +186,68 @@ export function useDialogue({
 
     const runAction = async (action, actorId = null) => {
         const type = action.type;
-        const params = action.params || {};
+        // Prioritize modern 'data' structure
+        const params = action.data || action.params || {};
         const value = action.value;
         const targetActor = actorId ? spawnedNPCs[actorId] : null;
 
-        console.log(`Running action ${type} for ${actorId || 'player'}`);
+        console.log(`[ACTION] Running ${type} for ${actorId || 'player'}`, params);
 
         switch (type) {
-            case 'GIVE CLUE':
-            case 'GEEF AANWIJZING':
+            case 'GIVE_CLUE':
                 const clueId = value || params.clue_id || params.id;
-                console.log(`[ACTION] Emitting give-clue for: ${clueId}`);
                 emit('give-clue', clueId);
                 break;
-            case 'SET GAME TAG':
-                const tag = value || params.tag;
-                if (tag && !gameState.tags.includes(tag)) {
-                    gameState.tags.push(tag);
-                    console.log("tag_acquired");
-                }
-                break;
-            case 'REMOVE GAME TAG':
-                const rtag = value || params.tag;
-                gameState.tags = gameState.tags.filter(t => t !== rtag);
-                break;
-            case 'WAIT':
-            case 'WAIT x SECONDS':
-            case 'idle':
+
+            case 'IDLE_WAIT':
                 const duration = parseFloat(params.duration || value || 2);
+                console.log(`[ACTION] Waiting for ${duration}s`);
                 await new Promise(res => setTimeout(res, duration * 1000));
                 break;
-            case 'WALK TO SPAWNPOINT':
-            case 'walk_to':
-            case 'WALK_TO':
-                const spName = params.spawn_point || value;
+
+            case 'WALK_TO_POSITION':
+                // Handle complex object from modern editor (params.spawnpoint is { label, value, type })
+                let spName = params.spawnpoint || params.spawn_point || value;
+
+                // Debug what we received
+                console.log(`[ACTION DEBUG] SP Raw:`, spName);
+
+                if (typeof spName === 'object' && spName !== null && spName.value) {
+                    spName = spName.value;
+                }
+
+                console.log(`[ACTION DEBUG] SP Resolved Name: '${spName}'`);
+
                 if (spName) {
                     const currentSectorId = sectorId.value;
-                    const locSpawnPoints = currentScene.value.location?.spawn_points || {};
-                    const spawnPoints = locSpawnPoints[currentSectorId] || locSpawnPoints[Number(currentSectorId)] || [];
-                    const sp = spawnPoints.find(p => p.name === spName || p.id === spName);
+                    let spawnPoints = currentScene.value['3d_spawnpoints'] || [];
+
+                    // Fallback to legacy location points if needed
+                    if (spawnPoints.length === 0 && currentScene.value.location?.spawn_points) {
+                        const locSpawnPoints = currentScene.value.location.spawn_points || {};
+                        const locPoints = locSpawnPoints[currentSectorId] || locSpawnPoints[Number(currentSectorId)] || [];
+                        if (locPoints.length > 0) spawnPoints = [...locPoints];
+                    }
+
+                    // Find spawn point (exact ID or Case-Insensitive Name)
+                    const sp = spawnPoints.find(p =>
+                        String(p.id) === String(spName) ||
+                        p.name === spName ||
+                        (p.name && p.name.toLowerCase() === spName.toLowerCase())
+                    );
+
                     if (sp) {
+                        console.log(`[ACTION] Walking to ${sp.name} (${sp.x},${sp.y},${sp.z})`);
                         if (targetActor) {
                             targetActor.targetPos.set(sp.x, sp.y, sp.z);
                             targetActor.targetRotation = sp.direction ?? sp.rotation ?? null;
                             targetActor.isWalking = true;
+
+                            // Ensure animation plays
+                            if (targetActor.actions && targetActor.actions.walk) {
+                                targetActor.actions.walk.play();
+                            }
+
                             await new Promise(resolve => {
                                 const check = setInterval(() => {
                                     if (!targetActor.isWalking) {
@@ -221,6 +257,7 @@ export function useDialogue({
                                 }, 100);
                             });
                         } else if (actorId === null && playableCharacter.value) {
+                            // Player Logic
                             targetPosition.set(sp.x, sp.y, sp.z);
                             targetRotation.value = sp.direction ?? sp.rotation ?? null;
                             isWalking.value = true;
@@ -233,18 +270,23 @@ export function useDialogue({
                                 }, 100);
                             });
                         }
+                    } else {
+                        console.warn(`[ACTION ERROR] Spawnpoint '${spName}' not found.`);
                     }
+                } else {
+                    console.warn("[ACTION ERROR] No spawnpoint specified.");
                 }
                 break;
-            case 'START DIALOG':
+
             case 'START_DIALOGUE':
-            case 'talk':
-                const dialId = params.dialoog_id || value;
+            case 'START DIALOG':
+                const dialId = params.dialog_id || params.dialoog_id || value;
                 if (dialId) await startDialogue(dialId);
                 break;
+
             case 'PLAY_ANIMATION':
-            case 'ANIMATION':
                 const animName = params.animation || value;
+                // ... rest of animation logic handled below or identical ... 
                 if (targetActor && targetActor.actions[animName]) {
                     const nextAction = targetActor.actions[animName];
                     nextAction.reset().play();
@@ -252,8 +294,6 @@ export function useDialogue({
                 }
                 break;
             case 'LOOK_AT_TARGET':
-            case 'LOOK_AT':
-            case 'look_at':
                 const lookTargetName = params.target || value || 'player';
                 let lookAtPos = null;
 
@@ -275,12 +315,21 @@ export function useDialogue({
                     await new Promise(res => setTimeout(res, 300));
                 }
                 break;
-            case 'GOTO SCENE':
+
+            case 'GOTO_SCENE':
                 const scId = value || params.scene_id;
                 if (scId && swapScene) await swapScene({ target_scene_id: parseInt(scId) });
                 break;
         }
     };
+
+    const optionsToDisplay = computed(() => {
+        const node = findNode(currentNodeId.value);
+        // Support both 'options' and 'answers' keys
+        const opts = node?.options || node?.answers || [];
+        console.log(`[DIALOGUE DEBUG] optionsToDisplay for node ${currentNodeId.value}:`, opts.length);
+        return opts;
+    });
 
     return {
         activeDialogue,
@@ -288,11 +337,11 @@ export function useDialogue({
         typewriterText,
         showDialogueOptions,
         dialogueNPCName,
+        optionsToDisplay,
         startDialogue,
         playNode,
         selectOption,
         closeDialogue,
-        runAction,
-        fetchRobustData // Exporting it too as it's useful
+        runAction
     };
 }

@@ -143,7 +143,7 @@ const linkScene = async (scene) => {
         if (scene.media) {
             updatedScene.media = scene.media;
         }
-        
+
         if (!sector.value.scenes) sector.value.scenes = [];
         sector.value.scenes.push(updatedScene);
         showScenePicker.value = false;
@@ -195,7 +195,7 @@ const unlinkClue = async (clueId) => {
 const handleMediaUploaded = (media) => {
     // If sector has no media array, create it
     if (!sector.value.media) sector.value.media = [];
-    
+
     // Prepend new media so it becomes the hero (assuming [0] is used)
     sector.value.media.unshift(media);
     showUploadModal.value = false;
@@ -207,8 +207,8 @@ const availableScenes = computed(() => {
     let list = allScenes.value.filter(s => s.sector_id != sectorId);
     if (sceneFilter.value) {
         const q = sceneFilter.value.toLowerCase();
-        list = list.filter(s => 
-            s.title.toLowerCase().includes(q) || 
+        list = list.filter(s =>
+            s.title.toLowerCase().includes(q) ||
             String(s.id).includes(q)
         );
     }
@@ -245,7 +245,8 @@ onMounted(fetchSector);
             @delete="handleDelete"
         >
             <template #extra-actions>
-                <Button label="VISUAL MAP" severity="info" class="header-btn visual-map-btn" @click="router.push('/sectors/map')" />
+                <Button label="VISUAL MAP" severity="info"
+                    class="header-btn visual-map-btn" @click="router.push('/sectors/map')" />
             </template>
         </EditViewHeader>
 

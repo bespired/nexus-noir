@@ -480,7 +480,7 @@ const updateSpawnPointMarkers = () => {
         const beak = new THREE.Mesh(beakGeometry, beakMaterial);
 
         // Position beak at the "front" of the spawnpoint
-        beak.position.set(0, 0, -0.25);
+        beak.position.set(0, 0, 0.25);
         beak.rotation.x = Math.PI / 2;
         group.add(beak);
 
