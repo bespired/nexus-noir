@@ -26,7 +26,7 @@ const toggleDebug = () => {
 
 const loadScene = async (sceneId, targetSpawnPoint = null, lastTriggeredGatewayId = null) => {
     if (!sceneId) return;
-    
+
     try {
         debuggerInfo('LOAD ID ' + sceneId)
         const sceneData = await store.dispatch('game/fetchScene', { sceneId, targetSpawnPoint, lastTriggeredGatewayId });
@@ -34,7 +34,7 @@ const loadScene = async (sceneId, targetSpawnPoint = null, lastTriggeredGatewayI
 
         // Merge transient state (we keep this local as it's engine-specific)
         // Actually, we should probably just pass targetSpawnPoint as a prop
-        
+
         if (sceneData.type === 'vue-component' && sceneData.data?.component?.name) {
             const compPath = sceneData.data.component.name;
             const cleanName = compPath.replace('game/', '').replace('.vue', '');
@@ -143,13 +143,14 @@ onMounted(async () => {
     background: rgba(0, 0, 0, 0.4);
     pointer-events: none;
     z-index: 9999;
+    min-width: 25%;
   }
-  
+
   .debug-controls {
       pointer-events: auto;
       margin-bottom: 8px;
   }
-  
+
   .debug-controls button {
       background: rgba(0, 255, 0, 0.2);
       border: 1px solid lime;
@@ -159,7 +160,7 @@ onMounted(async () => {
       cursor: pointer;
       font-family: monospace;
   }
-  
+
   .debug-controls button.active {
       background: lime;
       color: black;

@@ -5,6 +5,7 @@ import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/editor/EditViewHeader.vue';
 import ConfirmationModal from '@components/editor/modals/ConfirmationModal.vue';
+import { GAME_ACTIONS } from '../../constants/gameActions';
 
 const route = useRoute();
 const router = useRouter();
@@ -21,13 +22,7 @@ const saving = ref(false);
 const deleting = ref(false);
 const showDeleteConfirm = ref(false);
 
-const actionTypes = [
-    { type: 'WALK_TO_POSITION', svg: 'walk',     icon: 'pi pi-directions', label: 'walk_to' },
-    { type: 'LOOK_AT_TARGET',   svg: 'look',     icon: 'pi pi-eye',        label: 'look_at' },
-    { type: 'IDLE_WAIT',        svg: 'idle',     icon: 'pi pi-clock',      label: 'idle'    },
-    { type: 'START_DIALOGUE',   svg: 'dialogue', icon: 'pi pi-comments',   label: 'talk'    },
-    { type: 'CUSTOM_COMMAND',   svg: 'cog',      icon: 'pi pi-cog',        label: 'custom_command' }
-];
+const actionTypes = GAME_ACTIONS;
 
 const fetchInitialData = async () => {
     try {
@@ -41,6 +36,15 @@ const fetchInitialData = async () => {
         if (!actionRes.ok) throw new Error('Failed to fetch action');
         action.value = await actionRes.json();
         if (!action.value.actions) action.value.actions = [];
+
+        // Auto-migrate legacy types on load
+        action.value.actions.forEach(step => {
+            const standard = actionTypes.find(t => t.legacy_type === step.type);
+            if (standard) {
+                console.log(`[EDITOR] Auto-migrating step type '${step.type}' to '${standard.value}'`);
+                step.type = standard.value;
+            }
+        });
 
         const charData = await charactersRes.json();
         characters.value = Array.isArray(charData) ? charData : [];
@@ -101,9 +105,14 @@ const confirmDelete = async () => {
 };
 
 const addActionStep = (type) => {
+    const data = {};
+    if (type === 'look-at') {
+        data.subject_id = 'OWNER';
+        data.target_id = 'PLAYER';
+    }
     action.value.actions.push({
         type: type,
-        data: {}
+        data: data
     });
 };
 
@@ -181,6 +190,7 @@ const searchSpawnpoints = (event, stepType) => {
 const characterOptions = computed(() => {
     return [
         { name: 'PLAYER', id: 'PLAYER' },
+        { name: 'OWNER', id: 'OWNER' },
         ...characters.value.filter(c => c.type === 'person')
     ];
 });
@@ -218,14 +228,14 @@ onMounted(fetchInitialData);
                         <div v-for="(step, index) in action.actions" :key="index" class="sequence-step">
                             <div class="step-index">{{ String(index + 1).padStart(2, '0') }}</div>
                             <div class="step-icon">
-                                <i :class="actionTypes.find(t => t.type === step.type)?.icon"></i>
+                                <i :class="actionTypes.find(t => t.value === step.type || t.legacy_type === step.type)?.icon"></i>
                             </div>
                             <div class="step-content">
                                 <div class="step-row">
-                                    <div class="step-label">{{ actionTypes.find(t => t.type === step.type)?.label }}</div>
+                                    <div class="step-label">{{ actionTypes.find(t => t.value === step.type || t.legacy_type === step.type)?.label }}</div>
 
                                     <!-- Step editors -->
-                                    <div v-if="step.type === 'WALK_TO_POSITION'" class="step-editor-group">
+                                    <div v-if="step.type === 'WALK_TO_POSITION' || step.type === 'walk-to'" class="step-editor-group">
                                         <Select
                                             v-model="step.data.spawn_type"
                                             :options="spawnPointTypes"
@@ -246,24 +256,32 @@ onMounted(fetchInitialData);
                                         />
                                     </div>
 
-                                    <div v-else-if="step.type === 'IDLE_WAIT'" class="step-editor-group">
+                                    <div v-else-if="step.type === 'IDLE_WAIT' || step.type === 'idle-wait'" class="step-editor-group">
                                         <InputNumber v-model="step.data.duration" class="noir-input tiny-input seconds-input" :min="0" />
                                         <span class="unit-label ml-2">SECONDS</span>
                                     </div>
 
-                                    <div v-else-if="step.type === 'LOOK_AT_TARGET'" class="step-editor">
+                                    <div v-else-if="step.type === 'LOOK_AT_TARGET' || step.type === 'look-at'" class="step-editor-group">
+                                        <Select
+                                            v-model="step.data.subject_id"
+                                            :options="characterOptions"
+                                            optionLabel="name"
+                                            optionValue="id"
+                                            placeholder="Subject"
+                                            class="noir-select compact-select"
+                                        />
+                                        <span class="unit-label">LOOKS AT</span>
                                         <Select
                                             v-model="step.data.target_id"
                                             :options="characterOptions"
                                             optionLabel="name"
                                             optionValue="id"
-                                            placeholder="Pick a character"
-                                            filter
-                                            class="noir-select"
+                                            placeholder="Target"
+                                            class="noir-select compact-select"
                                         />
                                     </div>
 
-                                    <div v-else-if="step.type === 'START_DIALOGUE'" class="step-editor">
+                                    <div v-else-if="step.type === 'START_DIALOGUE' || step.type === 'start-dialogue'" class="step-editor">
                                         <Select
                                             v-model="step.data.dialog_id"
                                             :options="dialogs"
@@ -311,7 +329,7 @@ onMounted(fetchInitialData);
                             v-for="at in actionTypes"
                             :key="at.type"
                             class="add-action-btn"
-                            @click="addActionStep(at.type)"
+                            @click="addActionStep(at.value)"
                         >
                             <i :class="at.icon" class="mr-2"></i>
                             {{ at.label }}
@@ -526,6 +544,10 @@ onMounted(fetchInitialData);
 .unit-label {
     font-size: 0.7rem;
     color: var(--color-noir-muted);
+}
+
+.compact-select {
+    min-width: 140px !important;
 }
 
 .empty-sequence {

@@ -5,6 +5,7 @@ import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/editor/EditViewHeader.vue';
 import ConfirmationModal from '@components/editor/modals/ConfirmationModal.vue';
+import { GAME_ACTIONS } from '../../constants/gameActions';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -22,13 +23,7 @@ const draggingNodeId = ref(null);
 const dragOffset = ref({ x: 0, y: 0 });
 
 // Actions available for nodes and answers
-const actionOptions = [
-    { label: 'WALK TO',    value: 'walk-to' },
-    { label: 'LOOK AT',    value: 'look-at' },
-    { label: 'GIVE CLUE',  value: 'give-clue' },
-    { label: 'GOTO SCENE', value: 'goto-scene' },
-    { label: 'END', value: 'end' }
-];
+const actionOptions = GAME_ACTIONS;
 
 const fetchDialog = async () => {
     try {
@@ -74,11 +69,43 @@ const fetchDialog = async () => {
             data.tree.nodes = [];
         }
 
-        // Ensure each node has an answers array
+        // Auto-migrate legacy fields and actions on load
         data.tree.nodes.forEach(node => {
+            // Rename options to answers
+            if (node.options && !node.answers) {
+                console.log(`[EDITOR] Auto-migrating 'options' to 'answers' for node ${node.id}`);
+                node.answers = node.options;
+                delete node.options;
+            }
+            
             if (!Array.isArray(node.answers)) {
                 node.answers = [];
             }
+
+            // Standardize node-level action
+            if (node.action) {
+                const standard = actionOptions.find(t => t.legacy_type === node.action);
+                if (standard) {
+                    console.log(`[EDITOR] Auto-migrating node action '${node.action}' to '${standard.value}'`);
+                    node.action = standard.value;
+                }
+            }
+
+            // Standardize answer-level fields and actions
+            node.answers.forEach(answer => {
+                if (answer.next && !answer.next_node) {
+                    console.log(`[EDITOR] Auto-migrating 'next' to 'next_node' for answer`);
+                    answer.next_node = answer.next;
+                    delete answer.next;
+                }
+                if (answer.action) {
+                    const standard = actionOptions.find(t => t.legacy_type === answer.action);
+                    if (standard) {
+                        console.log(`[EDITOR] Auto-migrating answer action '${answer.action}' to '${standard.value}'`);
+                        answer.action = standard.value;
+                    }
+                }
+            });
         });
         
         dialog.value = data;

@@ -38,8 +38,11 @@ export function useDialogue({
         const nodes = activeDialogue.value?.tree?.nodes;
         if (!nodes) return null;
         if (Array.isArray(nodes)) {
-            return nodes.find(n => String(n.id) === String(nodeId)) || nodes[nodeId];
+            const node = nodes.find(n => String(n.id) === String(nodeId));
+            if (!node) console.warn(`[DIALOGUE STANDARDS] Node ID '${nodeId}' not found in nodes array.`);
+            return node;
         }
+        console.warn(`[DIALOGUE STANDARDS] nodes structure is NOT an array. Please update the dialogue editor.`);
         return nodes[nodeId];
     };
 
@@ -63,27 +66,27 @@ export function useDialogue({
                 activeDialogue.value = res;
                 dialogueNPCName.value = activeDialogue.value.personage?.name || activeDialogue.value.title || 'NPC';
 
-                // Turn player towards NPC
-                if (playableCharacter.value && activeDialogue.value.personage_id) {
-                    const speakerId = activeDialogue.value.personage_id;
-                    const speaker = spawnedNPCs[speakerId];
-                    if (speaker && speaker.mesh) {
-                        const targetPos = speaker.mesh.position.clone();
-                        targetPos.y = playableCharacter.value.position.y; // Lock Y
-                        playableCharacter.value.lookAt(targetPos);
-                        console.log(`[DIALOGUE] Player turning to face speaker ${speakerId}`);
-                    }
+                // 3. Stop player movement
+                isWalking.value = false;
+
+                const nodes = activeDialogue.value.tree?.nodes || [];
+
+                // Developer Alerts for legacy structures
+                if (Array.isArray(nodes) && nodes.some(n => n.options)) {
+                    console.warn("[DIALOGUE STANDARDS] Legacy 'options' field found in nodes. Use 'answers' instead.");
                 }
 
-                const nodes = activeDialogue.value.tree?.nodes || {};
-                let startNodeId = null;
+                let startNodeId = activeDialogue.value.tree?.startNodeId;
 
-                if (Array.isArray(nodes)) {
-                    const rootNode = nodes.find(n => n.id === 'root' || n.type === 'root' || n.id === 'start');
-                    startNodeId = rootNode ? rootNode.id : (nodes[0]?.id || 0);
-                } else {
-                    const nodeKeys = Object.keys(nodes);
-                    startNodeId = nodeKeys.includes('root') ? 'root' : (nodeKeys.includes('start') ? 'start' : nodeKeys[0]);
+                if (!startNodeId) {
+                    console.warn("[DIALOGUE STANDARDS] No 'startNodeId' found in tree. Falling back to 'root' or first node.");
+                    if (Array.isArray(nodes)) {
+                        const rootNode = nodes.find(n => n.id === 'root' || n.type === 'root' || n.id === 'start');
+                        startNodeId = rootNode ? rootNode.id : (nodes[0]?.id || 0);
+                    } else {
+                        const nodeKeys = Object.keys(nodes);
+                        startNodeId = nodeKeys.includes('root') ? 'root' : (nodeKeys.includes('start') ? 'start' : nodeKeys[0]);
+                    }
                 }
 
                 currentNodeId.value = startNodeId;
@@ -104,17 +107,10 @@ export function useDialogue({
     };
 
     const playNode = async (nodeId) => {
-        if (nodeId === '[END]' || nodeId === 'END') {
-            console.log("[DIALOGUE] Ending dialogue.");
-            closeDialogue();
-            return;
-        }
-
         console.log(`[DIALOGUE DEBUG] playNode called for ID: ${nodeId}`);
         const node = findNode(nodeId);
         if (!node) {
-            console.warn(`[DIALOGUE] Node ${nodeId} not found.`);
-            console.log(`[DIALOGUE DEBUG] Available nodes:`, activeDialogue.value?.tree?.nodes);
+            console.error(`[DIALOGUE STANDARDS] Node '${nodeId}' not found.`);
             return;
         }
 
@@ -155,7 +151,11 @@ export function useDialogue({
     };
 
     const selectOption = async (option, actorId = null) => {
-        // Handle actions (array) or action (string)
+        // Enforce standards: strictly kebab-case action and strictly 'answers' logic
+        if (option.options) {
+            console.error("[DIALOGUE STANDARDS] Sub-options found using 'options' key. Use 'answers' instead.");
+        }
+
         const optActions = option.actions || (option.action ? [{ type: option.action }] : []);
 
         if (optActions.length > 0) {
@@ -163,12 +163,13 @@ export function useDialogue({
                 await runAction(action, actorId);
             }
         }
-        if (optActions.some(a => a.type === 'END TALK' || a.type === 'end')) {
-            closeDialogue();
-            return;
+
+        const next = option.next_node;
+        if (!next && option.next) {
+            console.error("[DIALOGUE STANDARDS] Answer uses 'next' instead of 'next_node'.");
         }
-        const next = option.next || option.next_node;
-        if (next && next !== '_end' && next !== 'END' && next !== '[END]') {
+
+        if (next && next !== '_end') {
             playNode(next);
         } else {
             closeDialogue();
@@ -188,7 +189,25 @@ export function useDialogue({
     };
 
     const runAction = async (action, actorId = null) => {
-        const type = action.type;
+        let type = action.type;
+        // Internal Mapping for Legacy Constants
+        const legacyMap = {
+            'WALK_TO_POSITION': 'walk-to',
+            'LOOK_AT_TARGET': 'look-at',
+            'GIVE_CLUE': 'give-clue',
+            'GOTO_SCENE': 'goto-scene',
+            'IDLE_WAIT': 'idle-wait',
+            'START_DIALOGUE': 'start-dialogue',
+            'START DIALOG': 'start-dialogue',
+            'PLAY_ANIMATION': 'play-animation',
+            'END TALK': 'end'
+        };
+
+        if (legacyMap[type]) {
+            console.error(`[LEGACY ACTION ALERT] Action type '${type}' is outdated. Please resave this action/dialogue in the editor to update it to '${legacyMap[type]}'.`);
+            type = legacyMap[type];
+        }
+
         // Prioritize modern 'data' structure
         const params = action.data || action.params || {};
         const value = action.value;
@@ -197,7 +216,7 @@ export function useDialogue({
         console.log(`[ACTION] Running ${type} for ${actorId || 'player'}`, params);
 
         switch (type) {
-            case 'GIVE_CLUE':
+            case 'give-clue':
                 const clueId = value || params.clue_id || params.id;
                 emit('give-clue', clueId);
                 break;
@@ -208,7 +227,7 @@ export function useDialogue({
                 await new Promise(res => setTimeout(res, duration * 1000));
                 break;
 
-            case 'WALK_TO_POSITION':
+            case 'walk-to':
                 // Handle complex object from modern editor (params.spawnpoint is { label, value, type })
                 let spName = params.spawnpoint || params.spawn_point || value;
 
@@ -281,13 +300,12 @@ export function useDialogue({
                 }
                 break;
 
-            case 'START_DIALOGUE':
-            case 'START DIALOG':
+            case 'start-dialogue':
                 const dialId = params.dialog_id || params.dialoog_id || value;
                 if (dialId) await startDialogue(dialId);
                 break;
 
-            case 'PLAY_ANIMATION':
+            case 'play-animation':
                 const animName = params.animation || value;
                 // ... rest of animation logic handled below or identical ... 
                 if (targetActor && targetActor.actions[animName]) {
@@ -296,42 +314,69 @@ export function useDialogue({
                     await new Promise(res => setTimeout(res, 500));
                 }
                 break;
-            case 'LOOK_AT_TARGET':
-                const lookTargetName = params.target || value || 'player';
-                let lookAtPos = null;
+            case 'look-at':
+                const subjectId = params.subject_id || 'OWNER';
+                const targetId = params.target_id || params.target || value || 'PLAYER';
 
-                if (lookTargetName === 'player' && playableCharacter.value) {
-                    lookAtPos = playableCharacter.value.position.clone();
+                let resolvedSubject = null;
+                let resolvedTargetPos = null;
+
+                // 1. Resolve Subject (Who is looking)
+                if (subjectId === 'PLAYER') {
+                    resolvedSubject = playableCharacter.value;
+                } else {
+                    const npcId = (subjectId === 'OWNER') ? (actorId || activeDialogue.value?.personage_id) : subjectId;
+                    const subjectNpc = spawnedNPCs[npcId] || Object.values(spawnedNPCs).find(n =>
+                        n.name.toLowerCase() === String(npcId).toLowerCase() ||
+                        String(n.id) === String(npcId)
+                    );
+                    resolvedSubject = subjectNpc?.mesh;
+                }
+
+                // 2. Resolve Target Position (At whom)
+                if (targetId === 'PLAYER') {
+                    if (playableCharacter.value) resolvedTargetPos = playableCharacter.value.position.clone();
+                } else if (targetId === 'OWNER') {
+                    const ownerId = actorId || activeDialogue.value?.personage_id;
+                    if (spawnedNPCs[ownerId]) resolvedTargetPos = spawnedNPCs[ownerId].mesh.position.clone();
                 } else {
                     const otherNpc = Object.values(spawnedNPCs).find(n =>
-                        n.name.toLowerCase() === lookTargetName.toLowerCase() ||
-                        String(n.id) === String(lookTargetName)
+                        n.name.toLowerCase() === String(targetId).toLowerCase() ||
+                        String(n.id) === String(targetId)
                     );
                     if (otherNpc && otherNpc.mesh) {
-                        lookAtPos = otherNpc.mesh.position.clone();
+                        resolvedTargetPos = otherNpc.mesh.position.clone();
                     }
                 }
 
-                if (targetActor && targetActor.mesh && lookAtPos) {
-                    const normalizedLookAt = new THREE.Vector3(lookAtPos.x, targetActor.mesh.position.y, lookAtPos.z);
-                    targetActor.mesh.lookAt(normalizedLookAt);
+                // 3. Execute
+                if (resolvedSubject && resolvedTargetPos) {
+                    const lookVector = new THREE.Vector3(resolvedTargetPos.x, resolvedSubject.position.y, resolvedTargetPos.z);
+                    resolvedSubject.lookAt(lookVector);
+                    console.log(`[ACTION] ${subjectId} looked at ${targetId}`);
                     await new Promise(res => setTimeout(res, 300));
+                } else {
+                    console.warn(`[ACTION] look-at failed: Subject(${subjectId}) found: ${!!resolvedSubject}, Target(${targetId}) found: ${!!resolvedTargetPos}`);
                 }
                 break;
 
-            case 'GOTO_SCENE':
+            case 'goto-scene':
                 const scId = value || params.scene_id;
                 if (scId && swapScene) await swapScene({ target_scene_id: parseInt(scId) });
+                break;
+
+            case 'end':
+                closeDialogue();
                 break;
         }
     };
 
     const optionsToDisplay = computed(() => {
         const node = findNode(currentNodeId.value);
-        // Support both 'options' and 'answers' keys
-        const opts = node?.options || node?.answers || [];
-        console.log(`[DIALOGUE DEBUG] optionsToDisplay for node ${currentNodeId.value}:`, opts.length);
-        return opts;
+        if (node?.options) {
+            console.warn("[DIALOGUE STANDARDS] Node contains legacy 'options' field. Use 'answers' instead.");
+        }
+        return node?.answers || node?.options || [];
     });
 
     return {

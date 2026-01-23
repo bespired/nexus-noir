@@ -40,6 +40,7 @@ export default {
             animations: [],
             characters: [],
             clues: [],
+            inventory: [], // Array of clue IDs
             configs: {},
             dialogs: [],
             media: [],
@@ -74,10 +75,18 @@ export default {
         },
         SET_LAST_TRIGGERED_GATEWAY_ID(state, id) {
             state.lastTriggeredGatewayId = id;
+        },
+        ADD_TO_INVENTORY(state, clueId) {
+            if (!state.inventory.includes(clueId)) {
+                state.inventory.push(clueId);
+            }
+        },
+        SET_INVENTORY(state, clueIds) {
+            state.inventory = clueIds;
         }
     },
     actions: {
-        async fetchAllData({ commit }) {
+        async fetchAllData({ commit, dispatch }) {
             commit('SET_LOADING', true);
             try {
                 const [
@@ -119,12 +128,23 @@ export default {
                 commit('SET_DATA', { key: 'scenes', data: scenes });
                 commit('SET_DATA', { key: 'sectors', data: sectors });
 
+                // Initialize inventory from clues
+                dispatch('initializeInventory');
+
             } catch (e) {
                 console.error("Failed to fetch game data", e);
                 commit('SET_ERROR', e.message);
             } finally {
                 commit('SET_LOADING', false);
             }
+        },
+        initializeInventory({ state, commit }) {
+            const initialClues = state.clues
+                .filter(clue => clue.initial && (clue.initial === '1' || clue.initial === true || clue.initial === 'true'))
+                .map(clue => clue.id);
+
+            commit('SET_INVENTORY', initialClues);
+            console.log(`[INVENTORY] Initialized with ${initialClues.length} clues`);
         },
         async fetchScene({ commit }, { sceneId, targetSpawnPoint = null, lastTriggeredGatewayId = null }) {
             if (!sceneId) return;
