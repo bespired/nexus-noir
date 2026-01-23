@@ -1340,6 +1340,19 @@ const onMapClick = (e) => {
     }
 };
 
+const getValidTriggerOutcome = (gw) => {
+    if (!gw.triggers || gw.triggers.length === 0) return null;
+    const inventory = store.state.game.inventory || [];
+    
+    return gw.triggers.find(trig => {
+        if (trig.condition === 'always') return true;
+        const hasClue = inventory.includes(trig.clue_id);
+        if (trig.condition === 'has') return hasClue;
+        if (trig.condition === 'has-not') return !hasClue;
+        return false;
+    });
+};
+
 const onMouseMove = (e) => {
     if (!renderer || !renderer.domElement) return;
 
@@ -1382,12 +1395,16 @@ const onMouseMove = (e) => {
     });
 
     if (hoveredGateway) {
-        const type = hoveredGateway.type || (hoveredGateway.target_scene_id ? 'gateway' : 'trigger');
-        console.log( type )
-        if (type === 'scene') {
-            currentCursor.value = "url('/cursors/direction.svg') 0 0, auto";
+        const validOutcome = getValidTriggerOutcome(hoveredGateway);
+        if (validOutcome) {
+            const type = validOutcome.type || (validOutcome.target_scene_id ? 'scene' : 'action');
+            if (type === 'scene') {
+                currentCursor.value = "url('/cursors/direction.svg') 0 0, auto";
+            } else {
+                currentCursor.value = "url('/cursors/hover.svg') 0 0, auto";
+            }
         } else {
-            currentCursor.value = "url('/cursors/hover.svg') 0 0, auto";
+            currentCursor.value = "url('/cursors/pointer.svg') 0 0, auto";
         }
     } else {
         currentCursor.value = "url('/cursors/pointer.svg') 0 0, auto";
@@ -1436,92 +1453,53 @@ watch(sceneId, async (newId) => {
 }, { immediate: true });
 
 const triggerGateway = async (gateway, isForced = false) => {
-    // 0. Spam Prevention: Return silently if we are still standing in the same triggered gateway
+    // 0. Spam Prevention
     if (!isForced && (lastExecutedBehaviorGateway.value === gateway || lastTriggeredGateway.value === gateway)) {
         return;
     }
 
-    console.log("[DEBUG] triggerGateway called:", gateway.label || gateway.id, "isForced:", isForced);
     if (isSwapping.value) return;
 
-    console.log(`[DEBUG] triggerGateway processing: Label='${gateway.label}', ID='${gateway.id}', BehaviorID='${gateway.behavior_id}'`);
-    console.log('[DEBUG] Gateway keys:', Object.keys(gateway));
+    const validOutcome = getValidTriggerOutcome(gateway);
+    if (!validOutcome) {
+        console.log("[DEBUG] No valid outcome for gateway conditions. Skipping.");
+        return;
+    }
 
-    const type = gateway.type || (gateway.target_scene_id ? 'gateway' : 'trigger');
+    // Determine type strictly from outcome or fallback to smart detection
+    const type = validOutcome.type || (validOutcome.target_scene_id ? 'scene' : 'action');
+    console.log(`[DEBUG] triggerGateway executing outcome logic: type=${type}`, validOutcome);
 
-    // 1. Action/Behavior Logic (SYSTEM_TRIGGER or Gateway with action)
-    // Supports: action_id (new), behavior_id (old), gedrag_id (legacy Dutch)
-    const targetId = gateway.action_id || gateway.behavior_id || gateway.gedrag_id;
-
-    if (targetId && (!isBehaviorActive.value || isForced)) {
-        console.log(`[DEBUG] Action/Behavior ID present: ${targetId}. isForced: ${isForced}`);
-
-        // Fix: Initialize actors array
-        let actors = [];
-
-        if (isForced || lastExecutedBehaviorGateway.value !== gateway) {
-
-            // Safety check: Are actions loaded?
-            console.log(`[DEBUG] Loaded actions count: ${actions.value ? actions.value.length : 0}`);
-            if (!actions.value || actions.value.length === 0) {
-                 const err = `[TRIGGER ERROR] No actions loaded in scene. Cannot execute ID: ${targetId}`;
-                 console.error(err);
-                 emit('debug', err);
-                 lastExecutedBehaviorGateway.value = gateway;
-                 return;
-            }
-
+    // 1. Action/Behavior Logic
+    if (type === 'action') {
+        const targetId = validOutcome.action_id;
+        if (targetId && (!isBehaviorActive.value || isForced)) {
+            let actors = [];
             const behavior = actions.value.find(g => String(g.id) === String(targetId));
 
             if (!behavior) {
-                 const err = `[TRIGGER ERROR] Action ID ${targetId} not found in actions list.`;
-                 console.warn(err, actions.value.map(a => a.id));
-                 emit('debug', err);
-                 lastExecutedBehaviorGateway.value = gateway;
-                 return;
+                console.warn(`[TRIGGER ERROR] Action ID ${targetId} not found.`);
+                lastExecutedBehaviorGateway.value = gateway;
+                return;
             }
 
-            // 1. Look for actors using gateway's direct target_personage_id (from UI)
-            if (gateway.target_personage_id) {
-                const directActor = spawnedNPCs[gateway.target_personage_id];
+            // Find actors
+            if (validOutcome.target_character) {
+                const directActor = spawnedNPCs[validOutcome.target_character];
                 if (directActor) actors.push(directActor);
             }
 
-            // 2. Fallback: Matching Types or IDs from Behavior
             if (actors.length === 0) {
-                 // Find matching spawned NPCs via Scene Personages relation
-                const spRelation = currentScene.value ?.scene_personages || currentScene.value ?.scenePersonages || currentScene.value ?.npc || [];
-                const targetGedragId = String(targetId); // Use the resolved ID
-
-                const sceneP = spRelation.filter(sp => String(sp.behavior_id || sp.behaviorId || sp.action_id || sp.actionId) === targetGedragId);
+                const spRelation = currentScene.value?.scene_personages || currentScene.value?.npc || [];
+                const sceneP = spRelation.filter(sp => String(sp.action_id || sp.behavior_id) === String(targetId));
                 const targetIds = sceneP.map(sp => String(sp.personage_id || sp.personageId));
-
-                const filtered = Object.values(spawnedNPCs).filter(n =>
-                    targetIds.includes(String(n.id)) ||
-                    String(n.behavior_id) === targetGedragId
-                );
-                actors.push(...filtered);
+                actors = Object.values(spawnedNPCs).filter(n => targetIds.includes(String(n.id)));
             }
-
-            // 3. Fallback: Fuzzy Name Match
-            if (actors.length === 0 && behavior) {
-                const behaviorName = behavior.name.toLowerCase();
-                const fuzzy = Object.values(spawnedNPCs).filter(n =>
-                    behaviorName.includes(n.name.toLowerCase())
-                );
-                 actors.push(...fuzzy);
-            }
-
-            // Deduplicate
-            actors = [...new Set(actors)];
 
             if (behavior && actors.length > 0) {
                 console.log(`[TRIGGER] Executing ${behavior.name} for actors:`, actors.map(a => a.name));
                 isBehaviorActive.value = true;
                 lastExecutedBehaviorGateway.value = gateway;
-
-                const logMsg = `${isForced ? 'MANUAL' : 'TRG'}: ${gateway.label || 'SYSTEM'} -> ${behavior.name}`;
-                emit('debug', logMsg);
 
                 for (const actor of actors) {
                     npcModes[actor.id] = 'SEQUENCE';
@@ -1530,61 +1508,47 @@ const triggerGateway = async (gateway, isForced = false) => {
                 }
 
                 for (const [index, action] of (behavior.actions || []).entries()) {
-                    for (const actor of actors) {
-                        actor.currentActionIndex = index;
-                    }
-                    const actionLog = `ACT [${index + 1}/${behavior.actions.length}]: ${action.type}`;
-                    emit('debug', actionLog);
-
                     await Promise.all(actors.map(actor => runAction(action, actor.id)));
                 }
 
                 for (const actor of actors) {
                     npcModes[actor.id] = 'IDLE';
                     actor.currentBehavior = null;
-                    actor.activeBehaviorId = null;
-                    actor.currentActionIndex = -1;
                 }
 
                 isBehaviorActive.value = false;
             } else {
-                // FAILURE CASE
-                // Mark as executed anyway to prevent infinite loop (re-triggering every frame)
+                console.warn(`[TRIGGER] Behavior ${targetId} not found or no actors found.`);
                 lastExecutedBehaviorGateway.value = gateway;
-
-                const failMsg = `[TRIGGER FAIL] Behavior: ${behavior ? behavior.name : 'Unknown'}. No Actors found.`;
-                console.warn(failMsg, {
-                    gwTargetId: gateway.target_personage_id,
-                    spawnedNPCs: Object.keys(spawnedNPCs)
-                });
-                emit('debug', failMsg);
             }
         }
-    }
+    } 
+    // 2. Scene/Gateway Logic
+    else if (type === 'scene') {
+        const targetSceneId = validOutcome.target_scene_id || gateway.target_scene_id;
+        if (!targetSceneId) {
+            console.warn("[TRIGGER] Scene transition requested but no target_scene_id found.");
+            return;
+        }
 
-
-    // 2. Scene Traversal Logic (Gateways)
-    if ((type === 'gateway' || type === 'scene') && gateway.target_scene_id) {
         if (!isForced && lastTriggeredGateway.value === gateway) return;
-
         lastTriggeredGateway.value = gateway;
 
-        // Emit for parent (Engine/Player) to handle navigation
-        console.log(`[TRIGGER] Emitting next-scene for target: ${gateway.target_scene_id}`);
-        emit('next-scene', {
-            targetSceneId: gateway.target_scene_id,
-            targetSpawnPoint: gateway.target_spawn_point,
-            lastTriggeredGatewayId: gateway.id
-        });
+        const targetSpawnPoint = validOutcome.target_spawn_point || gateway.target_spawn_point;
 
-        // Also fallback to internal swap if no one handles it or if in a mode that needs it
-        // In Engine mode, the parent likely reloads us with new props, effectively resetting.
-        if (!isEngine.value) {
+        console.log(`[TRIGGER] Scene Change to ${targetSceneId} at ${targetSpawnPoint}`);
+
+        if (isEngine.value) {
+            emit('next-scene', {
+                targetSceneId,
+                targetSpawnPoint,
+                lastTriggeredGatewayId: gateway.id
+            });
+        } else {
             isSwapping.value = true;
-            await swapScene(gateway);
+            await swapScene({ target_scene_id: targetSceneId, target_spawn_point: targetSpawnPoint });
             isSwapping.value = false;
         }
-        return;
     }
 
     lastTriggeredGateway.value = gateway;

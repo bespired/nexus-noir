@@ -15,6 +15,7 @@ const scene = ref(null);
 const scenes = ref([]);
 const characters = ref([]);
 const actions = ref([]);
+const clues = ref([]);
 const loading = ref(true);
 const saving = ref(false);
 const deleting = ref(false);
@@ -37,11 +38,12 @@ const toggleCollapse = (index) => {
 
 const fetchInitialData = async () => {
     try {
-        const [sceneRes, scenesRes, charsRes, actionsRes] = await Promise.all([
+        const [sceneRes, scenesRes, charsRes, actionsRes, cluesRes] = await Promise.all([
             fetch(`/api/scenes/${sceneId}`),
             fetch('/api/scenes'),
             fetch('/api/characters'),
-            fetch('/api/actions')
+            fetch('/api/actions'),
+            fetch('/api/clues')
         ]);
 
         if (!sceneRes.ok) throw new Error('Failed to fetch scene');
@@ -59,8 +61,29 @@ const fetchInitialData = async () => {
         scenes.value = await scenesRes.json();
         characters.value = await charsRes.json();
         actions.value = await actionsRes.json();
+        clues.value = await cluesRes.json();
 
-        // Pre-fetch spawnpoints for existing gateways
+        // Migration: ensure each gateway has a 'triggers' array
+        if (scene.value['2d_gateways']) {
+            scene.value['2d_gateways'].forEach((gw, index) => {
+                if (!gw.triggers) {
+                    gw.triggers = [];
+                    // Migrate legacy single trigger if it exists
+                    if (gw.action_id || gw.target_scene_id || gw.behavior_id) {
+                        gw.triggers.push({
+                            condition: 'always',
+                            clue_id: null,
+                            type: gw.type === 'trigger' ? 'action' : 'scene',
+                            action_id: gw.action_id || gw.behavior_id,
+                            target_scene_id: gw.target_scene_id,
+                            target_spawn_point: gw.target_spawn_point,
+                            target_character: gw.target_character
+                        });
+                    }
+                }
+                if (gw.type) collapsedStates.value[index] = true;
+            });
+        }
         if (scene.value['2d_gateways']) {
             scene.value['2d_gateways'].forEach(gw => {
                 if (gw.target_scene_id) {
@@ -93,7 +116,7 @@ const gotoSceneGateway = (targetId) => {
     if (!targetId) return;
     router.push(`/scenes/${targetId}/gateway`).then(() => {
         // Force refresh data for the new scene
-        window.location.reload(); 
+        window.location.reload();
     });
 };
 
@@ -150,11 +173,10 @@ const handleMouseDown = (e, index = -1) => {
     const rect = backdropContainer.value.getBoundingClientRect();
 
     if (index !== -1) {
-        // Start dragging existing gateway
         isDraggingExisting.value = true;
         draggingIndex.value = index;
         selectedGatewayIndex.value = index;
-        collapsedStates.value[index] = false; // Expand when selected
+        collapsedStates.value[index] = false;
         const gw = scene.value['2d_gateways'][index];
         const mousePctX = ((e.clientX - rect.left) / rect.width) * 100;
         const mousePctY = ((e.clientY - rect.top) / rect.height) * 100;
@@ -163,7 +185,6 @@ const handleMouseDown = (e, index = -1) => {
             y: mousePctY - gw.y
         };
     } else {
-        // Start drawing new gateway
         isDrawing.value = true;
         startX.value = ((e.clientX - rect.left) / rect.width) * 100;
         startY.value = ((e.clientY - rect.top) / rect.height) * 100;
@@ -175,10 +196,12 @@ const handleMouseDown = (e, index = -1) => {
             height: 0,
             type: 'scene',
             label: null,
-            target_scene_id: null,
-            target_spawn_point: null
+            triggers: []
         };
     }
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
 };
 
 const handleMouseMove = (e) => {
@@ -208,6 +231,26 @@ const handleMouseUp = () => {
     isDraggingExisting.value = false;
     draggingIndex.value = -1;
     currentGateway.value = null;
+
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup', handleMouseUp);
+};
+
+const addTriggerOutcome = (gw) => {
+    if (!gw.triggers) gw.triggers = [];
+    gw.triggers.push({
+        condition: 'always',
+        clue_id: clues.value[0]?.id || null,
+        type: 'action',
+        action_id: null,
+        target_scene_id: null,
+        target_spawn_point: null,
+        target_character: null
+    });
+};
+
+const removeTriggerOutcome = (gw, index) => {
+    gw.triggers.splice(index, 1);
 };
 
 const deleteGateway = (index) => {
@@ -223,6 +266,19 @@ const handleSelect = (index) => {
 const handleSave = async () => {
     saving.value = true;
     try {
+        // Sync first trigger to top-level for backward compatibility
+        const gateways = scene.value['2d_gateways'].map(gw => {
+            const syncedGw = { ...gw };
+            if (gw.triggers && gw.triggers.length > 0) {
+                const first = gw.triggers[0];
+                syncedGw.action_id = first.type === 'action' ? first.action_id : null;
+                syncedGw.target_scene_id = first.type === 'scene' ? first.target_scene_id : null;
+                syncedGw.target_spawn_point = first.type === 'scene' ? first.target_spawn_point : null;
+                syncedGw.target_character = first.type === 'action' ? first.target_character : null;
+            }
+            return syncedGw;
+        });
+
         const response = await fetch(`/api/scenes/${sceneId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -231,7 +287,7 @@ const handleSave = async () => {
                 description: scene.value.description,
                 sector_id: scene.value.sector_id,
                 type: scene.value.type,
-                '2d_gateways': scene.value['2d_gateways']
+                '2d_gateways': gateways
             })
         });
 
@@ -316,8 +372,6 @@ onMounted(fetchInitialData);
                         class="drawing-backdrop"
                         ref="backdropContainer"
                         @mousedown="handleMouseDown"
-                        @mousemove="handleMouseMove"
-                        @mouseup="handleMouseUp"
                     >
                         <img v-if="backdropUrl" :src="backdropUrl" class="backdrop-img" draggable="false" />
 
@@ -411,73 +465,112 @@ onMounted(fetchInitialData);
                                 />
                             </div>
 
-                            <!-- SCENE GATEWAY FIELDS -->
-                            <template v-if="gw.type === 'scene'">
-                                <div class="field">
-                                    <label>{{ t('scenes.edit.target_scene') || 'DESTINATION_SCENE' }}</label>
-                                    <div class="field-row-inline">
-                                        <Select 
-                                            v-model="gw.target_scene_id" 
-                                            :options="filteredScenes" 
-                                            optionLabel="displayName" 
-                                            optionValue="id"
-                                            class="noir-select flex-1"
-                                            filter
-                                            showClear
-                                            @change="fetchSpawnpoints(gw.target_scene_id)"
-                                        />
-                                        <Button 
-                                            v-if="gw.target_scene_id"
-                                            icon="pi pi-arrow-right" 
-                                            @click="gotoSceneGateway(gw.target_scene_id)"
-                                            class="noir-button-small"
-                                            v-tooltip.top="'Go to scene'"
-                                        />
+                            <!-- TRIGGER OUTCOMES -->
+                            <div class="field">
+                                <label>TRIGGER OUTCOMES</label>
+                                <div class="triggers-list">
+                                    <div v-for="(trig, tIndex) in gw.triggers" :key="tIndex" class="trigger-outcome-card">
+                                        <div class="trigger-outcome-header">
+                                            <span class="outcome-index">#{{ tIndex + 1 }}</span>
+                                            <Button icon="pi pi-times" text severity="danger" class="p-0 m-0" @click="removeTriggerOutcome(gw, tIndex)" />
+                                        </div>
+
+                                        <!-- Condition Row -->
+                                        <div class="outcome-row">
+                                            <Select
+                                                v-model="trig.condition"
+                                                :options="[{label: 'ALWAYS', value: 'always'}, {label: 'HAS', value: 'has'}, {label: 'HAS NOT', value: 'has-not'}]"
+                                                optionLabel="label"
+                                                optionValue="value"
+                                                class="noir-select compact-select"
+                                            />
+                                            <Select
+                                                v-if="trig.condition !== 'always'"
+                                                v-model="trig.clue_id"
+                                                :options="clues"
+                                                optionLabel="name"
+                                                optionValue="id"
+                                                placeholder="Pick clue"
+                                                class="noir-select flex-1"
+                                                filter
+                                            />
+                                        </div>
+
+                                        <!-- Outcome Row -->
+                                        <div class="outcome-row">
+                                            <Select
+                                                v-model="trig.type"
+                                                :options="[{label: 'SCENE', value: 'scene'}, {label: 'ACTION', value: 'action'}]"
+                                                optionLabel="label"
+                                                optionValue="value"
+                                                class="noir-select compact-select"
+                                            />
+
+                                            <!-- Scenario A: Action -->
+                                            <Select
+                                                v-if="trig.type === 'action'"
+                                                v-model="trig.action_id"
+                                                :options="actions"
+                                                optionLabel="name"
+                                                optionValue="id"
+                                                class="noir-select flex-1"
+                                                filter
+                                                placeholder="Action"
+                                            />
+
+                                            <!-- Scenario B: Scene -->
+                                            <Select
+                                                v-if="trig.type === 'scene'"
+                                                v-model="trig.target_scene_id"
+                                                :options="filteredScenes"
+                                                optionLabel="displayName"
+                                                optionValue="id"
+                                                class="noir-select flex-1"
+                                                filter
+                                                placeholder="Scene"
+                                                @change="fetchSpawnpoints(trig.target_scene_id)"
+                                            />
+                                        </div>
+
+                                        <!-- Target Row (Contextual) -->
+                                        <div class="outcome-row" v-if="trig.type === 'action'">
+                                            <span class="row-label">TARGET CHARACTER</span>
+                                            <Select
+                                                v-model="trig.target_character"
+                                                :options="characters"
+                                                optionLabel="name"
+                                                optionValue="id"
+                                                class="noir-select flex-1"
+                                                filter
+                                                showClear
+                                                placeholder="Optional"
+                                            />
+                                        </div>
+
+                                        <div class="outcome-row" v-if="trig.type === 'scene'">
+                                            <span class="row-label">SPAWN POINT</span>
+                                            <Select
+                                                v-model="trig.target_spawn_point"
+                                                :options="spawnpointsCache[trig.target_scene_id] || []"
+                                                optionLabel="name"
+                                                optionValue="name"
+                                                class="noir-select flex-1"
+                                                filter
+                                                showClear
+                                                :disabled="!trig.target_scene_id"
+                                                placeholder="Optional"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="field">
-                                    <label>{{ t('scenes.edit.target_spawn') || 'SPAWN_POINT' }}</label>
-                                    <Select
-                                        v-model="gw.target_spawn_point"
-                                        :options="spawnpointsCache[gw.target_scene_id] || []"
-                                        optionLabel="name"
-                                        optionValue="name"
-                                        class="noir-select w-full"
-                                        filter
-                                        showClear
-                                        :placeholder="gw.target_scene_id ? 'Pick a spawnpoint' : 'Select a scene first'"
-                                        :disabled="!gw.target_scene_id"
-                                    />
-                                </div>
-                            </template>
-
-                            <!-- TRIGGER FIELDS -->
-                            <template v-if="gw.type === 'trigger'">
-                                <div class="field">
-                                    <label>{{ t('scenes.edit.behavior') || 'ACTION_BEHAVIOR' }}</label>
-                                    <Select
-                                        v-model="gw.gedrag_id"
-                                        :options="actions"
-                                        optionLabel="name"
-                                        optionValue="id"
-                                        class="noir-select w-full"
-                                        filter
-                                        showClear
-                                    />
-                                </div>
-                                <div class="field">
-                                    <label>{{ t('scenes.edit.target_character') || 'TARGET_CHARACTER' }}</label>
-                                    <Select
-                                        v-model="gw.target_character"
-                                        :options="characters"
-                                        optionLabel="name"
-                                        optionValue="id"
-                                        class="noir-select w-full"
-                                        filter
-                                        showClear
-                                    />
-                                </div>
-                            </template>
+                                <Button
+                                    label="ADD OUTCOME"
+                                    icon="pi pi-plus"
+                                    text
+                                    class="add-outcome-btn w-full mt-2"
+                                    @click="addTriggerOutcome(gw)"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -786,6 +879,69 @@ onMounted(fetchInitialData);
     border: 1px solid #1f2937 !important;
     color: white !important;
     font-size: 0.8rem !important;
+}
+
+.compact-select ~ .noir-select{
+    width: calc(100% - 130px - 0.5rem);
+}
+
+
+.triggers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.trigger-outcome-card {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.trigger-outcome-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.outcome-index {
+    font-size: 0.65rem;
+    font-weight: bold;
+    color: var(--color-noir-muted);
+}
+
+.outcome-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.row-label {
+    font-size: 0.6rem;
+    color: var(--color-noir-muted);
+    min-width: 100px;
+}
+
+.compact-select {
+    width: 130px !important;
+    font-size: 0.75rem !important;
+}
+
+.add-outcome-btn {
+    font-size: 0.75rem !important;
+    border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+}
+
+.add-outcome-btn:hover {
+    border-style: solid !important;
+    background: rgba(255, 255, 255, 0.05) !important;
 }
 
 .loading-state {
