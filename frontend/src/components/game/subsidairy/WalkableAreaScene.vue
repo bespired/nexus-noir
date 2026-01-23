@@ -165,6 +165,7 @@ const {
 watch(activeDialogue, (newVal) => {
     if (!newVal) {
         lastDialogueCloseTime.value = Date.now();
+        currentCursor.value = "url('/cursors/pointer.svg') 0 0, auto";
         console.log(`[DIALOGUE] Closed at ${lastDialogueCloseTime.value}`);
     }
 });
@@ -1358,7 +1359,7 @@ const onMouseMove = (e) => {
 
     // Check if over UI elements
     if (e.target.closest('.dialogue-layer') || e.target.closest('.npc-dialogue-box') || e.target.closest('.options-container')) {
-        renderer.domElement.style.cursor = 'auto';
+        currentCursor.value = 'auto';
         return;
     }
 
