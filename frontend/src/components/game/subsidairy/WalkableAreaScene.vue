@@ -632,18 +632,7 @@ const spawnVehicle = (spawnPoint, animate = true) => {
 };
 const getMixerKey = (anim, clipName) => {
     if (anim?.mixer_name) return anim.mixer_name;
-    const name = (clipName || anim?.name || anim?.label || "").toLowerCase();
-    if (name.includes('walk') || name.includes('loop') || name.includes('run')) return 'walk';
-    if (name.includes('idle') || name.includes('stand') || name.includes('breath')) return 'idle';
-    if (name.includes('talk') || name.includes('speak') || name.includes('chat')) return 'talk';
-    if (name.includes('caut') || name.includes('sneak') || name.includes('crouch')) return 'caution';
-    if (name.includes('dance')) return 'dance';
-    // Deep fallback for mixamo names like "mixamo.com"
-    if (name.includes('mixamo')) {
-        if (name.includes('walk')) return 'walk';
-        if (name.includes('idle')) return 'idle';
-    }
-    return name || 'idle';
+    return 'idle';
 };
 
 const spawnCharacter = (spawnPoint, sceneId) => {
@@ -1008,10 +997,10 @@ const spawnNPCs = async (scenePersonages, sceneId) => {
     if (!scenePersonages || scenePersonages.length === 0) return;
 
     const currentSectorId = sectorId.value;
-    
+
     // Use the same logic as loadSceneGLB: Prioritize 3d_spawnpoints
     let spawnPoints = currentScene.value['3d_spawnpoints'] || [];
-    
+
     if (spawnPoints.length === 0 && currentScene.value.location && currentScene.value.location.spawn_points) {
          const allSpawnPoints = currentScene.value.location.spawn_points || {};
          const locPoints = allSpawnPoints[currentSectorId] || allSpawnPoints[Number(currentSectorId)] || [];
@@ -1097,9 +1086,14 @@ const spawnNPCs = async (scenePersonages, sceneId) => {
 
             let mixer = null;
             let npcActions = {};
-            
-            // 1. Load External Animations if linked
-            const personageAnims = (p.animations || []).map(anim => {
+
+            // 1. Gather all candidate animations (Pivot/Relation + Media collection)
+            const candidateAnims = [
+                ...(p.animations || []),
+                ...(p.media || []).filter(m => m.type === 'animation' || (m.filepad && m.filepad.endsWith('.glb')))
+            ];
+
+            const personageAnims = candidateAnims.map(anim => {
                 // If ID-only, try to resolve from global allAnimations
                 if (!anim.filepad && anim.id) {
                     const globalAnim = allAnimations.value.find(ga => ga.id === anim.id);
@@ -1111,11 +1105,21 @@ const spawnNPCs = async (scenePersonages, sceneId) => {
             if (personageAnims.length > 0) {
                 mixer = new THREE.AnimationMixer(mesh);
                 const animLoader = createLoader();
-                
+
                 await Promise.all(personageAnims.map(async (anim) => {
-                    const path = anim.filepad || anim.url || anim.path;
+                    let path = anim.filepad || anim.url || anim.path;
+
+                    // If no direct path, check media relation (standard in modern store)
+                    if (!path && anim.media && Array.isArray(anim.media) && anim.media.length > 0) {
+                        const glb = anim.media.find(m => m.filepad && (m.filepad.endsWith('.glb') || m.filepad.endsWith('.gltf') || m.type === 'threefile')) || anim.media[0];
+                        if (glb) {
+                            path = glb.filepad;
+                            console.log(`[NPC ANIM] Found path via media relation for ${anim.label || anim.name}: ${path}`);
+                        }
+                    }
+
                     if (!path) return;
-                    
+
                     const animUrl = resolveAssetUrl(path);
                     try {
                         const animGltf = await new Promise((res, rej) => animLoader.load(animUrl, res, undefined, rej));
@@ -1123,7 +1127,7 @@ const spawnNPCs = async (scenePersonages, sceneId) => {
                             const clip = animGltf.animations[0];
                             const actionKey = getMixerKey(anim, clip.name);
                             console.log(`[NPC ANIM DEBUG] NPC ${p.name}: Assigned '${actionKey}' for clip '${clip.name}' (External)`);
-                            
+
                             npcActions[actionKey] = mixer.clipAction(clip);
                         }
                     } catch (e) {
@@ -1139,7 +1143,7 @@ const spawnNPCs = async (scenePersonages, sceneId) => {
                     const name = clip.name.toLowerCase();
                     const actionKey = getMixerKey(null, clip.name);
                     console.log(`[NPC ANIM DEBUG] NPC ${p.name}: Assigned '${actionKey}' for clip '${clip.name}' (Embedded)`);
- 
+
                     if (actionKey && !npcActions[actionKey]) {
                         npcActions[actionKey] = mixer.clipAction(clip);
                     }
@@ -1192,7 +1196,7 @@ watch(vehicleScale, (newScale) => {
 const onMapClick = (e) => {
     const timeSinceDialogue = Date.now() - lastDialogueCloseTime.value;
     if (activeDialogue.value || timeSinceDialogue < 300) return;
-    
+
     // Check if clicking UI elements
     if (e.target.closest('.dialogue-layer') || e.target.closest('.npc-dialogue-box') || e.target.closest('.options-container')) {
         return;
@@ -1379,7 +1383,7 @@ watch(sceneId, async (newId) => {
 const triggerGateway = async (gateway, isForced = false) => {
     // 0. Spam Prevention: Return silently if we are still standing in the same triggered gateway
     if (!isForced && (lastExecutedBehaviorGateway.value === gateway || lastTriggeredGateway.value === gateway)) {
-        return; 
+        return;
     }
 
     console.log("[DEBUG] triggerGateway called:", gateway.label || gateway.id, "isForced:", isForced);
@@ -1396,7 +1400,7 @@ const triggerGateway = async (gateway, isForced = false) => {
 
     if (targetId && (!isBehaviorActive.value || isForced)) {
         console.log(`[DEBUG] Action/Behavior ID present: ${targetId}. isForced: ${isForced}`);
-        
+
         // Fix: Initialize actors array
         let actors = [];
 
@@ -1408,17 +1412,17 @@ const triggerGateway = async (gateway, isForced = false) => {
                  const err = `[TRIGGER ERROR] No actions loaded in scene. Cannot execute ID: ${targetId}`;
                  console.error(err);
                  emit('debug', err);
-                 lastExecutedBehaviorGateway.value = gateway; 
+                 lastExecutedBehaviorGateway.value = gateway;
                  return;
             }
 
             const behavior = actions.value.find(g => String(g.id) === String(targetId));
-            
+
             if (!behavior) {
                  const err = `[TRIGGER ERROR] Action ID ${targetId} not found in actions list.`;
                  console.warn(err, actions.value.map(a => a.id));
                  emit('debug', err);
-                 lastExecutedBehaviorGateway.value = gateway; 
+                 lastExecutedBehaviorGateway.value = gateway;
                  return;
             }
 
@@ -1433,10 +1437,10 @@ const triggerGateway = async (gateway, isForced = false) => {
                  // Find matching spawned NPCs via Scene Personages relation
                 const spRelation = currentScene.value ?.scene_personages || currentScene.value ?.scenePersonages || currentScene.value ?.npc || [];
                 const targetGedragId = String(targetId); // Use the resolved ID
-    
+
                 const sceneP = spRelation.filter(sp => String(sp.behavior_id || sp.behaviorId || sp.action_id || sp.actionId) === targetGedragId);
                 const targetIds = sceneP.map(sp => String(sp.personage_id || sp.personageId));
-    
+
                 const filtered = Object.values(spawnedNPCs).filter(n =>
                     targetIds.includes(String(n.id)) ||
                     String(n.behavior_id) === targetGedragId
@@ -1452,7 +1456,7 @@ const triggerGateway = async (gateway, isForced = false) => {
                 );
                  actors.push(...fuzzy);
             }
-            
+
             // Deduplicate
             actors = [...new Set(actors)];
 
@@ -1462,7 +1466,7 @@ const triggerGateway = async (gateway, isForced = false) => {
                 lastExecutedBehaviorGateway.value = gateway;
 
                 const logMsg = `${isForced ? 'MANUAL' : 'TRG'}: ${gateway.label || 'SYSTEM'} -> ${behavior.name}`;
-                emit('debug', logMsg); 
+                emit('debug', logMsg);
 
                 for (const actor of actors) {
                     npcModes[actor.id] = 'SEQUENCE';
@@ -1492,11 +1496,11 @@ const triggerGateway = async (gateway, isForced = false) => {
                 // FAILURE CASE
                 // Mark as executed anyway to prevent infinite loop (re-triggering every frame)
                 lastExecutedBehaviorGateway.value = gateway;
-                
+
                 const failMsg = `[TRIGGER FAIL] Behavior: ${behavior ? behavior.name : 'Unknown'}. No Actors found.`;
-                console.warn(failMsg, { 
-                    gwTargetId: gateway.target_personage_id, 
-                    spawnedNPCs: Object.keys(spawnedNPCs) 
+                console.warn(failMsg, {
+                    gwTargetId: gateway.target_personage_id,
+                    spawnedNPCs: Object.keys(spawnedNPCs)
                 });
                 emit('debug', failMsg);
             }
@@ -1691,17 +1695,13 @@ const animate = () => {
                 npc.mesh.lookAt(lookPos);
                 const dir = new THREE.Vector3().subVectors(npc.targetPos, npc.mesh.position).normalize();
                 npc.mesh.position.add(dir.multiplyScalar(characterSpeed * delta));
-                const walkAction = npc.actions.walk || npc.actions.loop || Object.values(npc.actions).find(a => a._clip.name.toLowerCase().includes('walk'));
-
-                if (walkAction) {
-                    if (!walkAction.isRunning()) {
-                        console.log(`[ANIM] NPC ${npc.name} walking. Actions keys:`, Object.keys(npc.actions));
-                        if (npc.actions.idle) npc.actions.idle.stop();
-                        walkAction.play();
-                    }
-                } else if (!npc._warnedNoWalk) {
-                    console.warn(`[ANIM] NPC ${npc.name} is walking but has NO 'walk' action. Available keys:`, Object.keys(npc.actions));
-                    npc._warnedNoWalk = true;
+                if (npc.actions.walk && !npc.actions.walk.isRunning()) {
+                    console.log(`[ANIM] NPC ${npc.name} walking. Actions keys:`, Object.keys(npc.actions));
+                    if (npc.actions.idle) npc.actions.idle.stop();
+                    npc.actions.walk.play();
+                } else if (!npc.actions.walk && !npc._warnedNoWalk) {
+                     console.warn(`[ANIM] NPC ${npc.name} has NO 'walk' action. Available:`, Object.keys(npc.actions));
+                     npc._warnedNoWalk = true;
                 }
             } else {
                 npc.isWalking = false;

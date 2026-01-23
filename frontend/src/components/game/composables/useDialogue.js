@@ -168,8 +168,11 @@ export function useDialogue({
             return;
         }
         const next = option.next || option.next_node;
-        if (next && next !== '_end') playNode(next);
-        else closeDialogue();
+        if (next && next !== '_end' && next !== 'END' && next !== '[END]') {
+            playNode(next);
+        } else {
+            closeDialogue();
+        }
     };
 
     const closeDialogue = () => {
