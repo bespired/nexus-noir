@@ -14,9 +14,17 @@ const error = computed(() => store.state.game.error);
 
 const currentSceneComponent = shallowRef(null);
 const debugInfo = ref(['DEBUG CONSOLE'])
+const debugView = ref('console'); // 'console' or 'inventory'
+
 const debugMode = computed({
     get: () => store.state.game.debug,
     set: (val) => store.commit('game/SET_DEBUG', val)
+});
+
+const inventoryClues = computed(() => {
+    const allClues = store.state.game.clues;
+    const invIds = store.state.game.inventory;
+    return allClues.filter(c => invIds.includes(c.id));
 });
 
 const toggleDebug = () => {
@@ -61,8 +69,16 @@ const loadScene = async (sceneId, targetSpawnPoint = null, lastTriggeredGatewayI
 
 const debuggerInfo = (line) => {
   debugInfo.value.push(line)
-  debugInfo.value = debugInfo.value.slice(-5)
+  debugInfo.value = debugInfo.value.slice(-10)
 }
+
+const handleGiveClue = (clueId) => {
+    const clue = store.state.game.clues.find(c => String(c.id) === String(clueId));
+    const name = clue ? clue.title : clueId;
+    
+    debuggerInfo(`[INVENTORY] Added Clue: ${name}`);
+    store.commit('game/ADD_TO_INVENTORY', clueId);
+};
 
 const handleNextScene = (payload) => {
     console.log("Scene complete, payload:", payload);
@@ -111,6 +127,7 @@ onMounted(async () => {
             v-bind="currentScene.data"
             @next-scene="handleNextScene"
             @debug="debuggerInfo"
+            @give-clue="handleGiveClue"
         />
     </div>
 
@@ -122,12 +139,33 @@ onMounted(async () => {
   </div>
 
   <div class="debug-console" v-if="emanator">
-      <div class="debug-controls mb-2">
-          <button @click="toggleDebug" :class="{'active': debugMode}">
-              <i class="pi pi-eye"></i> TOGGLE DEBUG
+      <div class="debug-header mb-2">
+          <div class="debug-tabs">
+              <button 
+                  @click="debugView = 'console'" 
+                  :class="{'active': debugView === 'console'}"
+              >CONSOLE</button>
+              <button 
+                  @click="debugView = 'inventory'" 
+                  :class="{'active': debugView === 'inventory'}"
+              >INVENTORY ({{ inventoryClues.length }})</button>
+          </div>
+          <button @click="toggleDebug" :class="{'active': debugMode}" class="toggle-btn">
+              <i class="pi pi-eye"></i> {{ debugMode ? 'HIDE HELPERS' : 'SHOW HELPERS' }}
           </button>
       </div>
-      <div v-for="line in debugInfo">{{ line }} </div>
+
+      <div v-if="debugView === 'console'" class="console-output">
+          <div v-for="(line, idx) in debugInfo" :key="idx" class="console-line">{{ line }}</div>
+      </div>
+      
+      <div v-else class="inventory-output">
+          <div v-if="inventoryClues.length === 0" class="empty-inv">NO CLUES COLLECTED</div>
+          <div v-for="clue in inventoryClues" :key="clue.id" class="clue-item">
+              <div class="clue-title">{{ clue.title }}</div>
+              <div class="clue-desc">{{ clue.description }}</div>
+          </div>
+      </div>
   </div>
 </template>
 
@@ -136,34 +174,86 @@ onMounted(async () => {
   .debug-console {
     position: absolute;
     top: 0; right: 0;
-    border:1px solid green;
+    border: 1px solid rgba(0, 255, 0, 0.3);
     padding: 12px;
-    color: green;
-    font-size: 12px;
-    background: rgba(0, 0, 0, 0.4);
-    pointer-events: none;
+    color: #00ff00;
+    font-size: 11px;
+    background: rgba(0, 0, 0, 0.85);
+    pointer-events: auto;
     z-index: 9999;
-    min-width: 25%;
+    min-width: 300px;
+    max-width: 400px;
+    font-family: 'Courier New', Courier, monospace;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
   }
 
-  .debug-controls {
-      pointer-events: auto;
-      margin-bottom: 8px;
+  .debug-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(0, 255, 0, 0.2);
+      padding-bottom: 8px;
   }
 
-  .debug-controls button {
-      background: rgba(0, 255, 0, 0.2);
+  .debug-tabs {
+      display: flex;
+      gap: 4px;
+  }
+
+  .debug-tabs button, .toggle-btn {
+      background: rgba(0, 255, 0, 0.1);
       border: 1px solid lime;
       color: lime;
       padding: 4px 8px;
-      font-size: 10px;
+      font-size: 9px;
       cursor: pointer;
-      font-family: monospace;
+      text-transform: uppercase;
   }
 
-  .debug-controls button.active {
+  .debug-tabs button.active {
       background: lime;
       color: black;
+  }
+
+  .console-output {
+      max-height: 200px;
+      overflow-y: auto;
+  }
+
+  .console-line {
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(0, 255, 0, 0.05);
+  }
+
+  .inventory-output {
+      max-height: 300px;
+      overflow-y: auto;
+      padding-top: 8px;
+  }
+
+  .clue-item {
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid rgba(0, 255, 0, 0.2);
+  }
+
+  .clue-title {
+      font-weight: bold;
+      color: #fff;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+  }
+
+  .clue-desc {
+      color: #aaa;
+      font-style: italic;
+      line-height: 1.2;
+  }
+
+  .empty-inv {
+      text-align: center;
+      padding: 20px;
+      color: rgba(0, 255, 0, 0.5);
   }
 
 #nexus-noir-game {
@@ -174,6 +264,7 @@ onMounted(async () => {
   width: 100%;
   overflow: hidden;
   position: relative;
+  cursor: url('/cursors/pointer.svg') 0 0, auto;
 
   &.is-emanator {
     height: calc(100vh - 84px);

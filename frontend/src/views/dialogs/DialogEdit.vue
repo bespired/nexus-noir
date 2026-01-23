@@ -21,6 +21,9 @@ const showDeleteConfirm = ref(false);
 const selectedNodeId = ref(null);
 const draggingNodeId = ref(null);
 const dragOffset = ref({ x: 0, y: 0 });
+const clues = ref([]);
+const scenes = ref([]);
+const allDialogs = ref([]);
 
 // Actions available for nodes and answers
 const actionOptions = GAME_ACTIONS;
@@ -316,7 +319,39 @@ const calculatePath = (sX, sY, eX, eY) => {
     return `M ${sX} ${sY} C ${cp1X} ${sY}, ${cp2X} ${eY}, ${eX} ${eY}`;
 };
 
-onMounted(fetchDialog);
+const fetchClues = async () => {
+    try {
+        const response = await fetch('/api/clues');
+        if (response.ok) clues.value = await response.json();
+    } catch (e) {
+        console.error('Failed to fetch clues', e);
+    }
+};
+
+const fetchScenes = async () => {
+    try {
+        const response = await fetch('/api/scenes');
+        if (response.ok) scenes.value = await response.json();
+    } catch (e) {
+        console.error('Failed to fetch scenes', e);
+    }
+};
+
+const fetchAllDialogs = async () => {
+    try {
+        const response = await fetch('/api/dialogs');
+        if (response.ok) allDialogs.value = await response.json();
+    } catch (e) {
+        console.error('Failed to fetch all dialogs', e);
+    }
+};
+
+onMounted(() => {
+    fetchDialog();
+    fetchClues();
+    fetchScenes();
+    fetchAllDialogs();
+});
 </script>
 
 <template>
@@ -401,6 +436,26 @@ onMounted(fetchDialog);
                         <Select v-model="selectedNode.action" :options="actionOptions" optionLabel="label" optionValue="value" class="noir-select" :placeholder="t('dialogs.edit.select_action')" />
                     </div>
 
+                    <div v-if="selectedNode.action === 'give-clue'" class="field mini mt-1">
+                        <label>SELECT CLUE</label>
+                        <Select v-model="selectedNode.action_value" :options="clues" optionLabel="title" optionValue="id" class="noir-select compact" placeholder="Pick a clue" />
+                    </div>
+
+                    <div v-if="selectedNode.action === 'goto-scene'" class="field mini mt-1">
+                        <label>SELECT SCENE</label>
+                        <Select v-model="selectedNode.action_value" :options="scenes" optionLabel="title" optionValue="id" class="noir-select compact" placeholder="Pick a scene" />
+                    </div>
+
+                    <div v-if="selectedNode.action === 'start-dialogue'" class="field mini mt-1">
+                        <label>SELECT DIALOGUE</label>
+                        <Select v-model="selectedNode.action_value" :options="allDialogs" optionLabel="title" optionValue="id" class="noir-select compact" placeholder="Pick a dialogue" />
+                    </div>
+
+                    <div v-if="selectedNode.action === 'idle-wait'" class="field mini mt-1">
+                        <label>WAIT DURATION (SEC)</label>
+                        <InputNumber v-model="selectedNode.action_value" class="noir-input compact" :min="0" :max="10" :step="0.5" />
+                    </div>
+
                     <div class="answers-section">
                         <div class="section-header">
                             <h3>{{ t('dialogs.edit.choices') }}</h3>
@@ -422,6 +477,26 @@ onMounted(fetchDialog);
                             <div class="field mini">
                                 <label>{{ t('dialogs.edit.choice_action') }}</label>
                                 <Select v-model="answer.action" :options="actionOptions" optionLabel="label" optionValue="value" class="noir-select compact" :placeholder="t('dialogs.edit.select_action')" />
+                            </div>
+
+                            <div v-if="answer.action === 'give-clue'" class="field mini mt-1">
+                                <label>SELECT CLUE</label>
+                                <Select v-model="answer.action_value" :options="clues" optionLabel="title" optionValue="id" class="noir-select compact" placeholder="Pick a clue" />
+                            </div>
+
+                            <div v-if="answer.action === 'goto-scene'" class="field mini mt-1">
+                                <label>SELECT SCENE</label>
+                                <Select v-model="answer.action_value" :options="scenes" optionLabel="title" optionValue="id" class="noir-select compact" placeholder="Pick a scene" />
+                            </div>
+
+                            <div v-if="answer.action === 'start-dialogue'" class="field mini mt-1">
+                                <label>SELECT DIALOGUE</label>
+                                <Select v-model="answer.action_value" :options="allDialogs" optionLabel="title" optionValue="id" class="noir-select compact" placeholder="Pick a dialogue" />
+                            </div>
+
+                            <div v-if="answer.action === 'idle-wait'" class="field mini mt-1">
+                                <label>WAIT DURATION (SEC)</label>
+                                <InputNumber v-model="answer.action_value" class="noir-input compact" :min="0" :max="10" :step="0.5" />
                             </div>
                         </div>
 

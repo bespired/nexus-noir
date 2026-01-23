@@ -15,7 +15,7 @@ const props = defineProps({
     is_engine: { type: Boolean, default: true }
 });
 
-const emit = defineEmits(['next-scene', 'debug']);
+const emit = defineEmits(['next-scene', 'debug', 'give-clue']);
 
 const store = useStore();
 const { resolveAssetUrl, getPersonageGlbUrl } = useGameAssets();
@@ -112,6 +112,7 @@ const createLoader = () => {
 let targetPointMesh = null;
 const pendingGateway = ref(null);
 const currentLoadingSceneId = ref(null);
+const currentCursor = ref("url('/cursors/pointer.svg') 0 0, auto");
 
 // Resolved gateways (merging store data + location data)
 const currentGateways = computed(() => {
@@ -1339,6 +1340,60 @@ const onMapClick = (e) => {
     }
 };
 
+const onMouseMove = (e) => {
+    if (!renderer || !renderer.domElement) return;
+
+    // Check if over UI elements
+    if (e.target.closest('.dialogue-layer') || e.target.closest('.npc-dialogue-box') || e.target.closest('.options-container')) {
+        renderer.domElement.style.cursor = 'auto';
+        return;
+    }
+
+    const rect = renderer.domElement.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+
+    let screenX, screenY;
+
+    if (isEngine.value) {
+        // Handle object-fit: cover mapping (Consistent with onMapClick)
+        const scale = Math.max(w / VIEW_WIDTH, h / VIEW_HEIGHT);
+        const fullW = VIEW_WIDTH * scale;
+        const fullH = VIEW_HEIGHT * scale;
+        const offsetX = (fullW - w) / 2;
+        const offsetY = (fullH - h) / 2;
+
+        const imgX = (e.clientX - rect.left + offsetX) / scale;
+        const imgY = (e.clientY - rect.top + offsetY) / scale;
+
+        screenX = (imgX / VIEW_WIDTH) * 100;
+        screenY = (imgY / VIEW_HEIGHT) * 100;
+    } else {
+        // Standard mapping (fixed aspect container)
+        const mouseX = ((e.clientX - rect.left) / w) * 2 - 1;
+        const mouseY = -((e.clientY - rect.top) / h) * 2 + 1;
+        screenX = (mouseX + 1) / 2 * 100;
+        screenY = -(mouseY - 1) / 2 * 100;
+    }
+
+    const hoveredGateway = currentGateways.value ?.find(gw => {
+        return screenX >= gw.x && screenX <= gw.x + gw.width &&
+               screenY >= gw.y && screenY <= gw.y + gw.height;
+    });
+
+    if (hoveredGateway) {
+        const type = hoveredGateway.type || (hoveredGateway.target_scene_id ? 'gateway' : 'trigger');
+        console.log( type )
+        if (type === 'scene') {
+            currentCursor.value = "url('/cursors/direction.svg') 0 0, auto";
+        } else {
+            currentCursor.value = "url('/cursors/hover.svg') 0 0, auto";
+        }
+    } else {
+        currentCursor.value = "url('/cursors/pointer.svg') 0 0, auto";
+    }
+};
+
 
 
 // Dialogue functions extracted to useDialogue
@@ -1849,7 +1904,7 @@ const debugOverlayStyle = computed(() => {
 });
 </script>
 <template>
-    <div class="scene-container" :style="containerStyle" @click="onMapClick">
+    <div class="scene-container" :style="[containerStyle, { cursor: currentCursor }]" @click="onMapClick" @mousemove="onMouseMove">
 
         <img v-if="backgroundImageUrl" :src="backgroundImageUrl" class="scene-background" alt="Background" />
 
@@ -1967,6 +2022,7 @@ const debugOverlayStyle = computed(() => {
     inset: 0;
     pointer-events: auto;
     z-index: 10;
+    cursor: inherit;
 }
 
 .landing-overlay {

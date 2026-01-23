@@ -121,7 +121,10 @@ export function useDialogue({
         let nodeActions = node.actions || node.nodeActions || [];
         // Support single action string
         if (node.action && typeof node.action === 'string') {
-            nodeActions = [...nodeActions, { type: node.action }];
+            nodeActions = [...nodeActions, {
+                type: node.action,
+                value: node.action_value || node.clue_id || node.id
+            }];
         }
 
         if (nodeActions.length > 0) {
@@ -156,7 +159,10 @@ export function useDialogue({
             console.error("[DIALOGUE STANDARDS] Sub-options found using 'options' key. Use 'answers' instead.");
         }
 
-        const optActions = option.actions || (option.action ? [{ type: option.action }] : []);
+        const optActions = option.actions || (option.action ? [{
+            type: option.action,
+            value: option.action_value || option.clue_id
+        }] : []);
 
         if (optActions.length > 0) {
             for (const action of optActions) {
