@@ -1,9 +1,9 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader }   from 'three/addons/loaders/DRACOLoader.js';
+import { FBXLoader }     from 'three/addons/loaders/FBXLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { useI18n } from 'vue-i18n';
 
@@ -174,10 +174,10 @@ const init = () => {
     // LOADERS
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath('/draco/');
-    
+
     gltfLoader = new GLTFLoader();
     gltfLoader.setDRACOLoader(dracoLoader);
-    
+
     fbxLoader = new FBXLoader();
     loadModel();
 
@@ -205,12 +205,12 @@ const updateFraming = () => {
     // Our models are normalized to 1.0 units high
     const h3d = 1.0;
     const fovRad = (camera.fov * Math.PI) / 180;
-    
-    // Zoom out to show full body. 
+
+    // Zoom out to show full body.
     // d = (height/2) / tan(fov/2)
     // We'll use a ratio < 1.0 to add some padding around the character.
     // We'll use a ratio < 1.0 to add some padding around the character.
-    const comfortableRatio = props.framingScale; 
+    const comfortableRatio = props.framingScale;
     const finalDistance = h3d / (2 * comfortableRatio * Math.tan(fovRad / 2));
 
     // Center of character vertically (since normalized to 1.0 units height starting from 0)
@@ -376,7 +376,7 @@ const loadExternalAnimation = (url) => {
         const clips = isFbx ? object.animations : object.animations;
         if (clips && clips.length > 0) {
             console.log(`[ThreePreview] Found ${clips.length} clips in external file`);
-            
+
             // Log bone names in the animation for comparison
             if (clips[0].tracks && clips[0].tracks.length > 0) {
                 const trackNames = clips[0].tracks.slice(0, 5).map(t => t.name);
@@ -390,10 +390,10 @@ const loadExternalAnimation = (url) => {
 
             // Stop current animations
             mixer.stopAllAction();
-            
+
             // Apply the first clip from the external file
             const clip = clips[0].clone(); // Clone to avoid modifying original if cached
-            
+
             const action = mixer.clipAction(clip);
             action.play();
             activeAnimation.value = `External: ${clip.name}`;
@@ -416,12 +416,12 @@ const captureScreenshot = () => {
 
 const preparePhotoOpp = (options = {}) => {
     const { forceSkeleton = false, isMugshot = false } = options;
-    
+
     if (!modelGroup || !controls || !camera) return;
 
     // Calculate bounding box
     let box = new THREE.Box3().setFromObject(modelGroup);
-    
+
     // Fallback for models without meshes (skeletons only)
     if (box.isEmpty()) {
         modelGroup.traverse(child => {
@@ -444,7 +444,7 @@ const preparePhotoOpp = (options = {}) => {
     // Target calculation: Mugshot targets head, Full shot targets center
     const viewCenter = new THREE.Vector3(
         center.x,
-        isMugshot ? box.max.y - (size.y * 0.15) : center.y, 
+        isMugshot ? box.max.y - (size.y * 0.15) : center.y,
         center.z
     );
 
@@ -464,10 +464,10 @@ const preparePhotoOpp = (options = {}) => {
     }
 
     // 3/4 View: offset on X and Z
-    const angle = -Math.PI / 4; 
+    const angle = -Math.PI / 4;
     camera.position.set(
         viewCenter.x + Math.sin(angle) * distance,
-        viewCenter.y + (isMugshot ? distance * 0.1 : distance * 0.2), 
+        viewCenter.y + (isMugshot ? distance * 0.1 : distance * 0.2),
         viewCenter.z + Math.cos(angle) * distance
     );
 

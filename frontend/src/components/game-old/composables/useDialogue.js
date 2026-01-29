@@ -368,7 +368,10 @@ export function useDialogue({
 
             case 'goto-scene':
                 const scId = value || params.scene_id;
-                if (scId && swapScene) await swapScene({ target_scene_id: parseInt(scId) });
+                if (scId && swapScene) await swapScene({
+                    target_scene_id: parseInt(scId),
+                    target_spawn_point: params.spawnpoint
+                });
                 break;
 
             case 'end':

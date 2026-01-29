@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -17,7 +16,7 @@ class ActionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name'        => 'required|string|max:255',
             'description' => 'required|string',
         ]);
 
@@ -42,9 +41,9 @@ class ActionController extends Controller
         $action = \App\Models\Action::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name'        => 'required|string|max:255',
             'description' => 'required|string',
-            'actions' => 'array',
+            'actions'     => 'array',
         ]);
 
         $action->update($validated);

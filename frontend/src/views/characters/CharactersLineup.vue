@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import * as THREE from 'three';
+import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
@@ -78,25 +79,26 @@ const initThree = () => {
     dirLight.shadow.camera.bottom = -50;
     scene.add(dirLight);
 
-    // Floor
-    const textureLoader = new THREE.TextureLoader();
-    textureLoader.load('/storage/artwork/general/floor-tile.jpg', (texture) => {
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(50, 50); // Smaller tiles
-        texture.colorSpace = THREE.SRGBColorSpace;
 
-        const planeGeometry = new THREE.PlaneGeometry(100, 100);
-        const planeMaterial = new THREE.MeshStandardMaterial({
-            map: texture,
-            roughness: 0.8,
-            metalness: 0.2
-        });
-        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-        plane.rotation.x = -Math.PI / 2;
-        plane.receiveShadow = true;
-        scene.add(plane);
-    });
+    // Floor
+    // const textureLoader = new THREE.TextureLoader();
+    // textureLoader.load('/storage/artwork/general/floor-tile.jpg', (texture) => {
+    //     texture.wrapS = THREE.RepeatWrapping;
+    //     texture.wrapT = THREE.RepeatWrapping;
+    //     texture.repeat.set(5, 5); // Smaller tiles
+    //     texture.colorSpace = THREE.SRGBColorSpace;
+
+    //     const planeGeometry = new THREE.PlaneGeometry(10, 10);
+    //     const planeMaterial = new THREE.MeshStandardMaterial({
+    //         map: texture,
+    //         roughness: 0.8,
+    //         metalness: 0.2
+    //     });
+    //     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+    //     plane.rotation.x = -Math.PI / 2;
+    //     plane.receiveShadow = true;
+    //     scene.add(plane);
+    // });
 
     // Handle resize
     window.addEventListener('resize', onWindowResize);
@@ -141,11 +143,14 @@ const loadCharacters = async () => {
             globalAnimations.value = await animsRes.json();
         }
 
+        console.log(allChars)
+
         // Filter those likely to have 3D models
         characters.value = allChars.filter(c => {
-             const hasMediaGlb = c.media && c.media.some(m => m.filepad && m.filepad.endsWith('.glb'));
-             const hasLegacyGlb = !!c.threefile;
-             return hasMediaGlb || hasLegacyGlb;
+            const r = Math.random() < .3
+            const hasMediaGlb = c.media && c.media.some(m => m.filepad && m.filepad.endsWith('.glb'));
+            const hasLegacyGlb = !!c.threefile;
+            return (hasMediaGlb || hasLegacyGlb );
         });
 
         if (characters.value.length === 0) {
@@ -165,10 +170,31 @@ const loadCharacters = async () => {
 };
 
 const setupLineup = async () => {
+
+
     // Determine grid size
     const count = characters.value.length;
     const cols = Math.ceil(Math.sqrt(count));
     const spacing = 2.0;
+
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load('/storage/artwork/general/floor-tile.jpg', (texture) => {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(cols, cols); // Smaller tiles
+        texture.colorSpace = THREE.SRGBColorSpace;
+
+        const planeGeometry = new THREE.PlaneGeometry(cols*2, cols*2);
+        const planeMaterial = new THREE.MeshStandardMaterial({
+            map: texture,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        plane.receiveShadow = true;
+        scene.add(plane);
+    });
 
     const loader = new GLTFLoader();
     const dracoLoader = new DRACOLoader();
@@ -276,12 +302,14 @@ const setupLineup = async () => {
                 bestClip = defaultClip;
             }
 
-            // 3. (Optional) Check external if different from default?
-            // The user requested to "attach the [default]" because models have no anims.
-            // So default is the primary fallback.
-
             if (bestClip) {
-                const action = mixer.clipAction(bestClip);
+                const filteredClip = bestClip.clone();
+                filteredClip.tracks = filteredClip.tracks.filter(track => {
+                    const boneName = track.name.split('.')[0];
+                    return model.getObjectByName(boneName);
+                });
+
+                const action = mixer.clipAction(filteredClip);
                 action.play();
             }
 

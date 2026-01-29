@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -40,10 +39,10 @@ class DialogController extends Controller
     public function update(Request $request, string $id)
     {
         $dialog = \App\Models\Dialog::findOrFail($id);
-        
+
         $validated = $request->validate([
             'title' => 'sometimes|required|string|max:255',
-            'tree' => 'sometimes|nullable|array',
+            'tree'  => 'sometimes|nullable|array',
         ]);
 
         $dialog->update($validated);

@@ -1,18 +1,25 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import * as THREE from 'three';
-import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
-import { DRACOLoader }   from 'three/addons/loaders/DRACOLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
     modelUrl: {
         type: String,
         required: true
+    },
+    title: {
+        type: String,
+        default: ''
     }
 });
 
-const container  = ref(null);
+const { t } = useI18n();
+
+const container = ref(null);
 const animations = ref([]);
 const activeAnimation = ref(null);
 let scene, camera, renderer, controls, loader, mixer;
@@ -45,14 +52,14 @@ const init = () => {
     container.value.appendChild(renderer.domElement);
 
     // LIGHTS
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
     scene.add(ambientLight);
 
-    const directionalLight1 = new THREE.DirectionalLight(0xffff77, 3);
+    const directionalLight1 = new THREE.DirectionalLight(0xffff77, 2);
     directionalLight1.position.set(10, 20, 20);
     scene.add(directionalLight1);
 
-    const directionalLight2 = new THREE.DirectionalLight(0xff77ff, 4);
+    const directionalLight2 = new THREE.DirectionalLight(0xff77ff, 3);
     directionalLight2.position.set(-10, 10, -10);
     scene.add(directionalLight2);
 
@@ -157,6 +164,7 @@ const loadModel = () => {
         const size = box.getSize(new THREE.Vector3());
 
 
+
         // Normalize to a standard height of 1.0 units
         const targetHeight = 1.0;
         const scaleFactor = targetHeight / (size.y || 1);
@@ -172,7 +180,7 @@ const loadModel = () => {
         model.position.y -= box.min.y;
 
         console.log('loaded model', model)
-
+        
         // 4. Animations
         if (gltf.animations && gltf.animations.length > 0) {
             mixer = new THREE.AnimationMixer(model);
@@ -233,10 +241,11 @@ watch(() => props.modelUrl, () => {
 
 <template>
     <div class="three-preview">
-<!--         <div class="header-overlay">
+        <div class="header-overlay">
+            <span class="header-title">{{ title || t('clues.edit.media.header_3d') }}</span>
             <slot name="header-actions"></slot>
         </div>
- -->
+
         <div ref="container" class="renderer-container"></div>
 
         <div v-if="animations.length > 0" class="animations-overlay">

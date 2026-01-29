@@ -1,11 +1,8 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Config;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-
 
 class ConfigController extends Controller
 {
@@ -37,7 +34,7 @@ class ConfigController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $file = $request->file('image');
+            $file     = $request->file('image');
             $filename = $file->getClientOriginalName();
 
             // Store in storage/app/public/artwork/general

@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -11,19 +10,21 @@ class SceneController extends Controller
      */
     public function index()
     {
-        return \App\Models\Scene::with(['media', 'sector'])->get();
+        $scenes = \App\Models\Scene::with(['media', 'sector'])->get();
+
+        return \App\Http\Resources\SceneResource::collection($scenes);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'sector_id' => 'nullable|exists:sectors,id',
-            'type' => 'required|string|in:walkable-area,vue-component,investigation,combat,cut-scene',
-            '2d_gateways' => 'nullable|array',
+            'title'          => 'required|string|max:255',
+            'description'    => 'nullable|string',
+            'sector_id'      => 'nullable|exists:sectors,id',
+            'type'           => 'required|string|in:walkable-area,vue-component,investigation,combat,cut-scene',
+            '2d_gateways'    => 'nullable|array',
             '3d_spawnpoints' => 'nullable|array',
-            'data' => 'nullable|array',
+            'data'           => 'nullable|array',
         ]);
 
         $scene = \App\Models\Scene::create($validated);
@@ -47,14 +48,14 @@ class SceneController extends Controller
         $scene = \App\Models\Scene::findOrFail($id);
 
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'sector_id' => 'nullable|exists:sectors,id',
-            'type' => 'required|string|in:walkable-area,vue-component,investigation,combat,cut-scene',
-            '2d_gateways' => 'nullable|array',
-            '3d_spawnpoints' => 'nullable|array',
+            'title'            => 'required|string|max:255',
+            'description'      => 'nullable|string',
+            'sector_id'        => 'nullable|exists:sectors,id',
+            'type'             => 'required|string|in:walkable-area,vue-component,investigation,combat,cut-scene',
+            '2d_gateways'      => 'nullable|array',
+            '3d_spawnpoints'   => 'nullable|array',
             'thumb_dimensions' => 'nullable|array',
-            'data' => 'nullable|array',
+            'data'             => 'nullable|array',
         ]);
 
         $scene->update($validated);
@@ -65,14 +66,14 @@ class SceneController extends Controller
     public function batchUpdate(Request $request)
     {
         $validated = $request->validate([
-            'scenes' => 'required|array',
-            'scenes.*.id' => 'required|exists:scenes,id',
+            'scenes'                    => 'required|array',
+            'scenes.*.id'               => 'required|exists:scenes,id',
             'scenes.*.thumb_dimensions' => 'required|array',
         ]);
 
         foreach ($validated['scenes'] as $sceneData) {
             \App\Models\Scene::where('id', $sceneData['id'])->update([
-                'thumb_dimensions' => $sceneData['thumb_dimensions']
+                'thumb_dimensions' => $sceneData['thumb_dimensions'],
             ]);
         }
 

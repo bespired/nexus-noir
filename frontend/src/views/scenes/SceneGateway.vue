@@ -1,16 +1,21 @@
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 import EditViewHeader from '@components/editor/EditViewHeader.vue';
+
+// Explicit PrimeVue imports to avoid auto-import lifecycle issues
+import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
+import Select from 'primevue/select';
 
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const { t } = useI18n();
 
-const sceneId = route.params.id;
+const sceneId = computed(() => route.params.id);
 const scene = ref(null);
 const scenes = ref([]);
 const characters = ref([]);
@@ -36,10 +41,13 @@ const toggleCollapse = (index) => {
     collapsedStates.value[index] = !collapsedStates.value[index];
 };
 
-const fetchInitialData = async () => {
+const fetchData = async () => {
+    if (!sceneId.value) return;
+    
+    loading.value = true;
     try {
         const [sceneRes, scenesRes, charsRes, actionsRes, cluesRes] = await Promise.all([
-            fetch(`/api/scenes/${sceneId}`),
+            fetch(`/api/scenes/${sceneId.value}`),
             fetch('/api/scenes'),
             fetch('/api/characters'),
             fetch('/api/actions'),
@@ -47,50 +55,58 @@ const fetchInitialData = async () => {
         ]);
 
         if (!sceneRes.ok) throw new Error('Failed to fetch scene');
-        scene.value = await sceneRes.json();
+        
+        // Consume all JSON first
+        const [sceneData, scenesData, charactersData, actionsData, cluesData] = await Promise.all([
+            sceneRes.json(),
+            scenesRes.json(),
+            charsRes.json(),
+            actionsRes.json(),
+            cluesRes.json()
+        ]);
 
-        // Ensure 2d_gateways is an array and initialize collapsed states
-        if (!scene.value['2d_gateways']) {
-            scene.value['2d_gateways'] = [];
-        } else {
-            scene.value['2d_gateways'].forEach((gw, index) => {
-                if (gw.type) collapsedStates.value[index] = true;
-            });
-        }
+        // Initializing gateways
+        const gateways = sceneData['2d_gateways'] || [];
+        const initialCollapsedStates = {};
 
-        scenes.value = await scenesRes.json();
-        characters.value = await charsRes.json();
-        actions.value = await actionsRes.json();
-        clues.value = await cluesRes.json();
-
-        // Migration: ensure each gateway has a 'triggers' array
-        if (scene.value['2d_gateways']) {
-            scene.value['2d_gateways'].forEach((gw, index) => {
-                if (!gw.triggers) {
-                    gw.triggers = [];
-                    // Migrate legacy single trigger if it exists
-                    if (gw.action_id || gw.target_scene_id || gw.behavior_id) {
-                        gw.triggers.push({
-                            condition: 'always',
-                            clue_id: null,
-                            type: gw.type === 'trigger' ? 'action' : 'scene',
-                            action_id: gw.action_id || gw.behavior_id,
-                            target_scene_id: gw.target_scene_id,
-                            target_spawn_point: gw.target_spawn_point,
-                            target_character: gw.target_character
-                        });
-                    }
+        gateways.forEach((gw, index) => {
+            if (!gw.triggers) {
+                gw.triggers = [];
+                if (gw.action_id || gw.target_scene_id || gw.behavior_id) {
+                    gw.triggers.push({
+                        condition: 'always',
+                        clue_id: null,
+                        type: gw.type === 'trigger' ? 'action' : 'scene',
+                        action_id: gw.action_id || gw.behavior_id,
+                        target_scene_id: gw.target_scene_id,
+                        target_spawn_point: gw.target_spawn_point,
+                        target_character: gw.target_character
+                    });
                 }
-                if (gw.type) collapsedStates.value[index] = true;
-            });
-        }
-        if (scene.value['2d_gateways']) {
-            scene.value['2d_gateways'].forEach(gw => {
-                if (gw.target_scene_id) {
-                    fetchSpawnpoints(gw.target_scene_id);
-                }
-            });
-        }
+            }
+            if (gw.type) initialCollapsedStates[index] = true;
+        });
+
+        // Batch update reactive state
+        scenes.value = scenesData;
+        characters.value = charactersData;
+        actions.value = actionsData;
+        clues.value = cluesData;
+        collapsedStates.value = initialCollapsedStates;
+        
+        // Final assignment to scene
+        sceneData['2d_gateways'] = gateways;
+        scene.value = sceneData;
+
+        // Fetch spawnpoints
+        gateways.forEach(gw => {
+            if (gw.target_scene_id) fetchSpawnpoints(gw.target_scene_id);
+            if (gw.triggers) {
+                gw.triggers.forEach(t => {
+                    if (t.target_scene_id) fetchSpawnpoints(t.target_scene_id);
+                });
+            }
+        });
     } catch (error) {
         console.error(error);
         toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load data', life: 3000 });
@@ -114,10 +130,7 @@ const fetchSpawnpoints = async (targetSceneId) => {
 
 const gotoSceneGateway = (targetId) => {
     if (!targetId) return;
-    router.push(`/scenes/${targetId}/gateway`).then(() => {
-        // Force refresh data for the new scene
-        window.location.reload();
-    });
+    router.push(`/scenes/${targetId}/gateway`);
 };
 
 const backdropUrl = computed(() => {
@@ -279,7 +292,7 @@ const handleSave = async () => {
             return syncedGw;
         });
 
-        const response = await fetch(`/api/scenes/${sceneId}`, {
+        const response = await fetch(`/api/scenes/${sceneId.value}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({
@@ -315,7 +328,7 @@ const handleDelete = async () => {
     if (!confirm(t('scenes.edit.confirm_delete'))) return;
     deleting.value = true;
     try {
-        await fetch(`/api/scenes/${sceneId}`, { method: 'DELETE' });
+        await fetch(`/api/scenes/${sceneId.value}`, { method: 'DELETE' });
         router.push('/scenes');
     } catch (error) {
         console.error(error);
@@ -324,7 +337,8 @@ const handleDelete = async () => {
     }
 };
 
-onMounted(fetchInitialData);
+onMounted(fetchData);
+watch(sceneId, fetchData);
 </script>
 
 <template>
@@ -488,11 +502,12 @@ onMounted(fetchInitialData);
                                                 v-if="trig.condition !== 'always'"
                                                 v-model="trig.clue_id"
                                                 :options="clues"
-                                                optionLabel="name"
+                                                optionLabel="title"
                                                 optionValue="id"
                                                 placeholder="Pick clue"
                                                 class="noir-select flex-1"
                                                 filter
+                                                showClear
                                             />
                                         </div>
 
@@ -881,8 +896,26 @@ onMounted(fetchInitialData);
     font-size: 0.8rem !important;
 }
 
-.compact-select ~ .noir-select{
-    width: calc(100% - 130px - 0.5rem);
+/* Layout classes */
+.outcome-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.noir-select {
+    flex: 1;
+    min-width: 0; /* Allow shrinking */
+}
+
+.compact-select {
+    width: 130px !important;
+    flex: 0 0 130px !important;
+}
+
+.flex-1 {
+    flex: 1 !important;
 }
 
 
@@ -929,7 +962,7 @@ onMounted(fetchInitialData);
     min-width: 100px;
 }
 
-.compact-select {
+.compact-select-alt {
     width: 130px !important;
     font-size: 0.75rem !important;
 }

@@ -17,28 +17,36 @@ const action = ref(null);
 const characters = ref([]);
 const dialogs = ref([]);
 const scenes = ref([]);
+const clues = ref([]);
 const loading = ref(true);
 const saving = ref(false);
 const deleting = ref(false);
 const showDeleteConfirm = ref(false);
+const spawnpointsCache = ref({});
 
 const actionTypes = GAME_ACTIONS;
 
 const fetchInitialData = async () => {
     try {
-        const [actionRes, charactersRes, dialogsRes, scenesRes] = await Promise.all([
+        const [actionRes, charactersRes, dialogsRes, scenesRes, cluesRes] = await Promise.all([
             fetch(`/api/actions/${actionId}`),
             fetch('/api/characters'),
             fetch('/api/dialogs'),
-            fetch('/api/scenes')
+            fetch('/api/scenes'),
+            fetch('/api/clues')
         ]);
 
         if (!actionRes.ok) throw new Error('Failed to fetch action');
         action.value = await actionRes.json();
         if (!action.value.actions) action.value.actions = [];
 
-        // Auto-migrate legacy types on load
+        // Auto-migrate legacy types and normalize data on load
         action.value.actions.forEach(step => {
+            // Ensure data is an object, not an empty array from JSON column
+            if (Array.isArray(step.data) || !step.data) {
+                step.data = {};
+            }
+
             const standard = actionTypes.find(t => t.legacy_type === step.type);
             if (standard) {
                 console.log(`[EDITOR] Auto-migrating step type '${step.type}' to '${standard.value}'`);
@@ -54,6 +62,16 @@ const fetchInitialData = async () => {
 
         const sceneData = await scenesRes.json();
         scenes.value = Array.isArray(sceneData) ? sceneData : [];
+
+        const cluesData = await cluesRes.json();
+        clues.value = Array.isArray(cluesData) ? cluesData : [];
+
+        // Pre-fetch spawnpoints for any GOTO_SCENE steps
+        action.value.actions.forEach(step => {
+            if (step.type === 'goto-scene' && step.data.scene_id) {
+                fetchSpawnpoints(step.data.scene_id);
+            }
+        });
     } catch (error) {
         console.error(error);
         toast.add({ severity: 'error', summary: 'Error', detail: 'Could not load action editor data', life: 3000 });
@@ -195,6 +213,18 @@ const characterOptions = computed(() => {
     ];
 });
 
+const fetchSpawnpoints = async (sceneId) => {
+    if (!sceneId || spawnpointsCache.value[sceneId]) return;
+    try {
+        const response = await fetch(`/api/scenes/${sceneId}`);
+        if (!response.ok) throw new Error('Failed to fetch scene');
+        const data = await response.json();
+        spawnpointsCache.value[sceneId] = data['3d_spawnpoints'] || [];
+    } catch (e) {
+        console.error(`Error fetching spawnpoints for scene ${sceneId}:`, e);
+    }
+};
+
 onMounted(fetchInitialData);
 </script>
 
@@ -289,7 +319,43 @@ onMounted(fetchInitialData);
                                             optionValue="id"
                                             placeholder="Pick a dialog"
                                             filter
+                                            class="noir-select w-full"
+                                        />
+                                    </div>
+
+                                    <div v-else-if="step.type === 'give-clue' || step.type === 'GIVE_CLUE'" class="step-editor">
+                                        <Select
+                                            v-model="step.data.clue_id"
+                                            :options="clues"
+                                            optionLabel="title"
+                                            optionValue="id"
+                                            placeholder="Pick a clue"
+                                            filter
+                                            class="noir-select w-full"
+                                        />
+                                    </div>
+
+                                    <div v-else-if="step.type === 'goto-scene' || step.type === 'GOTO_SCENE'" class="step-editor-group">
+                                        <Select
+                                            v-model="step.data.scene_id"
+                                            :options="scenes"
+                                            optionLabel="title"
+                                            optionValue="id"
+                                            placeholder="Pick a scene"
+                                            filter
                                             class="noir-select"
+                                            @change="fetchSpawnpoints(step.data.scene_id)"
+                                        />
+                                        <Select
+                                            v-model="step.data.spawnpoint"
+                                            :options="spawnpointsCache[step.data.scene_id] || []"
+                                            optionLabel="name"
+                                            optionValue="name"
+                                            placeholder="Spawnpoint (Optional)"
+                                            filter
+                                            showClear
+                                            :disabled="!step.data.scene_id"
+                                            class="noir-select w-full"
                                         />
                                     </div>
 
