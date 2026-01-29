@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
 export class CharacterManager {
     constructor(engine) {
@@ -9,6 +10,8 @@ export class CharacterManager {
         this.player = null;
         this.npcs = new Map();
     }
+
+
 
     createLoader() {
         const dracoLoader = new DRACOLoader();
@@ -29,21 +32,31 @@ export class CharacterManager {
 
         if (!url) return console.warn('[CHAR] No GLB found for player');
 
+        console.log(`[CHAR] Spawning Player: ${personage.name}`, personage);
         const character = await this.loadCharacter(url, personage);
         this.player = character;
 
-        let scale = 1.5
-        this.player.mesh.scale.set(scale, scale, scale);
+        // Apply requested scale
+        // Priority: 1. Scene data 'character_scale', 2. Default 1.5
+        const sceneScale = this.engine.store.state.game.currentScene?.character_scale || 1.5;
+        this.player.mesh.scale.multiplyScalar(sceneScale);
+
+        console.log(`[CHAR] Applied scale: ${sceneScale} (New World Height: ${1.0 * sceneScale})`);
+
         this.player.mesh.position.set(spawnPoint.x, spawnPoint.y, spawnPoint.z);
         this.player.mesh.rotation.y = THREE.MathUtils.degToRad(spawnPoint.direction || 180);
 
         this.engine.scene.add(this.player.mesh);
+
+        // Ensure default idle animation starts
+        this.player.play('idle');
+
         return this.player;
     }
 
     async loadCharacter(url, data) {
         return new Promise((resolve, reject) => {
-            this.loader.load(url, (gltf) => {
+            this.loader.load(url, async (gltf) => {
                 const mesh = gltf.scene;
                 mesh.traverse(c => {
                     if (c.isMesh) {
@@ -52,11 +65,13 @@ export class CharacterManager {
                     }
                 });
 
-                // Normalization (from Preview3D logic)
+                // Normalization: Ensure model is 1 unit high baseline
                 const box = new THREE.Box3().setFromObject(mesh);
                 const size = box.getSize(new THREE.Vector3());
-                const scale = 1.0 / (size.y || 1);
-                mesh.scale.set(scale, scale, scale);
+                console.log(`[CHAR] Loading: ${data.name}. Original Size:`, { x: size.x, y: size.y, z: size.z });
+
+                const normScale = 1.0 / (size.y || 1);
+                mesh.scale.set(normScale, normScale, normScale);
 
                 const mixer = new THREE.AnimationMixer(mesh);
                 const actions = {};
@@ -69,8 +84,21 @@ export class CharacterManager {
                     else if (name.includes('idle')) key = 'idle';
                     else if (name.includes('talk')) key = 'talk';
 
-                    if (key) actions[key] = mixer.clipAction(clip);
+                    if (key) {
+                        this.engine.animations.filterFingerTracks(clip);
+                        actions[key] = mixer.clipAction(clip);
+                    }
                 });
+
+                // Process external animations
+                if (data.animations && data.animations.length > 0) {
+                    for (const animData of data.animations) {
+                        const clip = await this.engine.animations.getClip(animData);
+                        if (clip && animData.mixer_name) {
+                            actions[animData.mixer_name] = mixer.clipAction(clip);
+                        }
+                    }
+                }
 
                 const character = {
                     mesh,
@@ -79,20 +107,33 @@ export class CharacterManager {
                     state: 'idle',
                     targetPos: mesh.position.clone(),
                     isWalking: false,
-                    speed: 1.5,
+                    speed: 2,
                     play(name) {
-                        if (!actions[name]) return;
-                        Object.values(actions).forEach(a => a.fadeOut(0.2));
-                        actions[name].reset().fadeIn(0.2).play();
+                        if (!actions[name]) {
+                            // Fallback to idle if walk is missing, or vice versa
+                            if (name === 'walk' && actions['idle']) name = 'idle';
+                            else if (name === 'idle' && Object.keys(actions)[0]) name = Object.keys(actions)[0];
+                            else return;
+                        }
+
+                        // Crossfade logic
+                        const nextAction = actions[name];
+                        if (character.currentAction === nextAction) return;
+
+                        if (character.currentAction) {
+                            character.currentAction.fadeOut(0.2);
+                        }
+
+                        nextAction.reset().fadeIn(0.2).play();
+                        character.currentAction = nextAction;
                     }
                 };
 
-                // Play default
-                character.play('idle');
                 resolve(character);
             }, undefined, reject);
         });
     }
+
 
     update(delta) {
         if (this.player) {
@@ -106,7 +147,7 @@ export class CharacterManager {
 
         if (char.isWalking) {
             const dist = char.mesh.position.distanceTo(char.targetPos);
-            if (dist > 0.1) {
+            if (dist > 0.05) {
                 const dir = char.targetPos.clone().sub(char.mesh.position).normalize();
 
                 // Move
@@ -114,7 +155,13 @@ export class CharacterManager {
 
                 // Rotate to face direction
                 const targetRotation = Math.atan2(dir.x, dir.z);
-                char.mesh.rotation.y = targetRotation;
+
+                // Smooth rotation
+                const currentRotation = char.mesh.rotation.y;
+                let diff = targetRotation - currentRotation;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                char.mesh.rotation.y += diff * 0.1;
 
                 if (char.state !== 'walk') {
                     char.state = 'walk';
@@ -124,13 +171,19 @@ export class CharacterManager {
                 char.isWalking = false;
                 char.state = 'idle';
                 char.play('idle');
+                if (char.onArrival) {
+                    const cb = char.onArrival;
+                    char.onArrival = null;
+                    cb();
+                }
             }
         }
     }
 
-    walkPlayerTo(pos) {
+    walkPlayerTo(pos, onArrival = null) {
         if (!this.player) return;
         this.player.targetPos.copy(pos);
         this.player.isWalking = true;
+        this.player.onArrival = onArrival;
     }
 }

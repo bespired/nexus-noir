@@ -64,6 +64,7 @@ export default {
             sectorChange: false,
             targetSpawnPoint: null,
             lastTriggeredGatewayId: null,
+            lastTriggeredActionId: null,
 
             debugInfo: [],
             debug: false,
@@ -96,6 +97,8 @@ export default {
         },
 
         SET_CURRENT_SCENE(state, scene) {
+            if (!scene) return
+
             if (scene.sector_id && scene.sector_id !== state.currentSectorId) {
                 state.sectorChange = true;
                 state.currentSectorId = scene.sector_id;
@@ -125,6 +128,9 @@ export default {
         },
         SET_LAST_TRIGGERED_GATEWAY_ID(state, id) {
             state.lastTriggeredGatewayId = id;
+        },
+        SET_LAST_TRIGGERED_ACTION_ID(state, id) {
+            state.lastTriggeredActionId = id;
         },
 
         ADD_TO_INVENTORY(state, clueId) {

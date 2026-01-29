@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Animation;
@@ -18,15 +17,18 @@ class AnimationController extends Controller
             $query->where('type', $request->query('type'));
         }
 
-        return $query->get();
+        $animations = $query->get();
+
+        return \App\Http\Resources\AnimationResource::collection($animations);
+
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
-            'type' => 'required|string|in:mixamo,blender,other',
+            'type'        => 'required|string|in:mixamo,blender,other',
         ]);
 
         $animation = Animation::create($validated);
@@ -54,9 +56,9 @@ class AnimationController extends Controller
         $animation = Animation::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
-            'type' => 'required|string|in:mixamo,blender,other',
+            'type'        => 'required|string|in:mixamo,blender,other',
         ]);
 
         $animation->update($validated);

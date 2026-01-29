@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { SceneManager } from './modules/SceneManager';
 import { CharacterManager } from './modules/CharacterManager';
 import { InteractionManager } from './modules/InteractionManager';
+import { AnimationManager } from './modules/AnimationManager';
 import { DebugManager } from './modules/DebugManager';
 
 /**
@@ -36,6 +37,7 @@ export class NexusEngine {
 
         // Modules
         this.world = new SceneManager(this);
+        this.animations = new AnimationManager(this);
         this.characters = new CharacterManager(this);
         this.interactions = new InteractionManager(this);
         this.debug = new DebugManager(this);
@@ -72,13 +74,31 @@ export class NexusEngine {
     }
 
     resize(width, height) {
-        // console.log(`[ENGINE] Resizing to: ${width}x${height}`);
-        // Letting Three.js update the element's style (3rd arg true by default)
-        // ensures the display size matches the logical store size.
+        if (!width || !height) return;
+
+        // 1. Update Renderer
         this.renderer.setSize(width, height, true);
 
-        this.camera.aspect = width / height;
+        // 2. Recalibrate Camera for "object-fit: cover" parity
+        // This ensures the 3D projection matches the 2D background scaling/skewing.
+        const VIEW_WIDTH = 1218; // Standard game resolution
+        const VIEW_HEIGHT = 832;
+
+        const scale = Math.max(width / VIEW_WIDTH, height / VIEW_HEIGHT);
+        const fullW = VIEW_WIDTH * scale;
+        const fullH = VIEW_HEIGHT * scale;
+        const offsetX = (fullW - width) / 2;
+        const offsetY = (fullH - height) / 2;
+
+        if (this.camera.setViewOffset) {
+            this.camera.setViewOffset(fullW, fullH, offsetX, offsetY, width, height);
+        } else {
+            this.camera.aspect = width / height;
+        }
+
         this.camera.updateProjectionMatrix();
+
+        console.log(`[ENGINE] Recalibrated camera to ${width}x${height}`);
     }
 
     animate() {
@@ -90,6 +110,7 @@ export class NexusEngine {
         // Update Modules
         this.characters.update(delta);
         this.interactions.update(delta);
+        this.debug.update(delta);
 
         this.renderer.render(this.scene, this.camera);
     }

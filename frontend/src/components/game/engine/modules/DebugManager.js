@@ -8,14 +8,43 @@ export class DebugManager {
 
         this.visible = this.engine.store.state.game.debug;
         this.spawnPointMarkers.visible = this.visible;
+
+        this.helpers = new THREE.Group();
+        this.engine.scene.add(this.helpers);
+        this.helpers.visible = this.visible;
     }
 
     refresh() {
         this.visible = this.engine.store.state.game.debug;
         this.spawnPointMarkers.visible = this.visible;
+        this.helpers.visible = this.visible;
 
         if (this.visible) {
             this.updateSpawnPointMarkers();
+            this.updateHelpers();
+        }
+    }
+
+    updateHelpers() {
+        // Clear old helpers
+        while (this.helpers.children.length > 0) {
+            const child = this.helpers.children[0];
+            this.helpers.remove(child);
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
+        }
+
+        // Add BoxHelper for Player
+        const charManager = this.engine.characters;
+        if (charManager.player && charManager.player.mesh) {
+            const boxHelper = new THREE.BoxHelper(charManager.player.mesh, 0x00ff00);
+            this.helpers.add(boxHelper);
+        }
+    }
+
+    update(delta) {
+        if (this.visible) {
+            this.updateHelpers();
         }
     }
 

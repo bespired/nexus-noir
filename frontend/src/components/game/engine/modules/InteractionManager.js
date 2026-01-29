@@ -13,6 +13,11 @@ export class InteractionManager {
 
         if (gw) {
             this.engine.store.commit('game/SET_CURSOR', gw.type === 'scene' ? 'direction' : 'hover');
+
+            // Requirement: Hover sets the potential next spawnpoint in the store
+            if (gw.target_spawn_point) {
+                this.engine.store.commit('game/SET_TARGET_SPAWN_POINT', { name: gw.target_spawn_point });
+            }
         } else {
             this.engine.store.commit('game/SET_CURSOR', 'pointer');
         }
@@ -21,23 +26,45 @@ export class InteractionManager {
     handleMouseClick(event) {
         const { xPercent, yPercent } = this.getPercents(event);
 
-        // 1. Check for Gateway Interaction
-        const gw = this.getGatewayAtPosition(xPercent, yPercent);
-        if (gw) {
-            this.activateGateway(gw);
-            return;
-        }
-
-        // 2. Fallback: Raycast against the walkable floor
+        // 1. Raycast to find floor point (always needed for move targets)
         const rect = this.engine.canvas.getBoundingClientRect();
         this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
         this.raycaster.setFromCamera(this.mouse, this.engine.camera);
-
         const intersects = this.raycaster.intersectObjects(this.engine.scene.children, true);
         const floorIntersect = intersects.find(i => i.object.userData.isWalkable);
 
+        // 2. Check for Gateway Interaction
+        const gw = this.getGatewayAtPosition(xPercent, yPercent);
+
+        if (gw) {
+            console.log(`[GATEWAY] Clicked: ${gw.label}. Waiting for arrival...`);
+
+            // Priority 1: Explicit walk point on the gateway
+            // Priority 2: Floor intersection under the mouse
+            // Priority 3: Fallback to closest 3D spawnpoint (in 2D space)
+            let walkPoint = null;
+            if (gw.walk_x !== undefined && gw.walk_z !== undefined) {
+                walkPoint = new THREE.Vector3(gw.walk_x, gw.walk_y || 0, gw.walk_z);
+            } else if (floorIntersect) {
+                walkPoint = floorIntersect.point;
+            } else {
+                walkPoint = this.getFallbackWalkPoint(xPercent, yPercent);
+            }
+
+            if (walkPoint) {
+                this.engine.characters.walkPlayerTo(walkPoint, () => {
+                    this.activateGateway(gw);
+                });
+            } else {
+                console.warn(`[GATEWAY] No walk point, floor, or spawnpoint detected. Triggering immediately.`);
+                this.activateGateway(gw);
+            }
+            return;
+        }
+
+        // 3. Normal walking (no gateway)
         if (floorIntersect) {
             this.engine.characters.walkPlayerTo(floorIntersect.point);
         }
@@ -77,6 +104,8 @@ export class InteractionManager {
         console.log(`[GATEWAY] Activated: ${gw.label}`, gw);
         const store = this.engine.store;
 
+        store.commit('game/SET_LAST_TRIGGERED_GATEWAY_ID', gw.id);
+
         if (gw.type === 'scene' && gw.target_scene_id) {
             if (gw.target_spawn_point) {
                 store.commit('game/SET_TARGET_SPAWN_POINT', { name: gw.target_spawn_point });
@@ -85,6 +114,39 @@ export class InteractionManager {
         } else if (gw.type === 'trigger' && gw.action_id) {
             store.dispatch('game/triggerAction', { actionId: gw.action_id });
         }
+    }
+
+    getFallbackWalkPoint(clickX, clickY) {
+        const spawnpoints = this.engine.store.state.game.currentScene?.['3d_spawnpoints'] || [];
+        if (spawnpoints.length === 0) return null;
+
+        let closestPoint = null;
+        let minDistance = Infinity;
+
+        spawnpoints.forEach(sp => {
+            // Project 3D point to 2D
+            const v = new THREE.Vector3(sp.x, sp.y, sp.z);
+            v.project(this.engine.camera);
+
+            // Convert NDC (-1 to 1) to Percents (0 to 100)
+            const xPercent = (v.x + 1) / 2 * 100;
+            const yPercent = (-(v.y) + 1) / 2 * 100; // Y is inverted in screen space vs NDC
+
+            const dx = xPercent - clickX;
+            const dy = yPercent - clickY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < minDistance) {
+                minDistance = dist;
+                closestPoint = new THREE.Vector3(sp.x, sp.y, sp.z);
+            }
+        });
+
+        if (closestPoint) {
+            console.log(`[GATEWAY] Falling back to closest spawnpoint at distance ${minDistance.toFixed(2)}`);
+        }
+
+        return closestPoint;
     }
 
     getPercents(event) {

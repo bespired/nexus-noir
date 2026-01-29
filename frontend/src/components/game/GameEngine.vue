@@ -36,14 +36,14 @@ onUnmounted(() => {
   <div id="nexus-noir-game" :class="{ 'is-emanator': emanator }">
     <load-status />
 
-    <!-- <transition name="scene-fade" mode="out-in"> -->
-    <component
-        v-if="resolvedComponent && !loading"
-        :is="resolvedComponent"
-        :key="currentSceneId"
-        @next-scene="handleNextScene"
-    />
-    <!-- </transition> -->
+    <transition name="scene-fade" mode="out-in">
+      <component
+          v-if="resolvedComponent && !loading"
+          :is="resolvedComponent"
+          :key="currentSceneId"
+          @next-scene="handleNextScene"
+      />
+    </transition>
 
     <debug-console v-if="emanator" />
   </div>

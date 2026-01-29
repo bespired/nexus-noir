@@ -66,6 +66,13 @@ export class SceneManager {
                     this.engine.camera = fspyCam;
                 }
 
+                // Recalibrate immediately with current stage bounds from store
+                // Using renderer.getSize() is risky if the resize hasn't permeated yet (defaults to 300x150)
+                const stage = this.engine.store.state.game.stage;
+                if (stage.width > 0 && stage.height > 0) {
+                    this.engine.resize(stage.width, stage.height);
+                }
+
                 resolve(this.currentWorld);
             }, undefined, reject);
         });
