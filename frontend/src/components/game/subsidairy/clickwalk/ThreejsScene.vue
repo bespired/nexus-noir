@@ -1,75 +1,97 @@
 <script setup>
-import { onMounted, onUnmounted, ref, watch, shallowRef } from 'vue';
+import { onMounted, onUnmounted, ref, computed,watch, shallowRef } from 'vue';
 import { useStore } from 'vuex';
-import * as THREE from 'three';
+import { NexusEngine } from '../../engine/NexusEngine';
 
 const store = useStore();
 const canvasRef = ref(null);
+const engine = shallowRef(null);
 
-// Use shallowRef for Three.js internals to keep them non-reactive
-const engine = shallowRef({
-  scene: null,
-  camera: null,
-  renderer: null,
-  clock: new THREE.Clock()
+const init = async () => {
+    if (!canvasRef.value) return;
+
+    // 1. Initialize Engine
+    engine.value = new NexusEngine(canvasRef.value, store);
+    engine.value.start();
+
+    // 2. Initial Data Load
+    if (store.state.game.currentScene) {
+        await handleSceneChange(store.state.game.currentScene);
+    }
+};
+
+const handleSceneChange = async (scene) => {
+    if (!engine.value || !scene) return;
+
+    // Load the 3D world
+    await engine.value.world.loadScene(scene);
+
+    // Spawn the player if we have player data
+    const playerData = store.state.game.player || JSON.parse(localStorage.getItem('player'));
+    if (playerData) {
+        // Find suitable spawn point from metadata or default to 0,0,0
+        const spawnPoint = store.state.game.targetSpawnPoint || { x: 0, y: 0, z: 0 };
+        await engine.value.characters.spawnPlayer(playerData, spawnPoint);
+    }
+
+    // Spawn NPCs from scene data
+    // (To be implemented: engine.value.characters.spawnNPCs(scene.npcs))
+
+    if (engine.value.debug) {
+        engine.value.debug.refresh();
+    }
+};
+
+// Listen for scene changes
+watch(() => store.state.game.currentScene, (newScene) => {
+    handleSceneChange(newScene);
 });
 
-const init = () => {
-  const scene = new THREE.Scene();
+// Watch for Debug Toggles
+watch(() => store.state.game.debug, () => {
+    if (engine.value) {
+        engine.value.world.refreshMaterials();
+        engine.value.debug.refresh();
+    }
+});
 
-  // 1. Camera - Match your backdrop perspective
-  // FOV usually around 35-45 for "cinematic" fixed-angle shots
-  const camera = new THREE.PerspectiveCamera(35, 1218 / 832, 0.1, 1000);
-  camera.position.set(0, 5, 12);
-  camera.lookAt(0, 0, 0);
-
-  // 2. Renderer
-  const renderer = new THREE.WebGLRenderer({
-    canvas: canvasRef.value,
-    alpha: true, // Crucial: makes canvas transparent so 2D backdrop shows through
-    antialias: true
-  });
-
-  // 3. Lighting (Simple Noir setup)
-  const ambient = new THREE.AmbientLight(0x404040, 1);
-  const spot = new THREE.SpotLight(0x00ffc7, 10); // Neo Tokyo Teal
-  spot.position.set(5, 10, 5);
-  scene.add(ambient, spot);
-
-  engine.value = { ...engine.value, scene, camera, renderer };
-
-  animate();
-};
-
-const animate = () => {
-  if (!engine.value.renderer) return;
-
-  requestAnimationFrame(animate);
-  const { scene, camera, renderer } = engine.value;
-
-  renderer.render(scene, camera);
-};
-
-// 4. Watch for Stage Bounds changes from your Store
+// Watch for Stage Bounds changes from Store
 watch(() => store.state.game.stage, (newBounds) => {
-  if (!engine.value.renderer) return;
+    if (engine.value) {
+        engine.value.resize(newBounds.width, newBounds.height);
+    }
+}, { deep: true, immediate: true });
 
-  const { width, height } = newBounds;
-  engine.value.renderer.setSize(width, height, false);
-  engine.value.camera.aspect = width / height;
-  engine.value.camera.updateProjectionMatrix();
-}, { deep: true });
+const handleCanvasMouseMove = (event) => {
+    if (engine.value) {
+        engine.value.interactions.handleMouseMove(event);
+    }
+};
+
+const handleCanvasClick = (event) => {
+    if (engine.value) {
+        engine.value.interactions.handleMouseClick(event);
+    }
+};
 
 onMounted(() => init());
 
 onUnmounted(() => {
-  if (engine.value.renderer) {
-    engine.value.renderer.dispose();
-  }
+    if (engine.value) {
+        engine.value.cleanup();
+    }
 });
+
+const cursor = computed(() => store.state.game.cursor);
+
 </script>
 
 <template>
-  <canvas ref="canvasRef" class="three-layer" />
+    <canvas ref="canvasRef"
+         class="three-layer"
+        :class="cursor"
+        @mousemove="handleCanvasMouseMove"
+        @click="handleCanvasClick"
+    />
 </template>
 

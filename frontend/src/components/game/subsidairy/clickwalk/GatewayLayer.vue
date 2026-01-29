@@ -49,7 +49,6 @@ const active = (gw) => {
             :class="`${gw.type} ${active(gw)}`"
             :key="index"
             :style="gateway(gw)"
-            @click="activateGateway(index)"
         >
             <span class="gateway-label">
                 {{ gw.label }} {{ gw.triggers.length }}
@@ -60,48 +59,3 @@ const active = (gw) => {
         </div>
     </div>
 </template>
-
-<style scoped>
-.area-layer.hidden {
-    opacity: 0;
-}
-
-.gateway-rect {
-    pointer-events: none;
-    position: absolute;
-    border: 2px dashed #00ffc7;
-    background: rgba(0, 255, 199, 0.2);
-}
-.gateway-rect.trigger {
-    border: 2px dashed #daff00;
-    background: #daff0022;
-}
-.gateway-rect.active {
-    pointer-events: auto;
-}
-.gateway-rect:not(.active) {
-    opacity: 0.5;
-}
-
-.gateway-label {
-    pointer-events: none;
-    position: absolute;
-    top: -20px;
-    background: #00ffc7;
-    color: #000;
-    font-size: 10px;
-    padding: 2px 4px;
-    white-space: nowrap;
-}
-
-.gateway-rect.trigger .gateway-label {
-    background: #daff00;
-}
-
-.gateway-rect.scene:hover {
-    cursor: url('/cursors/direction.svg') 0 16, auto;
-}
-.gateway-rect.trigger:hover {
-    cursor: url('/cursors/hover.svg') 0 0, auto;
-}
-</style>

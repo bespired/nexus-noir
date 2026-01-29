@@ -6,7 +6,7 @@ const mapAnimationTaxonomy = (anim) => {
 
     if (name.includes('walk') || name.includes('loop') || name.includes('run')) mixerName = 'walk';
     else if (name.includes('idle') || name.includes('stand') || name.includes('breath')) mixerName = 'idle';
-    else if (name.includes('talk') || name.includes('speak') || name.includes('chat'))   mixerName = 'talk';
+    else if (name.includes('talk') || name.includes('speak') || name.includes('chat')) mixerName = 'talk';
     else if (name.includes('caut') || name.includes('sneak') || name.includes('crouch')) mixerName = 'caution';
 
     return { ...anim, mixer_name: mixerName };
@@ -39,24 +39,25 @@ const fetchRobustData = async (endpoint) => {
 };
 
 import WalkArea from '../subsidairy/WalkArea.vue';
-import {defineAsyncComponent, markRaw} from 'vue';
-
+import { defineAsyncComponent, markRaw } from 'vue';
 
 export default {
     namespaced: true,
     state() {
         return {
-            actions:    [],
+            actions: [],
             animations: [],
             characters: [],
-            clues:      [],
-            inventory:  [], // Array of clue IDs
-            configs:    {},
-            dialogs:    [],
-            media:      [],
-            scenes:     [],
-            sectors:    [],
+            clues: [],
+            inventory: [], // Array of clue IDs
+            configs: {},
+            dialogs: [],
+            media: [],
+            scenes: [],
+            sectors: [],
 
+
+            cursor: null,
             player: null,
             currentScene: null,
             currentSector: null,
@@ -82,7 +83,7 @@ export default {
         SET_DATA(state, { key, data }) {
             if (key === 'clues') {
                 const initialClues = data
-                    .filter(clue => fuzzyTrue(clue?.initial) )
+                    .filter(clue => fuzzyTrue(clue?.initial))
                     .map(clue => clue.id);
                 state.inventory = initialClues;
             }
@@ -102,8 +103,8 @@ export default {
             state.currentScene = scene;
         },
 
-        SET_STAGE_BOUNDS(state, {width, height}) {
-            state.stage.width  = parseInt(width);
+        SET_STAGE_BOUNDS(state, { width, height }) {
+            state.stage.width = parseInt(width);
             state.stage.height = parseInt(height);
         },
 
@@ -138,20 +139,23 @@ export default {
         DEBUGGER_INFO(state, line) {
             state.debugInfo.push(line)
             state.debugInfo = state.debugInfo.slice(-6)
+        },
+        SET_CURSOR(state, cursor) {
+            state.cursor = cursor;
         }
     },
 
     actions: {
-        resetAllData({commit}) {
-            commit('SET_DATA', { key: 'configs',    data: {} });
-            commit('SET_DATA', { key: 'actions',    data: [] });
+        resetAllData({ commit }) {
+            commit('SET_DATA', { key: 'configs', data: {} });
+            commit('SET_DATA', { key: 'actions', data: [] });
             commit('SET_DATA', { key: 'animations', data: [] });
             commit('SET_DATA', { key: 'characters', data: [] });
-            commit('SET_DATA', { key: 'clues',      data: [] });
-            commit('SET_DATA', { key: 'dialogs',    data: [] });
-            commit('SET_DATA', { key: 'media',      data: [] });
-            commit('SET_DATA', { key: 'scenes',     data: [] });
-            commit('SET_DATA', { key: 'sectors',    data: [] });
+            commit('SET_DATA', { key: 'clues', data: [] });
+            commit('SET_DATA', { key: 'dialogs', data: [] });
+            commit('SET_DATA', { key: 'media', data: [] });
+            commit('SET_DATA', { key: 'scenes', data: [] });
+            commit('SET_DATA', { key: 'sectors', data: [] });
             commit('SET_INVENTORY', []);
             commit('SET_CURRENT_SCENE', null);
         },
@@ -185,15 +189,15 @@ export default {
                     animations: (char.animations || []).map(mapAnimationTaxonomy)
                 }));
 
-                commit('SET_DATA', { key: 'actions',    data: actions });
+                commit('SET_DATA', { key: 'actions', data: actions });
                 commit('SET_DATA', { key: 'animations', data: mappedAnimations });
                 commit('SET_DATA', { key: 'characters', data: mappedCharacters });
-                commit('SET_DATA', { key: 'clues',      data: clues });
-                commit('SET_DATA', { key: 'configs',    data: configs });
-                commit('SET_DATA', { key: 'dialogs',    data: dialogs });
-                commit('SET_DATA', { key: 'media',      data: media });
-                commit('SET_DATA', { key: 'scenes',     data: scenes });
-                commit('SET_DATA', { key: 'sectors',    data: sectors });
+                commit('SET_DATA', { key: 'clues', data: clues });
+                commit('SET_DATA', { key: 'configs', data: configs });
+                commit('SET_DATA', { key: 'dialogs', data: dialogs });
+                commit('SET_DATA', { key: 'media', data: media });
+                commit('SET_DATA', { key: 'scenes', data: scenes });
+                commit('SET_DATA', { key: 'sectors', data: sectors });
 
             } catch (e) {
                 commit('SET_ERROR', e.message);
@@ -217,8 +221,16 @@ export default {
             commit('DEBUGGER_INFO', `LOADED ${sceneData.title}`);
         },
 
-        async loadOpeningScene({commit, dispatch, state}) {
-            dispatch('loadScene', {sceneId: state.configs.opening_scene})
+        async loadOpeningScene({ commit, dispatch, state }) {
+            dispatch('loadScene', { sceneId: state.configs.opening_scene })
+        },
+
+        triggerAction({ commit }, { actionId }) {
+            console.log(`[STORE] Triggering Action: ${actionId}`);
+            commit('DEBUGGER_INFO', `ACTION TRIGGERED: ${actionId}`);
+            // This can be intercepted by a Dialogue/Action module in the engine
+            // or by any component watching state.lastTriggeredActionId
+            commit('SET_LAST_TRIGGERED_ACTION_ID', actionId);
         }
     }
 }
