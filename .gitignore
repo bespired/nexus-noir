@@ -4,3 +4,4 @@ backup/json/
 .env
 backup
 upload.sh
+nexus-scenes

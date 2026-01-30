@@ -38,7 +38,9 @@ export class CharacterManager {
 
         // Apply requested scale
         // Priority: 1. Scene data 'character_scale', 2. Default 1.5
-        const sceneScale = this.engine.store.state.game.currentScene?.character_scale || 1.5;
+        const sceneScale = this.engine.store.state.game.currentScene?.data?.character_scale ||
+            this.engine.store.state.game.currentScene?.character_scale ||
+            1.5;
         this.player.mesh.scale.multiplyScalar(sceneScale);
 
         console.log(`[CHAR] Applied scale: ${sceneScale} (New World Height: ${1.0 * sceneScale})`);

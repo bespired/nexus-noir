@@ -298,6 +298,7 @@ onMounted(fetchInitialData);
                         <template v-else>
                             <router-link :to="`/scenes/${sceneId}/gateway`" class="nav-link">{{ t('scenes.edit.nav_gateway') }}</router-link>
                             <router-link :to="`/scenes/${sceneId}/spawnpoint`" class="nav-link">{{ t('scenes.edit.nav_3d') }}</router-link>
+                            <router-link :to="`/scenes/${sceneId}/scale`" class="nav-link">{{ t('scenes.edit.nav_scale') }}</router-link>
                         </template>
                     </div>
                     <span class="edit-hero__id">ID:{{ sceneId }}</span>

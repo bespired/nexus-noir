@@ -339,6 +339,7 @@
             "nav_properties": "PROPERTIES",
             "nav_gateway": "GATEWAY",
             "nav_3d": "SPAWNPOINTS",
+            "nav_scale": "SCALE",
             "nav_settings": "SETTINGS",
             "btn_sector": "SECTOR",
             "btn_upload": "UPLOAD IMAGE",
