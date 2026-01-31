@@ -4,6 +4,7 @@ import { CharacterManager } from './modules/CharacterManager';
 import { InteractionManager } from './modules/InteractionManager';
 import { AnimationManager } from './modules/AnimationManager';
 import { DebugManager } from './modules/DebugManager';
+import { PathfindingManager } from './modules/PathfindingManager';
 
 /**
  * NexusEngine
@@ -40,6 +41,7 @@ export class NexusEngine {
         this.animations = new AnimationManager(this);
         this.characters = new CharacterManager(this);
         this.interactions = new InteractionManager(this);
+        this.pathfinding = new PathfindingManager(this);
         this.debug = new DebugManager(this);
 
         this.animate = this.animate.bind(this);

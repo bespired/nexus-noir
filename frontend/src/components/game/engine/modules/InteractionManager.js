@@ -54,7 +54,10 @@ export class InteractionManager {
             }
 
             if (walkPoint) {
-                this.engine.characters.walkPlayerTo(walkPoint, () => {
+                const start = this.engine.characters.player?.mesh.position.clone() || new THREE.Vector3();
+                const path = this.engine.pathfinding.findPath(start, walkPoint);
+
+                this.engine.characters.walkPlayerTo(path, () => {
                     this.activateGateway(gw);
                 });
             } else {
@@ -66,7 +69,9 @@ export class InteractionManager {
 
         // 3. Normal walking (no gateway)
         if (floorIntersect) {
-            this.engine.characters.walkPlayerTo(floorIntersect.point);
+            const start = this.engine.characters.player?.mesh.position.clone() || new THREE.Vector3();
+            const path = this.engine.pathfinding.findPath(start, floorIntersect.point);
+            this.engine.characters.walkPlayerTo(path);
         }
     }
 

@@ -80,6 +80,7 @@ export class SceneManager {
 
     processScene(world) {
         const isDebug = this.engine.store.state.game.debug;
+        let navMeshFound = false;
 
         world.traverse((child) => {
             if (child.isLight) {
@@ -90,6 +91,12 @@ export class SceneManager {
                 const name = child.name.toLowerCase();
                 const isFloor = name.includes('floor') || name.includes('walk') || name.includes('plane');
                 child.userData.isWalkable = isFloor;
+
+                // Register with Pathfinding Manager
+                if (isFloor && !navMeshFound) {
+                    this.engine.pathfinding.setNavMesh(child);
+                    navMeshFound = true;
+                }
 
                 if (isDebug) {
                     // Debug Visualization: Transparent colored faces
@@ -114,6 +121,10 @@ export class SceneManager {
                 }
             }
         });
+
+        if (!navMeshFound) {
+            console.warn('[WORLD] No NavMesh found in scene GLB');
+        }
     }
 
     refreshMaterials() {

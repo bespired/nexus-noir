@@ -147,10 +147,12 @@ export class CharacterManager {
     updateCharacter(char, delta) {
         char.mixer.update(delta);
 
-        if (char.isWalking) {
-            const dist = char.mesh.position.distanceTo(char.targetPos);
+        if (char.isWalking && char.path && char.path.length > 0) {
+            const target = char.path[char.pathIndex];
+            const dist = char.mesh.position.distanceTo(target);
+
             if (dist > 0.05) {
-                const dir = char.targetPos.clone().sub(char.mesh.position).normalize();
+                const dir = target.clone().sub(char.mesh.position).normalize();
 
                 // Move
                 char.mesh.position.add(dir.multiplyScalar(char.speed * delta));
@@ -170,22 +172,37 @@ export class CharacterManager {
                     char.play('walk');
                 }
             } else {
-                char.isWalking = false;
-                char.state = 'idle';
-                char.play('idle');
-                if (char.onArrival) {
-                    const cb = char.onArrival;
-                    char.onArrival = null;
-                    cb();
+                // Arrived at current point in path
+                if (char.pathIndex < char.path.length - 1) {
+                    char.pathIndex++;
+                    console.log(`[CHAR] Moving to next path segment: ${char.pathIndex + 1}/${char.path.length}`);
+                } else {
+                    // Fully arrived at end of path
+                    char.isWalking = false;
+                    char.state = 'idle';
+                    char.play('idle');
+                    char.path = [];
+                    char.pathIndex = 0;
+
+                    if (char.onArrival) {
+                        const cb = char.onArrival;
+                        char.onArrival = null;
+                        cb();
+                    }
                 }
             }
         }
     }
 
-    walkPlayerTo(pos, onArrival = null) {
-        if (!this.player) return;
-        this.player.targetPos.copy(pos);
+    walkPlayerTo(path, onArrival = null) {
+        if (!this.player || !path || path.length === 0) return;
+
+        // Ensure path is an array of points
+        this.player.path = Array.isArray(path) ? path : [path];
+        this.player.pathIndex = 0;
         this.player.isWalking = true;
         this.player.onArrival = onArrival;
+
+        console.log(`[CHAR] Player walking on path with ${this.player.path.length} points`);
     }
 }
