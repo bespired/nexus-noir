@@ -27,6 +27,7 @@ const backdropAspectRatio = ref(16 / 9);
 
 // Three.js variables
 let threeScene, threeCamera, renderer, controls, loader, raycaster, mouse;
+let resizeObserver = null;
 let floorMesh = null;
 let spawnPointMarkers = [];
 let glbModel = null;
@@ -36,6 +37,16 @@ const floorFound = ref(false);
 const isDragging = ref(false);
 let draggedIndex = -1;
 const projectedSpawnpoints = ref([]);
+const cameraDebugInfo = ref({
+    found: false,
+    name: '',
+    fov: 0,
+    aspect: 0,
+    containerAspect: 0,
+    imageAspect: 0,
+    shiftX: 0,
+    shiftY: 0
+});
 
 const spawnPointTypes = [
     { label: 'Entry', value: 'entry' },
@@ -97,7 +108,8 @@ const backdropUrl = computed(() => {
 
 const currentGlb = computed(() => {
     if (scene.value && scene.value.media) {
-        return scene.value.media.find(m => m.type === '3d');
+        const glbs = scene.value.media.filter(m => m.type === '3d');
+        return glbs.length > 0 ? glbs[glbs.length - 1] : null;
     }
     return null;
 });
@@ -210,10 +222,17 @@ const initThree = () => {
     threeCamera.lookAt(0, 0, 0);
 
     // Setup Renderer
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(canvasContainer.value.clientWidth, canvasContainer.value.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    canvasContainer.value.appendChild(renderer.domElement);
+    if (!renderer) {
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(canvasContainer.value.clientWidth, canvasContainer.value.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        canvasContainer.value.appendChild(renderer.domElement);
+    } else {
+        // Clear scene if renderer already exists (e.g. re-init on upload)
+        while(threeScene.children.length > 0){ 
+            threeScene.remove(threeScene.children[0]); 
+        }
+    }
 
     // Setup Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
@@ -238,13 +257,13 @@ const initThree = () => {
     // Load Model
     if (glbUrl.value) {
         console.log("Loading GLB from:", glbUrl.value);
-        
+
         const dracoLoader = new DRACOLoader();
         dracoLoader.setDecoderPath('/draco/');
 
         loader = new GLTFLoader();
         loader.setDRACOLoader(dracoLoader);
-        
+
         loader.load(glbUrl.value, (gltf) => {
             console.log("GLB Loaded successfully");
             glbModel = gltf.scene;
@@ -259,6 +278,7 @@ const initThree = () => {
 
             // Search for floor and cameras, and set transparency
             glbModel.traverse((child) => {
+                console.log(child)
                 if (child.isMesh) {
                     console.log("Found mesh:", child.name);
 
@@ -292,25 +312,29 @@ const initThree = () => {
             }
 
             if (glbCamera) {
-                console.log("Updating to GLB camera.");
+                console.log("Updating to GLB camera:", glbCamera.name);
+                console.log("GLB Camera FOV:", glbCamera.fov);
 
                 // Ensure camera world matrix is correct if it has parents
                 threeScene.updateMatrixWorld(true);
 
                 threeCamera = glbCamera;
-                threeCamera.aspect = canvasContainer.value.clientWidth / canvasContainer.value.clientHeight;
+                // Use the image aspect ratio for the camera projection to ensure perfect fit
+                threeCamera.aspect = backdropAspectRatio.value;
                 threeCamera.updateProjectionMatrix();
 
-                // Controls removed as per request
-                // if (controls) controls.dispose();
-                // controls = new OrbitControls(threeCamera, renderer.domElement);
-                // controls.enableDamping = true;
-
-                // Set target removed
-                // const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(threeCamera.quaternion);
-                // controls.target.copy(threeCamera.position).add(dir.multiplyScalar(5));
-                // controls.update();
+                cameraDebugInfo.value = {
+                    found: true,
+                    name: glbCamera.name,
+                    fov: glbCamera.fov,
+                    aspect: glbCamera.aspect,
+                    containerAspect: canvasContainer.value.clientWidth / canvasContainer.value.clientHeight,
+                    imageAspect: backdropAspectRatio.value,
+                    shiftX: glbCamera.projectionMatrix.elements[8],
+                    shiftY: glbCamera.projectionMatrix.elements[9]
+                };
             } else {
+                console.warn("No camera found in GLB. Falling back to default.");
                 // Adjust default camera to fit model if no GLB camera
                 const box = new THREE.Box3().setFromObject(glbModel);
                 const size = box.getSize(new THREE.Vector3());
@@ -318,6 +342,17 @@ const initThree = () => {
                 threeCamera.position.z = maxDim * 2;
                 threeCamera.position.y = maxDim;
                 threeCamera.lookAt(0, 0, 0);
+
+                cameraDebugInfo.value = {
+                    found: false,
+                    name: 'Default (Fallover)',
+                    fov: threeCamera.fov,
+                    aspect: threeCamera.aspect,
+                    containerAspect: canvasContainer.value.clientWidth / canvasContainer.value.clientHeight,
+                    imageAspect: backdropAspectRatio.value,
+                    shiftX: 0,
+                    shiftY: 0
+                };
             }
 
             updateSpawnPointMarkers();
@@ -550,18 +585,47 @@ const handleDeleteScene = async () => {
 
 const handleResize = () => {
     if (!canvasContainer.value || !renderer) return;
-    threeCamera.aspect = canvasContainer.value.clientWidth / canvasContainer.value.clientHeight;
+    
+    const width = canvasContainer.value.clientWidth;
+    const height = canvasContainer.value.clientHeight;
+    
+    if (width === 0 || height === 0) return;
+
+    // IMPORTANT for fSpy: The camera aspect MUST match the image aspect.
+    // However, if the viewport aspect matches the image aspect (via CSS), 
+    // then width / height is exactly backdropAspectRatio.value.
+    threeCamera.aspect = width / height;
     threeCamera.updateProjectionMatrix();
-    renderer.setSize(canvasContainer.value.clientWidth, canvasContainer.value.clientHeight);
+    
+    renderer.setSize(width, height);
+
+    // Update debug info
+    if (cameraDebugInfo.value.found) {
+        cameraDebugInfo.value.containerAspect = width / height;
+    }
+};
+
+const setupResizeObserver = () => {
+    if (resizeObserver) resizeObserver.disconnect();
+    
+    resizeObserver = new ResizeObserver(() => {
+        handleResize();
+    });
+    
+    if (canvasContainer.value) {
+        resizeObserver.observe(canvasContainer.value);
+    }
 };
 
 onMounted(() => {
     fetchInitialData();
     window.addEventListener('resize', handleResize);
+    setupResizeObserver();
 });
 
 onUnmounted(() => {
     window.removeEventListener('resize', handleResize);
+    if (resizeObserver) resizeObserver.disconnect();
     if (renderer) {
         renderer.dispose();
     }
@@ -659,6 +723,20 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
                         <div class="drawing-overlay-hint">
                             <i class="pi pi-map-marker"></i>
                             <span>CLICK ON FLOOR TO PLACE SPAWNPOINT</span>
+                        </div>
+
+                        <!-- Camera Debug Overlay -->
+                        <div class="camera-debug-overlay" v-if="cameraDebugInfo.found">
+                            <div class="debug-title">CAMERA: {{ cameraDebugInfo.name }}</div>
+                            <div class="debug-row">FOV: {{ cameraDebugInfo.fov.toFixed(2) }}° (Vertical)</div>
+                            <div class="debug-row">BLENDER H-FOV: ~53.9°</div>
+                            <div class="debug-row">IMG ASPECT: {{ cameraDebugInfo.imageAspect.toFixed(3) }}</div>
+                            <div class="debug-row">SHIFT X: {{ cameraDebugInfo.shiftX.toFixed(3) }}</div>
+                            <div class="debug-row">SHIFT Y: {{ cameraDebugInfo.shiftY.toFixed(3) }}</div>
+                        </div>
+                        <div class="camera-debug-overlay error" v-else>
+                            <div class="debug-title">CANNOT FIND CAMERA IN GLB</div>
+                            <div class="debug-row">Using default perspective ({{ cameraDebugInfo.fov }}°)</div>
                         </div>
 
                         <div class="glb-actions">
@@ -857,6 +935,7 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
     position: relative;
     width: 100%;
     min-height: 0;
+    align-self: start; /* PREVENT GRID STRETCH */
     /* aspect-ratio will be set dynamically via v-bind or style */
     background-color: #000;
     background-size: 100% 100%;
@@ -872,9 +951,9 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
     cursor: crosshair;
 }
 
+/* removed !important that fights with threejs setSize */
 .canvas-wrapper :deep(canvas) {
-    width: 100% !important;
-    height: 100% !important;
+    display: block;
 }
 
 .labels-layer {
@@ -1157,5 +1236,32 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
 
 :deep(.p-slider-range) {
     background: var(--color-noir-accent) !important;
+}
+
+.camera-debug-overlay {
+    position: absolute;
+    top: 4rem;
+    left: 1rem;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 0.75rem;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: #4ade80;
+    pointer-events: none;
+    z-index: 30;
+    border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.camera-debug-overlay.error {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.3);
+}
+
+.debug-title {
+    font-weight: bold;
+    margin-bottom: 2px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 2px;
 }
 </style>

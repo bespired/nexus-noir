@@ -15,31 +15,44 @@ class MediaController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'file'           => 'required|file|extensions:jpeg,png,jpg,gif,glb,fbx|max:10240',
-            'imageable_id'   => 'required|integer',
+            'file' => 'required|file|extensions:jpeg,png,jpg,gif,glb,fbx|max:10240',
+            'imageable_id' => 'required|integer',
             'imageable_type' => 'required|string',
-            'title'          => 'nullable|string',
-            'data'           => 'nullable|string',
+            'title' => 'nullable|string',
+            'data' => 'nullable|string',
         ]);
 
         if ($request->hasFile('file')) {
-            $file          = $request->file('file');
-            $extension     = $file->getClientOriginalExtension();
+            $file = $request->file('file');
+            $extension = $file->getClientOriginalExtension();
             $imageableType = $request->imageable_type;
 
             if (in_array($extension, ['glb', 'fbx'])) {
-                $type   = '3d';
+                $type = '3d';
                 $folder = "3d/{$extension}";
             } else {
                 $type = '2d';
                 // Detect destination folder from class name
                 $modelName = strtolower(class_basename($imageableType));
-                $folder    = "artwork/{$modelName}";
+                $folder = "artwork/{$modelName}";
 
                 // Fallback for unexpected types
-                if (! in_array($modelName, ['clue', 'character', 'scene', 'sector', 'animation'])) {
+                if (!in_array($modelName, ['clue', 'character', 'scene', 'sector', 'animation'])) {
                     $folder = 'artwork/general';
                 }
+            }
+
+            // ENFORCE SINGLETON: Delete old media of the same type for this model
+            $existingMedia = Media::where('imageable_id', $request->imageable_id)
+                ->where('imageable_type', $request->imageable_type)
+                ->where('type', $type)
+                ->get();
+
+            foreach ($existingMedia as $oldMedia) {
+                if (Storage::disk('public')->exists($oldMedia->filepad)) {
+                    Storage::disk('public')->delete($oldMedia->filepad);
+                }
+                $oldMedia->delete();
             }
 
             // Generate a filename
@@ -58,15 +71,15 @@ class MediaController extends Controller
             $nameWithoutExt = preg_replace('/[^a-zA-Z0-9\-\_]/', '', $nameWithoutExt);
 
             $cleanFilename = time() . '_' . $nameWithoutExt . '.' . $extension;
-            $path          = $file->storeAs($folder, $cleanFilename, 'public');
+            $path = $file->storeAs($folder, $cleanFilename, 'public');
 
             $media = Media::create([
-                'filepad'        => $path,
-                'title'          => $request->title ?? $file->getClientOriginalName(),
-                'type'           => $type,
+                'filepad' => $path,
+                'title' => $request->title ?? $file->getClientOriginalName(),
+                'type' => $type,
                 'imageable_type' => $request->imageable_type,
-                'imageable_id'   => $request->imageable_id,
-                'data'           => $request->data ? json_decode($request->data, true) : null,
+                'imageable_id' => $request->imageable_id,
+                'data' => $request->data ? json_decode($request->data, true) : null,
             ]);
 
             return response()->json($media, 201);

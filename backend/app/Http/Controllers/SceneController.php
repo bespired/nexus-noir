@@ -2,6 +2,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Scene;
+use Illuminate\Support\Str;
 
 class SceneController extends Controller
 {
@@ -18,13 +20,13 @@ class SceneController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'title'          => 'required|string|max:255',
-            'description'    => 'nullable|string',
-            'sector_id'      => 'nullable|exists:sectors,id',
-            'type'           => 'required|string|in:walkable-area,vue-component,investigation,combat,cut-scene',
-            '2d_gateways'    => 'nullable|array',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'sector_id' => 'nullable|exists:sectors,id',
+            'type' => 'required|string|in:walkable-area,vue-component,investigation,combat,cut-scene',
+            '2d_gateways' => 'nullable|array',
             '3d_spawnpoints' => 'nullable|array',
-            'data'           => 'nullable|array',
+            'data' => 'nullable|array',
         ]);
 
         $scene = \App\Models\Scene::create($validated);
@@ -48,14 +50,14 @@ class SceneController extends Controller
         $scene = \App\Models\Scene::findOrFail($id);
 
         $validated = $request->validate([
-            'title'            => 'required|string|max:255',
-            'description'      => 'nullable|string',
-            'sector_id'        => 'nullable|exists:sectors,id',
-            'type'             => 'required|string|in:walkable-area,vue-component,investigation,combat,cut-scene',
-            '2d_gateways'      => 'nullable|array',
-            '3d_spawnpoints'   => 'nullable|array',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'sector_id' => 'nullable|exists:sectors,id',
+            'type' => 'required|string|in:walkable-area,vue-component,investigation,combat,cut-scene',
+            '2d_gateways' => 'nullable|array',
+            '3d_spawnpoints' => 'nullable|array',
             'thumb_dimensions' => 'nullable|array',
-            'data'             => 'nullable|array',
+            'data' => 'nullable|array',
         ]);
 
         $scene->update($validated);
@@ -66,8 +68,8 @@ class SceneController extends Controller
     public function batchUpdate(Request $request)
     {
         $validated = $request->validate([
-            'scenes'                    => 'required|array',
-            'scenes.*.id'               => 'required|exists:scenes,id',
+            'scenes' => 'required|array',
+            'scenes.*.id' => 'required|exists:scenes,id',
             'scenes.*.thumb_dimensions' => 'required|array',
         ]);
 
@@ -78,6 +80,111 @@ class SceneController extends Controller
         }
 
         return response()->json(['status' => 'success']);
+    }
+
+    public function progress()
+    {
+        $basePath = '/var/www/nexus-scenes';
+
+        if (!file_exists($basePath)) {
+            return response()->json(['error' => 'Nexus scenes directory not found'], 404);
+        }
+
+        // Pre-fetch all scenes with media, indexed by slugified title
+        $dbScenes = Scene::with('media')->get();
+        $sceneLookup = [];
+        foreach ($dbScenes as $s) {
+            $sceneLookup[Str::slug($s->title)] = $s;
+        }
+
+        $sectors = [];
+        $sectorDirs = array_filter(glob($basePath . '/*'), 'is_dir');
+
+        // Helper to extract a "match slug" from a filename
+        $getMatchSlug = function ($filename) {
+            $name = pathinfo($filename, PATHINFO_FILENAME);
+            $name = preg_replace('/^\d+_/', '', $name); // Remove timestamp prefix
+            if (strpos($name, '--') !== false) {
+                $parts = explode('--', $name);
+                $name = end($parts); // Take part after --
+            }
+            return Str::slug($name);
+        };
+
+        foreach ($sectorDirs as $sectorDirPath) {
+            $sectorName = basename($sectorDirPath);
+            $sceneDirs = array_filter(glob($sectorDirPath . '/*'), 'is_dir');
+
+            $scenes = [];
+            foreach ($sceneDirs as $sceneDirPath) {
+                $sceneName = basename($sceneDirPath);
+                $files = array_filter(scandir($sceneDirPath), function ($f) {
+                    return $f !== '.' && $f !== '..';
+                });
+
+                $hasPng = false;
+                $hasFspy = false;
+                $hasBlend = false;
+                $hasGlb = false;
+
+                $txtFiles = [];
+                $pngFiles = [];
+
+                foreach ($files as $file) {
+                    if (str_ends_with($file, '.png')) {
+                        $hasPng = true;
+                        $pngFiles[] = $file;
+                    }
+                    if (str_ends_with($file, '.fspy'))
+                        $hasFspy = true;
+                    if (str_ends_with($file, '.blend'))
+                        $hasBlend = true;
+                    if (str_ends_with($file, '.glb'))
+                        $hasGlb = true;
+                    if (str_ends_with($file, '.txt'))
+                        $txtFiles[] = $file;
+                }
+
+                // Prioritized Matching Strategy
+                $dbScene = null;
+                $slugsToTry = [];
+
+                if (!empty($txtFiles)) {
+                    $slugsToTry[] = $getMatchSlug($txtFiles[0]);
+                }
+                if (!empty($pngFiles)) {
+                    $slugsToTry[] = $getMatchSlug($pngFiles[0]);
+                }
+                $slugsToTry[] = Str::slug($sceneName);
+
+                foreach ($slugsToTry as $slug) {
+                    if (isset($sceneLookup[$slug])) {
+                        $dbScene = $sceneLookup[$slug];
+                        break;
+                    }
+                }
+
+                $scenes[] = [
+                    'id' => $dbScene ? $dbScene->id : null,
+                    'name' => $sceneName,
+                    'png' => $hasPng,
+                    'fspy' => $hasFspy,
+                    'blend' => $hasBlend,
+                    'glb' => $hasGlb,
+                    'db_png' => $dbScene ? $dbScene->media->where('type', '2d')->count() > 0 : false,
+                    'db_glb' => $dbScene ? $dbScene->media->where('type', '3d')->count() > 0 : false,
+                ];
+            }
+
+            if (!empty($scenes)) {
+                $sectors[] = [
+                    'name' => $sectorName,
+                    'scenes' => $scenes
+                ];
+            }
+        }
+
+        return response()->json($sectors);
     }
 
     /**

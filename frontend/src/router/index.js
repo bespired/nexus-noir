@@ -19,6 +19,11 @@ const routes = [
         component: () => import('../views/scenes/ScenesIndex.vue')
     },
     {
+        path: '/scenes/progress',
+        name: 'scene-progress',
+        component: () => import('../views/scenes/SceneProgress.vue')
+    },
+    {
         path: '/scenes/:id/edit',
         name: 'scene-edit',
         component: () => import('../views/scenes/SceneEdit.vue')

@@ -27,6 +27,7 @@ services:
             - ./electron:/var/www/electron
             - ./frontend:/var/www/frontend
             - ./backup:/var/www/backup
+            - ./nexus-scenes:/var/www/nexus-scenes
         networks:
             - nexus-noir-network
 

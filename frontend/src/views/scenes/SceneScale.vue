@@ -30,10 +30,21 @@ const backdropAspectRatio = ref(16 / 9);
 
 // Three.js variables
 let threeScene, threeCamera, renderer, loader, raycaster, mouse;
+let resizeObserver = null;
 let floorMesh = null;
 let glbModel = null;
 let glbCamera = null;
 let playerMesh = null;
+const cameraDebugInfo = ref({
+    found: false,
+    name: '',
+    fov: 0,
+    aspect: 0,
+    containerAspect: 0,
+    imageAspect: 0,
+    shiftX: 0,
+    shiftY: 0
+});
 const isGlbLoaded = ref(false);
 const floorFound = ref(false);
 
@@ -160,8 +171,30 @@ const initThree = () => {
             if (glbCamera) {
                 threeScene.updateMatrixWorld(true);
                 threeCamera = glbCamera;
-                threeCamera.aspect = canvasContainer.value.clientWidth / canvasContainer.value.clientHeight;
+                threeCamera.aspect = backdropAspectRatio.value;
                 threeCamera.updateProjectionMatrix();
+
+                cameraDebugInfo.value = {
+                    found: true,
+                    name: glbCamera.name,
+                    fov: glbCamera.fov,
+                    aspect: glbCamera.aspect,
+                    containerAspect: canvasContainer.value.clientWidth / canvasContainer.value.clientHeight,
+                    imageAspect: backdropAspectRatio.value,
+                    shiftX: glbCamera.projectionMatrix.elements[8],
+                    shiftY: glbCamera.projectionMatrix.elements[9]
+                };
+            } else {
+                cameraDebugInfo.value = {
+                    found: false,
+                    name: 'Default',
+                    fov: threeCamera.fov,
+                    aspect: threeCamera.aspect,
+                    containerAspect: canvasContainer.value.clientWidth / canvasContainer.value.clientHeight,
+                    imageAspect: backdropAspectRatio.value,
+                    shiftX: 0,
+                    shiftY: 0
+                };
             }
 
             // After scene load, load the player placeholder
@@ -286,18 +319,43 @@ const handleDeleteScene = async () => {
 
 const handleResize = () => {
     if (!canvasContainer.value || !renderer) return;
-    threeCamera.aspect = canvasContainer.value.clientWidth / canvasContainer.value.clientHeight;
+    
+    const width = canvasContainer.value.clientWidth;
+    const height = canvasContainer.value.clientHeight;
+    
+    if (width === 0 || height === 0) return;
+
+    threeCamera.aspect = width / height;
     threeCamera.updateProjectionMatrix();
-    renderer.setSize(canvasContainer.value.clientWidth, canvasContainer.value.clientHeight);
+    
+    renderer.setSize(width, height);
+
+    if (cameraDebugInfo.value.found) {
+        cameraDebugInfo.value.containerAspect = width / height;
+    }
+};
+
+const setupResizeObserver = () => {
+    if (resizeObserver) resizeObserver.disconnect();
+    
+    resizeObserver = new ResizeObserver(() => {
+        handleResize();
+    });
+    
+    if (canvasContainer.value) {
+        resizeObserver.observe(canvasContainer.value);
+    }
 };
 
 onMounted(() => {
     fetchInitialData();
     window.addEventListener('resize', handleResize);
+    setupResizeObserver();
 });
 
 onUnmounted(() => {
     window.removeEventListener('resize', handleResize);
+    if (resizeObserver) resizeObserver.disconnect();
     if (renderer) {
         renderer.dispose();
     }
@@ -369,6 +427,17 @@ watch(characterScale, () => {
                         <div class="drawing-overlay-hint">
                             <i class="pi pi-arrows-alt"></i>
                             <span>CLICK ON FLOOR TO POSITON FIGURE</span>
+                        </div>
+
+                        <!-- Camera Debug Overlay -->
+                        <div class="camera-debug-overlay" v-if="cameraDebugInfo.found">
+                            <div class="debug-title">CAMERA: {{ cameraDebugInfo.name }}</div>
+                            <div class="debug-row">FOV: {{ cameraDebugInfo.fov.toFixed(2) }}° (Vertical)</div>
+                            <div class="debug-row">SHIFT X: {{ cameraDebugInfo.shiftX.toFixed(3) }}</div>
+                            <div class="debug-row">SHIFT Y: {{ cameraDebugInfo.shiftY.toFixed(3) }}</div>
+                        </div>
+                        <div class="camera-debug-overlay error" v-else>
+                            <div class="debug-title">CANNOT FIND CAMERA IN GLB</div>
                         </div>
 
                         <div v-if="!glbUrl" class="no-glb-warning">
@@ -504,6 +573,7 @@ watch(characterScale, () => {
     position: relative;
     width: 100%;
     min-height: 0;
+    align-self: start;
     background-color: #000;
     background-size: 100% 100%;
     background-position: center;
@@ -519,8 +589,7 @@ watch(characterScale, () => {
 }
 
 .canvas-wrapper :deep(canvas) {
-    width: 100% !important;
-    height: 100% !important;
+    display: block;
 }
 
 .drawing-overlay-hint {
@@ -682,5 +751,32 @@ watch(characterScale, () => {
     padding: 4rem;
     text-align: center;
     color: var(--color-noir-muted);
+}
+
+.camera-debug-overlay {
+    position: absolute;
+    top: 4rem;
+    left: 1rem;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 0.75rem;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: #4ade80;
+    pointer-events: none;
+    z-index: 30;
+    border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.camera-debug-overlay.error {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.3);
+}
+
+.debug-title {
+    font-weight: bold;
+    margin-bottom: 2px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 2px;
 }
 </style>

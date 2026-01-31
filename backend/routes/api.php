@@ -26,6 +26,7 @@ Route::apiResource('animations', AnimationController::class);
 Route::apiResource('clues', ClueController::class);
 Route::apiResource('dialogs', DialogController::class);
 Route::apiResource('notes', NoteController::class);
+Route::get('scenes/progress', [SceneController::class, 'progress']);
 Route::post('scenes/batch-update', [SceneController::class, 'batchUpdate']);
 Route::apiResource('scenes', SceneController::class);
 Route::apiResource('sectors', SectorController::class);
