@@ -123,7 +123,7 @@ export class SceneManager {
         });
 
         if (!navMeshFound) {
-            console.warn('[WORLD] No NavMesh found in scene GLB');
+            console.warn('[WORLD] No walkable floor found in scene GLB');
         }
     }
 

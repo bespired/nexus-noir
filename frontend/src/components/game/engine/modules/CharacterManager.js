@@ -9,6 +9,7 @@ export class CharacterManager {
         this.loader = this.createLoader();
         this.player = null;
         this.npcs = new Map();
+        this.raycaster = new THREE.Raycaster();
     }
 
 
@@ -147,8 +148,30 @@ export class CharacterManager {
         this.npcs.forEach(npc => this.updateCharacter(npc, delta));
     }
 
+    groundClamp(char) {
+        if (!char || !char.mesh) return;
+
+        // Perform downward raycast to find the floor
+        // Start exactly at head height (1.2m * scale)
+        // This ensures we start the ray BELOW any ceilings or floors above the character.
+        const rayStart = char.mesh.position.clone();
+        const headHeight = 1.2 * (char.scale || 1.0);
+        rayStart.y += headHeight;
+
+        this.raycaster.set(rayStart, new THREE.Vector3(0, -1, 0));
+        const intersects = this.raycaster.intersectObjects(this.engine.scene.children, true);
+
+        // Find the FIRST walkable floor below the head
+        const floorIntersect = intersects.find(i => i.object.userData.isWalkable);
+
+        if (floorIntersect) {
+            char.mesh.position.y = floorIntersect.point.y;
+        }
+    }
+
     updateCharacter(char, delta) {
         char.mixer.update(delta);
+        this.groundClamp(char);
 
         if (char.isWalking && char.path && char.path.length > 0) {
             const target = char.path[char.pathIndex];
