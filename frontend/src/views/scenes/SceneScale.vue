@@ -209,13 +209,13 @@ const loadPlayerPlaceholder = () => {
     // We try to find a character model or use a generic one
     // For now, let's use a simple Box or a known character if possible
     // In a real scenario, we'd fetch the default player GLB
-    
+
     // Create a simple figure placeholder (a cylinder represent a human-size 1.8m figure)
     const geometry = new THREE.CylinderGeometry(0.25, 0.25, 1.0, 12);
     const material = new THREE.MeshStandardMaterial({ color: 0xef4444 });
     playerMesh = new THREE.Mesh(geometry, material);
     playerMesh.position.y = 0.5; // Half height up
-    
+
     // Add a small "face" to indicate direction
     const faceGeo = new THREE.BoxGeometry(0.1, 0.1, 0.2);
     const faceMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
@@ -225,7 +225,7 @@ const loadPlayerPlaceholder = () => {
 
     threeScene.add(playerMesh);
     updatePlayerScale();
-    
+
     // Try to position at the first spawnpoint if available
     if (scene.value['3d_spawnpoints'] && scene.value['3d_spawnpoints'].length > 0) {
         const sp = scene.value['3d_spawnpoints'][0];
@@ -235,7 +235,7 @@ const loadPlayerPlaceholder = () => {
 
 const updatePlayerScale = () => {
     if (!playerMesh) return;
-    // The cylinder is 1.0 units high. 
+    // The cylinder is 1.0 units high.
     // Scaling it by characterScale makes it exactly that height in world units.
     playerMesh.scale.set(characterScale.value, characterScale.value, characterScale.value);
     playerMesh.position.y = (1.0 * characterScale.value) / 2;
@@ -286,7 +286,7 @@ const handleSave = async () => {
         });
 
         if (!response.ok) throw new Error('Save failed');
-        
+
         // Also update local scene object just in case
         scene.value.data = updatedData;
 
@@ -319,15 +319,15 @@ const handleDeleteScene = async () => {
 
 const handleResize = () => {
     if (!canvasContainer.value || !renderer) return;
-    
+
     const width = canvasContainer.value.clientWidth;
     const height = canvasContainer.value.clientHeight;
-    
+
     if (width === 0 || height === 0) return;
 
     threeCamera.aspect = width / height;
     threeCamera.updateProjectionMatrix();
-    
+
     renderer.setSize(width, height);
 
     if (cameraDebugInfo.value.found) {
@@ -337,11 +337,11 @@ const handleResize = () => {
 
 const setupResizeObserver = () => {
     if (resizeObserver) resizeObserver.disconnect();
-    
+
     resizeObserver = new ResizeObserver(() => {
         handleResize();
     });
-    
+
     if (canvasContainer.value) {
         resizeObserver.observe(canvasContainer.value);
     }
@@ -430,7 +430,7 @@ watch(characterScale, () => {
                         </div>
 
                         <!-- Camera Debug Overlay -->
-                        <div class="camera-debug-overlay" v-if="cameraDebugInfo.found">
+                        <!-- <div class="camera-debug-overlay" v-if="cameraDebugInfo.found">
                             <div class="debug-title">CAMERA: {{ cameraDebugInfo.name }}</div>
                             <div class="debug-row">FOV: {{ cameraDebugInfo.fov.toFixed(2) }}° (Vertical)</div>
                             <div class="debug-row">SHIFT X: {{ cameraDebugInfo.shiftX.toFixed(3) }}</div>
@@ -438,7 +438,7 @@ watch(characterScale, () => {
                         </div>
                         <div class="camera-debug-overlay error" v-else>
                             <div class="debug-title">CANNOT FIND CAMERA IN GLB</div>
-                        </div>
+                        </div> -->
 
                         <div v-if="!glbUrl" class="no-glb-warning">
                             <i class="pi pi-exclamation-triangle"></i>
@@ -461,7 +461,7 @@ watch(characterScale, () => {
                         </div>
                         <div class="scale-card__content">
                             <p class="description">
-                                Adjust the height of the playable figure to match the scene's scale. 
+                                Adjust the height of the playable figure to match the scene's scale.
                                 Click on the floor to move the figure for reference.
                             </p>
 

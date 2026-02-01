@@ -229,8 +229,8 @@ const initThree = () => {
         canvasContainer.value.appendChild(renderer.domElement);
     } else {
         // Clear scene if renderer already exists (e.g. re-init on upload)
-        while(threeScene.children.length > 0){ 
-            threeScene.remove(threeScene.children[0]); 
+        while(threeScene.children.length > 0){
+            threeScene.remove(threeScene.children[0]);
         }
     }
 
@@ -585,18 +585,18 @@ const handleDeleteScene = async () => {
 
 const handleResize = () => {
     if (!canvasContainer.value || !renderer) return;
-    
+
     const width = canvasContainer.value.clientWidth;
     const height = canvasContainer.value.clientHeight;
-    
+
     if (width === 0 || height === 0) return;
 
     // IMPORTANT for fSpy: The camera aspect MUST match the image aspect.
-    // However, if the viewport aspect matches the image aspect (via CSS), 
+    // However, if the viewport aspect matches the image aspect (via CSS),
     // then width / height is exactly backdropAspectRatio.value.
     threeCamera.aspect = width / height;
     threeCamera.updateProjectionMatrix();
-    
+
     renderer.setSize(width, height);
 
     // Update debug info
@@ -607,11 +607,11 @@ const handleResize = () => {
 
 const setupResizeObserver = () => {
     if (resizeObserver) resizeObserver.disconnect();
-    
+
     resizeObserver = new ResizeObserver(() => {
         handleResize();
     });
-    
+
     if (canvasContainer.value) {
         resizeObserver.observe(canvasContainer.value);
     }
@@ -726,7 +726,7 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
                         </div>
 
                         <!-- Camera Debug Overlay -->
-                        <div class="camera-debug-overlay" v-if="cameraDebugInfo.found">
+                        <!-- <div class="camera-debug-overlay" v-if="cameraDebugInfo.found">
                             <div class="debug-title">CAMERA: {{ cameraDebugInfo.name }}</div>
                             <div class="debug-row">FOV: {{ cameraDebugInfo.fov.toFixed(2) }}° (Vertical)</div>
                             <div class="debug-row">BLENDER H-FOV: ~53.9°</div>
@@ -737,7 +737,7 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
                         <div class="camera-debug-overlay error" v-else>
                             <div class="debug-title">CANNOT FIND CAMERA IN GLB</div>
                             <div class="debug-row">Using default perspective ({{ cameraDebugInfo.fov }}°)</div>
-                        </div>
+                        </div> -->
 
                         <div class="glb-actions">
                             <FileUpload
