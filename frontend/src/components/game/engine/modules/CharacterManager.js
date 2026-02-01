@@ -41,9 +41,12 @@ export class CharacterManager {
         const sceneScale = this.engine.store.state.game.currentScene?.data?.character_scale ||
             this.engine.store.state.game.currentScene?.character_scale ||
             1.5;
-        this.player.mesh.scale.multiplyScalar(sceneScale);
 
-        console.log(`[CHAR] Applied scale: ${sceneScale} (New World Height: ${1.0 * sceneScale})`);
+        this.player.scale = sceneScale;
+        this.player.mesh.scale.multiplyScalar(sceneScale);
+        this.player.speed = 1.0 * sceneScale; // Balanced base speed * scale
+
+        console.log(`[CHAR] Applied scale: ${sceneScale} (Speed: ${this.player.speed.toFixed(2)})`);
 
         this.player.mesh.position.set(spawnPoint.x, spawnPoint.y, spawnPoint.z);
         this.player.mesh.rotation.y = THREE.MathUtils.degToRad(spawnPoint.direction || 180);
