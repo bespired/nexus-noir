@@ -284,19 +284,35 @@ const initThree = () => {
 
                     // Apply transparency and colors
                     if (child.material) {
-                        child.material = child.material.clone();
-                        child.material.transparent = true;
-                        child.material.opacity = 0.5;
-                        child.material.depthWrite = false;
+                        const isFloor = child.name.toLowerCase().includes('floor');
+                        const isMask = child.name.toLowerCase().includes('mask');
 
-                        if (child.name.toLowerCase().includes('floor')) {
-                            child.material.color.set(0x3b82f6); // Noir Blue
-                            floorMesh = child;
-                            floorFound.value = true;
-                            console.log("Floor detected & colored Blue:", child.name);
-                        } else if (child.name.toLowerCase().includes('mask')) {
-                            child.material.color.set(0xd946ef); // Noir Magenta
-                            console.log("Mask detected & colored Magenta:", child.name);
+                        if (isFloor || isMask) {
+                            child.material = new THREE.MeshPhongMaterial({
+                                color: isFloor ? 0x3b82f6 : 0xd946ef,
+                                transparent: true,
+                                opacity: 0.6,
+                                // side: THREE.DoubleSide,
+                                depthWrite: true,
+                                polygonOffset: true,
+                                polygonOffsetFactor: -1,
+                                polygonOffsetUnits: -1
+                            });
+
+                            if (isFloor) {
+                                floorMesh = child;
+                                floorFound.value = true;
+                                console.log("Floor detected & colored Blue:", child.name);
+                            } else {
+                                console.log("Mask detected & colored Magenta:", child.name);
+                            }
+                        } else {
+                            // General machine mesh
+                            child.material = child.material.clone();
+                            child.material.transparent = true;
+                            child.material.opacity = 0.3;
+                            child.material.depthWrite = true;
+                            // child.material.side = THREE.DoubleSide;
                         }
                     }
                 }
