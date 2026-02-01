@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 
 export class SceneManager {
     constructor(engine) {
@@ -48,7 +49,7 @@ export class SceneManager {
         const glb = sceneData.media.find(m => m.filepad && m.filepad.endsWith('.glb'));
         if (!glb) return;
 
-        const url = `/storage/${glb.filepad}`; // Assuming standard laravel storage path
+        const url = `/storage/${glb.filepad}`;
 
         console.log(`[WORLD] Loading scene GLB: ${url}`);
 
@@ -67,7 +68,6 @@ export class SceneManager {
                 }
 
                 // Recalibrate immediately with current stage bounds from store
-                // Using renderer.getSize() is risky if the resize hasn't permeated yet (defaults to 300x150)
                 const stage = this.engine.store.state.game.stage;
                 if (stage.width > 0 && stage.height > 0) {
                     this.engine.resize(stage.width, stage.height);
@@ -80,11 +80,14 @@ export class SceneManager {
 
     processScene(world) {
         const isDebug = this.engine.store.state.game.debug;
-        let navMeshFound = false;
+        const walkableGeometries = [];
+
+        // Ensure world transformations are ready
+        world.updateMatrixWorld(true);
 
         world.traverse((child) => {
             if (child.isLight) {
-                child.visible = isDebug; // Show lights in debug mode
+                child.visible = isDebug;
             }
 
             if (child.isMesh) {
@@ -92,26 +95,33 @@ export class SceneManager {
                 const isFloor = name.includes('floor') || name.includes('walk') || name.includes('plane');
                 child.userData.isWalkable = isFloor;
 
-                // Register with Pathfinding Manager
-                if (isFloor && !navMeshFound) {
-                    this.engine.pathfinding.setNavMesh(child);
-                    navMeshFound = true;
-                }
+                if (isFloor) {
+                    // Clone geometry and apply world transform for pathfinding
+                    const geom = child.geometry.clone();
+                    geom.applyMatrix4(child.matrixWorld);
+                    walkableGeometries.push(geom);
 
-                if (isDebug) {
-                    // Debug Visualization: Transparent colored faces
-                    child.material = new THREE.MeshPhongMaterial({
-                        color: isFloor ? 0x00ff00 : 0x00ffff,
-                        transparent: true,
-                        opacity: 0.4,
-                        side: THREE.DoubleSide
-                    });
-                    child.visible = true;
-                } else {
-                    // Production setup
-                    if (isFloor) {
+                    if (isDebug) {
+                        child.material = new THREE.MeshPhongMaterial({
+                            color: 0x00ff00,
+                            transparent: true,
+                            opacity: 0.4,
+                            side: THREE.DoubleSide
+                        });
+                        child.visible = true;
+                    } else {
                         child.material = new THREE.ShadowMaterial({ opacity: 0.4 });
                         child.receiveShadow = true;
+                    }
+                } else {
+                    if (isDebug) {
+                        child.material = new THREE.MeshPhongMaterial({
+                            color: 0x00ffff,
+                            transparent: true,
+                            opacity: 0.4,
+                            side: THREE.DoubleSide
+                        });
+                        child.visible = true;
                     } else {
                         child.material = new THREE.MeshBasicMaterial({
                             colorWrite: false,
@@ -122,7 +132,14 @@ export class SceneManager {
             }
         });
 
-        if (!navMeshFound) {
+        // Merge all walkable geometries into one NavMesh
+        if (walkableGeometries.length > 0) {
+            console.log(`[WORLD] Registering NavMesh (Aligned to World Space)`);
+            const mergedGeometry = BufferGeometryUtils.mergeGeometries(walkableGeometries);
+            const navMesh = new THREE.Mesh(mergedGeometry);
+            navMesh.name = 'MergedNavMesh';
+            this.engine.pathfinding.setNavMesh(navMesh);
+        } else {
             console.warn('[WORLD] No walkable floor found in scene GLB');
         }
     }

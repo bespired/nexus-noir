@@ -18,7 +18,7 @@ export class PathfindingManager {
             return;
         }
 
-        console.log('[PATH] Registering NavMesh:', mesh.name);
+        console.log('[PATH] Registering NavMesh:', mesh.name || 'unnamed');
         this.navMesh = mesh;
 
         // three-pathfinding creates zones from geometries
@@ -34,24 +34,36 @@ export class PathfindingManager {
     findPath(start, end) {
         if (!this.navMesh) {
             console.warn('[PATH] No NavMesh registered');
-            return [end]; // Fallback to straight line
+            return null;
         }
 
-        const groupID = this.pathfinding.getGroup(this.ZONE, start);
-        if (groupID === null) {
+        const startGroup = this.pathfinding.getGroup(this.ZONE, start);
+        const endGroup = this.pathfinding.getGroup(this.ZONE, end);
+
+        if (startGroup === null) {
             console.warn('[PATH] Start point is outside NavMesh');
-            return [end];
+            return null;
         }
 
-        const path = this.pathfinding.findPath(start, end, this.ZONE, groupID);
+        if (endGroup === null) {
+            console.warn('[PATH] End point is outside NavMesh');
+            return null;
+        }
+
+        if (startGroup !== endGroup) {
+            console.error(`[PATH] Disconnected islands detected! Start is in group ${startGroup}, End is in group ${endGroup}. Character cannot walk there.`);
+            return null;
+        }
+
+        const path = this.pathfinding.findPath(start, end, this.ZONE, startGroup);
 
         if (path && path.length > 0) {
             console.log(`[PATH] Found path with ${path.length} segments`);
             return path.map(p => p.clone());
         }
 
-        console.warn('[PATH] No path found');
-        return [end];
+        console.warn('[PATH] No path found even though points are in same group');
+        return null;
     }
 
     /**

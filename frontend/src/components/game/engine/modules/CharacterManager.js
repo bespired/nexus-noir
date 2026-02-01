@@ -12,8 +12,6 @@ export class CharacterManager {
         this.raycaster = new THREE.Raycaster();
     }
 
-
-
     createLoader() {
         const dracoLoader = new DRACOLoader();
         dracoLoader.setDecoderPath('/draco/');
@@ -37,15 +35,13 @@ export class CharacterManager {
         const character = await this.loadCharacter(url, personage);
         this.player = character;
 
-        // Apply requested scale
-        // Priority: 1. Scene data 'character_scale', 2. Default 1.5
         const sceneScale = this.engine.store.state.game.currentScene?.data?.character_scale ||
             this.engine.store.state.game.currentScene?.character_scale ||
             1.5;
 
         this.player.scale = sceneScale;
         this.player.mesh.scale.multiplyScalar(sceneScale);
-        this.player.speed = 1.0 * sceneScale; // Balanced base speed * scale
+        this.player.speed = 1.0 * sceneScale;
 
         console.log(`[CHAR] Applied scale: ${sceneScale} (Speed: ${this.player.speed.toFixed(2)})`);
 
@@ -53,8 +49,6 @@ export class CharacterManager {
         this.player.mesh.rotation.y = THREE.MathUtils.degToRad(spawnPoint.direction || 180);
 
         this.engine.scene.add(this.player.mesh);
-
-        // Ensure default idle animation starts
         this.player.play('idle');
 
         return this.player;
@@ -71,18 +65,14 @@ export class CharacterManager {
                     }
                 });
 
-                // Normalization: Ensure model is 1 unit high baseline
                 const box = new THREE.Box3().setFromObject(mesh);
                 const size = box.getSize(new THREE.Vector3());
-                console.log(`[CHAR] Loading: ${data.name}. Original Size:`, { x: size.x, y: size.y, z: size.z });
-
                 const normScale = 1.0 / (size.y || 1);
                 mesh.scale.set(normScale, normScale, normScale);
 
                 const mixer = new THREE.AnimationMixer(mesh);
                 const actions = {};
 
-                // Process embedded animations
                 gltf.animations.forEach(clip => {
                     const name = clip.name.toLowerCase();
                     let key = null;
@@ -96,7 +86,6 @@ export class CharacterManager {
                     }
                 });
 
-                // Process external animations
                 if (data.animations && data.animations.length > 0) {
                     for (const animData of data.animations) {
                         const clip = await this.engine.animations.getClip(animData);
@@ -116,44 +105,30 @@ export class CharacterManager {
                     speed: 2,
                     play(name) {
                         if (!actions[name]) {
-                            // Fallback to idle if walk is missing, or vice versa
                             if (name === 'walk' && actions['idle']) name = 'idle';
                             else if (name === 'idle' && Object.keys(actions)[0]) name = Object.keys(actions)[0];
                             else return;
                         }
-
-                        // Crossfade logic
                         const nextAction = actions[name];
                         if (character.currentAction === nextAction) return;
-
-                        if (character.currentAction) {
-                            character.currentAction.fadeOut(0.2);
-                        }
-
+                        if (character.currentAction) character.currentAction.fadeOut(0.2);
                         nextAction.reset().fadeIn(0.2).play();
                         character.currentAction = nextAction;
                     }
                 };
-
                 resolve(character);
             }, undefined, reject);
         });
     }
 
-
     update(delta) {
-        if (this.player) {
-            this.updateCharacter(this.player, delta);
-        }
+        if (this.player) this.updateCharacter(this.player, delta);
         this.npcs.forEach(npc => this.updateCharacter(npc, delta));
     }
 
     groundClamp(char) {
         if (!char || !char.mesh) return;
 
-        // Perform downward raycast to find the floor
-        // Start exactly at head height (1.2m * scale)
-        // This ensures we start the ray BELOW any ceilings or floors above the character.
         const rayStart = char.mesh.position.clone();
         const headHeight = 1.2 * (char.scale || 1.0);
         rayStart.y += headHeight;
@@ -161,11 +136,41 @@ export class CharacterManager {
         this.raycaster.set(rayStart, new THREE.Vector3(0, -1, 0));
         const intersects = this.raycaster.intersectObjects(this.engine.scene.children, true);
 
-        // Find the FIRST walkable floor below the head
-        const floorIntersect = intersects.find(i => i.object.userData.isWalkable);
+        const walkableIntersects = intersects.filter(i => i.object.userData.isWalkable);
 
-        if (floorIntersect) {
-            char.mesh.position.y = floorIntersect.point.y;
+        if (walkableIntersects.length > 0) {
+            let bestIntersect = walkableIntersects[0];
+            let minDelta = Math.abs(walkableIntersects[0].point.y - char.mesh.position.y);
+
+            for (let i = 1; i < walkableIntersects.length; i++) {
+                const delta = Math.abs(walkableIntersects[i].point.y - char.mesh.position.y);
+                if (delta < minDelta) {
+                    minDelta = delta;
+                    bestIntersect = walkableIntersects[i];
+                }
+            }
+
+            // Vertical Safety Thresholds
+            const currentY = char.mesh.position.y;
+            const targetY = bestIntersect.point.y;
+            const diff = targetY - currentY;
+
+            // Thresholds: 0.5m down (MAX_DROP), 0.5m up (MAX_RISE)
+            // This allows for stairs and ramps while preventing "teleporting" 
+            // to floors far above/below when walking on edges.
+            const threshold = 0.5;
+
+            if (Math.abs(diff) < threshold) {
+                char.mesh.position.y = targetY;
+            } else {
+                // If the "best" floor is too far away, we only snap to it if it's 
+                // the ONLY option and we're somehow way off (e.g. initial spawn).
+                // But generally, we stick to the current level to avoid "falling".
+                if (walkableIntersects.length === 1 && Math.abs(diff) < 2.0) {
+                    // Fallback for larger ramps if no other floor is nearby
+                    char.mesh.position.y = targetY;
+                }
+            }
         }
     }
 
@@ -179,14 +184,9 @@ export class CharacterManager {
 
             if (dist > 0.05) {
                 const dir = target.clone().sub(char.mesh.position).normalize();
-
-                // Move
                 char.mesh.position.add(dir.multiplyScalar(char.speed * delta));
 
-                // Rotate to face direction
                 const targetRotation = Math.atan2(dir.x, dir.z);
-
-                // Smooth rotation
                 const currentRotation = char.mesh.rotation.y;
                 let diff = targetRotation - currentRotation;
                 while (diff < -Math.PI) diff += Math.PI * 2;
@@ -198,18 +198,14 @@ export class CharacterManager {
                     char.play('walk');
                 }
             } else {
-                // Arrived at current point in path
                 if (char.pathIndex < char.path.length - 1) {
                     char.pathIndex++;
-                    console.log(`[CHAR] Moving to next path segment: ${char.pathIndex + 1}/${char.path.length}`);
                 } else {
-                    // Fully arrived at end of path
                     char.isWalking = false;
                     char.state = 'idle';
                     char.play('idle');
                     char.path = [];
                     char.pathIndex = 0;
-
                     if (char.onArrival) {
                         const cb = char.onArrival;
                         char.onArrival = null;
@@ -221,14 +217,14 @@ export class CharacterManager {
     }
 
     walkPlayerTo(path, onArrival = null) {
-        if (!this.player || !path || path.length === 0) return;
-
-        // Ensure path is an array of points
+        if (!this.player || !path) {
+            console.warn('[CHAR] Walk aborted: Invalid path or no player.');
+            return;
+        }
         this.player.path = Array.isArray(path) ? path : [path];
+        if (this.player.path.length === 0) return;
         this.player.pathIndex = 0;
         this.player.isWalking = true;
         this.player.onArrival = onArrival;
-
-        console.log(`[CHAR] Player walking on path with ${this.player.path.length} points`);
     }
 }
