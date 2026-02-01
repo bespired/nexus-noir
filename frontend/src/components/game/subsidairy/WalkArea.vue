@@ -115,5 +115,8 @@ export default {
     .three-layer.direction {
         cursor: url('/cursors/direction.svg') 0 16, auto;
     }
+    .three-layer.walk {
+        cursor: url('/cursors/walk.svg') 16 16, auto;
+    }
 }
 </style>

@@ -19,7 +19,16 @@ export class InteractionManager {
                 this.engine.store.commit('game/SET_TARGET_SPAWN_POINT', { name: gw.target_spawn_point });
             }
         } else {
-            this.engine.store.commit('game/SET_CURSOR', 'pointer');
+            // Check for walkable floor under mouse for 'walk' cursor
+            const rect = this.engine.canvas.getBoundingClientRect();
+            this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            this.raycaster.setFromCamera(this.mouse, this.engine.camera);
+            const intersects = this.raycaster.intersectObjects(this.engine.scene.children, true);
+            const isWalkable = intersects.some(i => i.object.userData.isWalkable);
+
+            this.engine.store.commit('game/SET_CURSOR', isWalkable ? 'walk' : 'pointer');
         }
     }
 
