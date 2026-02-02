@@ -158,7 +158,7 @@ const initThree = () => {
                             child.material = new THREE.MeshPhongMaterial({
                                 color: isFloor ? 0x3b82f6 : 0xd946ef,
                                 transparent: true,
-                                opacity: 0.6,
+                                opacity: 0.5,
                                 // side: THREE.DoubleSide,
                                 depthWrite: true,
                                 polygonOffset: true,
@@ -242,10 +242,17 @@ const loadPlayerPlaceholder = () => {
     threeScene.add(playerMesh);
     updatePlayerScale();
 
-    // Try to position at the first spawnpoint if available
+    // Position figure: prefer first spawnpoint, fallback to floor center
     if (scene.value['3d_spawnpoints'] && scene.value['3d_spawnpoints'].length > 0) {
         const sp = scene.value['3d_spawnpoints'][0];
-        playerMesh.position.set(sp.x, 0, sp.z);
+        playerMesh.position.set(sp.x, (1.0 * characterScale.value) / 2, sp.z);
+    } else if (floorMesh) {
+        // Fallback: Center of the floor
+        const box = new THREE.Box3().setFromObject(floorMesh);
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+        playerMesh.position.set(center.x, (1.0 * characterScale.value) / 2, center.z);
+        console.log("No spawnpoints found, positioning at floor center:", center);
     }
 };
 

@@ -291,7 +291,7 @@ const initThree = () => {
                             child.material = new THREE.MeshPhongMaterial({
                                 color: isFloor ? 0x3b82f6 : 0xd946ef,
                                 transparent: true,
-                                opacity: 0.6,
+                                opacity: 0.5,
                                 // side: THREE.DoubleSide,
                                 depthWrite: true,
                                 polygonOffset: true,
