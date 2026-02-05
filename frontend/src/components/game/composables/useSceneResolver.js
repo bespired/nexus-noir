@@ -16,8 +16,8 @@ export function useSceneResolver() {
         if (scene.type === 'vue-component') {
             path = `../subsidairy/${scene.data.component.name}.vue`;
 
-        } else if (scene.type === 'walkable-area') {
-
+        } else if (scene.type === 'walkable-area' || scene.type === 'investigation') {
+            // LATER CHANGE investigation to a new type
             path = `../subsidairy/WalkArea.vue`;
         }
 
