@@ -9,6 +9,8 @@ export class SceneManager {
         this.loader = this.createLoader();
         this.currentWorld = null;
 
+        this.ambientLight = null;
+        this.sunLight = null;
         this.setupLights();
     }
 
@@ -21,24 +23,38 @@ export class SceneManager {
     }
 
     setupLights() {
-        const ambient = new THREE.AmbientLight(0xffffff, 0.8);
-        this.engine.scene.add(ambient);
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        this.engine.scene.add(this.ambientLight);
 
-        const sun = new THREE.DirectionalLight(0xffffff, 1.2);
-        sun.position.set(5, 10, 5);
-        sun.castShadow = true;
+        this.sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        this.sunLight.position.set(5, 10, 5);
+        this.sunLight.castShadow = true;
 
         // Optimize shadow map
-        sun.shadow.mapSize.width = 1024;
-        sun.shadow.mapSize.height = 1024;
-        sun.shadow.camera.near = 0.5;
-        sun.shadow.camera.far = 50;
+        this.sunLight.shadow.mapSize.width = 1024;
+        this.sunLight.shadow.mapSize.height = 1024;
+        this.sunLight.shadow.camera.near = 0.5;
+        this.sunLight.shadow.camera.far = 50;
 
-        this.engine.scene.add(sun);
+        this.engine.scene.add(this.sunLight);
     }
 
     async loadScene(sceneData) {
         if (!sceneData || !sceneData.media) return;
+
+        // Apply lighting settings from scene data
+        const level = sceneData.data?.lighting?.lightLevel ?? 1.0;
+        const color = sceneData.data?.lighting?.lightColor || '#ffffff';
+        const threeColor = new THREE.Color(color);
+
+        if (this.ambientLight) {
+            this.ambientLight.intensity = 0.8 * level;
+            this.ambientLight.color.copy(threeColor);
+        }
+        if (this.sunLight) {
+            this.sunLight.intensity = 1.2 * level;
+            this.sunLight.color.copy(threeColor);
+        }
 
         // Cleanup previous world
         if (this.currentWorld) {

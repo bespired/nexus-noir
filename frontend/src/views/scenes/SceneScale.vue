@@ -49,6 +49,10 @@ const isGlbLoaded = ref(false);
 const floorFound = ref(false);
 
 const characterScale = ref(1.0);
+const lightLevel = ref(1.0);
+const lightColor = ref('#ffffff');
+
+let ambientLight, dirLight;
 
 const fetchInitialData = async () => {
     try {
@@ -63,6 +67,11 @@ const fetchInitialData = async () => {
             characterScale.value = scene.value.character_scale;
         } else {
             characterScale.value = 1.5; // Default from CharacterManager
+        }
+
+        if (scene.value.data && scene.value.data.lighting) {
+            lightLevel.value = scene.value.data.lighting.lightLevel ?? 1.0;
+            lightColor.value = scene.value.data.lighting.lightColor || '#ffffff';
         }
 
         nextTick(() => {
@@ -126,11 +135,11 @@ const initThree = () => {
     renderer.setPixelRatio(window.devicePixelRatio);
     canvasContainer.value.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+    ambientLight = new THREE.AmbientLight(new THREE.Color(lightColor.value), 0.8 * lightLevel.value);
     threeScene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-    dirLight.position.set(5, 10, 7);
+    dirLight = new THREE.DirectionalLight(new THREE.Color(lightColor.value), 1.2 * lightLevel.value);
+    dirLight.position.set(5, 10, 5); // Engine default position
     threeScene.add(dirLight);
 
     raycaster = new THREE.Raycaster();
@@ -151,15 +160,15 @@ const initThree = () => {
             glbModel.traverse((child) => {
                 if (child.isMesh) {
                     if (child.material) {
-                        const isFloor = child.name.toLowerCase().includes('floor');
-                        const isMask = child.name.toLowerCase().includes('mask');
+                        const name = child.name.toLowerCase();
+                        const isFloor = name.includes('floor') || name.includes('walk') || name.includes('plane');
+                        const isMask = name.includes('mask');
 
                         if (isFloor || isMask) {
-                            child.material = new THREE.MeshPhongMaterial({
+                            child.material = new THREE.MeshBasicMaterial({
                                 color: isFloor ? 0x3b82f6 : 0xd946ef,
                                 transparent: true,
-                                opacity: 0.5,
-                                // side: THREE.DoubleSide,
+                                opacity: 0.4,
                                 depthWrite: true,
                                 polygonOffset: true,
                                 polygonOffsetFactor: -1,
@@ -171,11 +180,11 @@ const initThree = () => {
                                 floorFound.value = true;
                             }
                         } else {
+                            // Ensure other meshes are faint so they don't block the view
                             child.material = child.material.clone();
                             child.material.transparent = true;
-                            child.material.opacity = 0.3;
+                            child.material.opacity = 0.2;
                             child.material.depthWrite = true;
-                            // child.material.side = THREE.DoubleSide;
                         }
                     }
                 }
@@ -242,6 +251,9 @@ const loadPlayerPlaceholder = () => {
     threeScene.add(playerMesh);
     updatePlayerScale();
 
+    // Reset character rotation to face "forward" (towards camera/backwards in Z)
+    playerMesh.rotation.y = Math.PI;
+
     // Position figure: prefer first spawnpoint, fallback to floor center
     if (scene.value['3d_spawnpoints'] && scene.value['3d_spawnpoints'].length > 0) {
         const sp = scene.value['3d_spawnpoints'][0];
@@ -293,7 +305,11 @@ const handleSave = async () => {
     try {
         const updatedData = {
             ...(scene.value.data || {}),
-            character_scale: characterScale.value
+            character_scale: characterScale.value,
+            lighting: {
+                lightLevel: lightLevel.value,
+                lightColor: lightColor.value
+            }
         };
 
         const response = await fetch(`/api/scenes/${sceneId}`, {
@@ -348,9 +364,23 @@ const handleResize = () => {
 
     if (width === 0 || height === 0) return;
 
-    threeCamera.aspect = width / height;
-    threeCamera.updateProjectionMatrix();
+    // Matches NexusEngine.js resize logic for perfect "fSpy" alignment
+    const VIEW_WIDTH = 1218;
+    const VIEW_HEIGHT = 832;
 
+    const scale = Math.max(width / VIEW_WIDTH, height / VIEW_HEIGHT);
+    const fullW = VIEW_WIDTH * scale;
+    const fullH = VIEW_HEIGHT * scale;
+    const offsetX = (fullW - width) / 2;
+    const offsetY = (fullH - height) / 2;
+
+    if (threeCamera.setViewOffset) {
+        threeCamera.setViewOffset(fullW, fullH, offsetX, offsetY, width, height);
+    } else {
+        threeCamera.aspect = width / height;
+    }
+    
+    threeCamera.updateProjectionMatrix();
     renderer.setSize(width, height);
 
     if (cameraDebugInfo.value.found) {
@@ -387,6 +417,44 @@ onUnmounted(() => {
 watch(characterScale, () => {
     updatePlayerScale();
 });
+
+watch(lightLevel, (newVal) => {
+    if (ambientLight) ambientLight.intensity = 0.8 * newVal;
+    if (dirLight) dirLight.intensity = 1.2 * newVal;
+});
+
+watch(lightColor, (newVal) => {
+    const color = new THREE.Color(newVal);
+    if (ambientLight) ambientLight.color.copy(color);
+    if (dirLight) dirLight.color.copy(color);
+});
+
+const sampleImageColor = () => {
+    if (!backdropUrl.value) return;
+
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 1, 1);
+        const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+        
+        // Convert RGB to HEX
+        const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        lightColor.value = hex;
+
+        toast.add({ 
+            severity: 'info', 
+            summary: 'Color Sampled', 
+            detail: `Atmosphere matched to ${hex}`, 
+            life: 2000 
+        });
+    };
+    img.src = backdropUrl.value;
+};
 
 </script>
 
@@ -508,6 +576,38 @@ watch(characterScale, () => {
                             </div>
                         </div>
                     </div>
+
+                    <div class="scale-card">
+                        <div class="scale-card__header">
+                             <i class="pi pi-sun"></i>
+                             <span>LIGHTING SETTINGS</span>
+                        </div>
+                        <div class="scale-card__content">
+                            <div class="field">
+                                <label>LIGHT LEVEL ({{ lightLevel.toFixed(1) }})</label>
+                                <div class="slider-row">
+                                    <Slider v-model="lightLevel" :min="0" :max="5" :step="0.1" class="noir-slider" />
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <label>LIGHT COLOR</label>
+                                <div class="color-sample-row">
+                                    <Button 
+                                        label="SAMPLE" 
+                                        icon="pi pi-palette" 
+                                        @click="sampleImageColor" 
+                                        class="sample-btn" 
+                                        size="small"
+                                    />
+                                    <div class="color-preview-container">
+                                        <input type="color" v-model="lightColor" class="noir-color-input" />
+                                        <span class="color-hex">{{ lightColor.toUpperCase() }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -583,13 +683,17 @@ watch(characterScale, () => {
 
 .scene-edit-grid {
     display: grid;
-    grid-template-columns: 5fr 2fr;
-    gap: 1rem;
+    grid-template-columns: 1fr 350px;
+    gap: 1.5rem;
     flex: 1;
+    min-height: 0;
 }
 
 .three-column {
     min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .viewport-container {
@@ -768,6 +872,59 @@ watch(characterScale, () => {
 
 :deep(.p-slider-range) {
     background: var(--color-noir-accent) !important;
+}
+
+.color-sample-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sample-btn {
+    background: rgba(59, 130, 246, 0.1) !important;
+    border: 1px solid var(--color-noir-accent) !important;
+    color: var(--color-noir-accent) !important;
+    font-size: 0.7rem !important;
+    font-weight: bold;
+}
+
+.sample-btn:hover {
+    background: rgba(59, 130, 246, 0.2) !important;
+}
+
+.color-preview-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #1f2937;
+    flex: 1;
+}
+
+.noir-color-input {
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.noir-color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.noir-color-input::-webkit-color-swatch {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.color-hex {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: #fff;
 }
 
 .loading-state {

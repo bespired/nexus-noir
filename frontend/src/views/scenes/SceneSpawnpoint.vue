@@ -278,21 +278,17 @@ const initThree = () => {
 
             // Search for floor and cameras, and set transparency
             glbModel.traverse((child) => {
-                console.log(child)
                 if (child.isMesh) {
-                    console.log("Found mesh:", child.name);
-
-                    // Apply transparency and colors
                     if (child.material) {
-                        const isFloor = child.name.toLowerCase().includes('floor');
-                        const isMask = child.name.toLowerCase().includes('mask');
+                        const name = child.name.toLowerCase();
+                        const isFloor = name.includes('floor') || name.includes('walk') || name.includes('plane');
+                        const isMask = name.includes('mask');
 
                         if (isFloor || isMask) {
-                            child.material = new THREE.MeshPhongMaterial({
+                            child.material = new THREE.MeshBasicMaterial({
                                 color: isFloor ? 0x3b82f6 : 0xd946ef,
                                 transparent: true,
-                                opacity: 0.5,
-                                // side: THREE.DoubleSide,
+                                opacity: 0.4,
                                 depthWrite: true,
                                 polygonOffset: true,
                                 polygonOffsetFactor: -1,
@@ -302,17 +298,12 @@ const initThree = () => {
                             if (isFloor) {
                                 floorMesh = child;
                                 floorFound.value = true;
-                                console.log("Floor detected & colored Blue:", child.name);
-                            } else {
-                                console.log("Mask detected & colored Magenta:", child.name);
                             }
                         } else {
-                            // General machine mesh
                             child.material = child.material.clone();
                             child.material.transparent = true;
-                            child.material.opacity = 0.3;
+                            child.material.opacity = 0.2;
                             child.material.depthWrite = true;
-                            // child.material.side = THREE.DoubleSide;
                         }
                     }
                 }
@@ -600,22 +591,32 @@ const handleDeleteScene = async () => {
 };
 
 const handleResize = () => {
-    if (!canvasContainer.value || !renderer) return;
+    if (!canvasContainer.value || !renderer || !threeCamera) return;
 
     const width = canvasContainer.value.clientWidth;
     const height = canvasContainer.value.clientHeight;
 
     if (width === 0 || height === 0) return;
 
-    // IMPORTANT for fSpy: The camera aspect MUST match the image aspect.
-    // However, if the viewport aspect matches the image aspect (via CSS),
-    // then width / height is exactly backdropAspectRatio.value.
-    threeCamera.aspect = width / height;
-    threeCamera.updateProjectionMatrix();
+    // Matches NexusEngine.js resize logic for perfect "fSpy" alignment
+    const VIEW_WIDTH = 1218;
+    const VIEW_HEIGHT = 832;
 
+    const scale = Math.max(width / VIEW_WIDTH, height / VIEW_HEIGHT);
+    const fullW = VIEW_WIDTH * scale;
+    const fullH = VIEW_HEIGHT * scale;
+    const offsetX = (fullW - width) / 2;
+    const offsetY = (fullH - height) / 2;
+
+    if (threeCamera.setViewOffset) {
+        threeCamera.setViewOffset(fullW, fullH, offsetX, offsetY, width, height);
+    } else {
+        threeCamera.aspect = width / height;
+    }
+    
+    threeCamera.updateProjectionMatrix();
     renderer.setSize(width, height);
 
-    // Update debug info
     if (cameraDebugInfo.value.found) {
         cameraDebugInfo.value.containerAspect = width / height;
     }
@@ -851,14 +852,14 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
                                 </div>
                             </div>
 
-                            <div class="field-row">
-                                <div class="field half">
-                                    <label>X POSITION</label>
-                                    <InputNumber v-model="sp.x" :minFractionDigits="2" :maxFractionDigits="3" class="noir-input w-full" />
+                            <div class="reference-info">
+                                <div class="info-row">
+                                    <span class="label">X POSITION:</span>
+                                    <span class="value">{{ sp.x.toFixed(3) }}</span>
                                 </div>
-                                <div class="field half">
-                                    <label>Z POSITION</label>
-                                    <InputNumber v-model="sp.z" :minFractionDigits="2" :maxFractionDigits="3" class="noir-input w-full" />
+                                <div class="info-row">
+                                    <span class="label">Z POSITION:</span>
+                                    <span class="value">{{ sp.z.toFixed(3) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -938,13 +939,17 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
 
 .scene-edit-grid {
     display: grid;
-    grid-template-columns: 5fr 2fr;
-    gap: 1rem;
+    grid-template-columns: 1fr 350px;
+    gap: 1.5rem;
     flex: 1;
+    min-height: 0;
 }
 
 .three-column {
     min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .viewport-container {
@@ -1252,6 +1257,35 @@ watch(() => scene.value?.['3d_spawnpoints'], () => {
 
 :deep(.p-slider-range) {
     background: var(--color-noir-accent) !important;
+}
+
+.reference-info {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.75rem;
+    border-radius: 4px;
+    border: 1px solid #1f2937;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-row .label {
+    font-size: 0.65rem;
+    color: var(--color-noir-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.info-row .value {
+    font-size: 0.8rem;
+    font-family: var(--font-mono);
+    color: #fff;
 }
 
 .camera-debug-overlay {
