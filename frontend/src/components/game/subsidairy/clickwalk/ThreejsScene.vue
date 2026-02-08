@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, ref, computed, watch, shallowRef, nextTick } from 'vue';
+import { onMounted, onUnmounted, ref, computed, watch, shallowRef, nextTick, provide } from 'vue';
 import { useStore } from 'vuex';
 import { NexusEngine } from '../../engine/NexusEngine';
 import { useSFXManager } from '../../composables/useSFXManager';
@@ -8,6 +8,9 @@ const store = useStore();
 const canvasRef = ref(null);
 const engine = shallowRef(null);
 const { playSoundByTag } = useSFXManager();
+
+// Provide engine to children (like DialogLayer)
+provide('engine', engine);
 
 const init = async () => {
     if (!canvasRef.value) return;
@@ -77,7 +80,28 @@ const handleSceneChange = async (scene) => {
     }
 
     // Spawn NPCs from scene data
-    // (To be implemented: engine.value.characters.spawnNPCs(scene.npcs))
+    // NPCs can be in a dedicated 'npcs' array OR in '3d_spawnpoints' (filter by type: 'npc')
+    let allNpcs = [];
+    if (scene.npcs && Array.isArray(scene.npcs)) {
+        allNpcs = [...allNpcs, ...scene.npcs];
+    }
+    if (scene['3d_spawnpoints'] && Array.isArray(scene['3d_spawnpoints'])) {
+        const fromSpawnpoints = scene['3d_spawnpoints']
+            .filter(sp => sp.type === 'npc' && sp.personage_id)
+            .map(sp => ({
+                character_id: sp.personage_id,
+                x: sp.x,
+                y: sp.y,
+                z: sp.z,
+                direction: sp.direction || 0
+            }));
+        allNpcs = [...allNpcs, ...fromSpawnpoints];
+    }
+
+    if (allNpcs.length > 0) {
+        console.log(`[SPAWN] Found ${allNpcs.length} NPCs in scene (Mixed sources)`);
+        await engine.value.characters.spawnNPCs(allNpcs);
+    }
 
     if (engine.value.debug) {
         engine.value.debug.refresh();
@@ -145,11 +169,35 @@ const cursor = computed(() => store.state.game.cursor);
 </script>
 
 <template>
-    <canvas ref="canvasRef"
-         class="three-layer"
-        :class="cursor"
-        @mousemove="handleCanvasMouseMove"
-        @click="handleCanvasClick"
-    />
+    <div class="engine-container">
+        <canvas ref="canvasRef"
+             class="three-layer"
+            :class="cursor"
+            @mousemove="handleCanvasMouseMove"
+            @click="handleCanvasClick"
+        />
+        <slot v-if="engine" />
+    </div>
 </template>
+
+<style scoped>
+.engine-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.engine-container > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.three-layer {
+    z-index: 1;
+}
+</style>
 

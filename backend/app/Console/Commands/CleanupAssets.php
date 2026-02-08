@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Console\Commands;
 
 use App\Models\Config;
@@ -10,57 +9,100 @@ use Illuminate\Support\Facades\Storage;
 
 class CleanupAssets extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'app:cleanup-assets {--force : Actually delete the files and records} {--dry-run : Show what would be deleted (default)}';
+    protected $signature   = 'app:cleanup-assets {--force : Actually delete the files and records} {--dry-run : Show what would be deleted (default)}';
+    protected $description = 'Cleanup media duplicates, orphans, and remove unreferenced assets from storage';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Cleanup media duplicates and remove unreferenced assets from storage';
-
-    /**
-     * Execute the console command.
-     */
     public function handle()
     {
         $force = $this->option('force');
 
-        if (!$force) {
-            $this->info('DRY RUN MODE - No changes will be made to the database or filesystem. Use --force to actually delete.');
+        $this->info('');
+        if (! $force) {
+            $this->info('DRY RUN MODE - No changes will be made. Use --force to execute.');
         }
 
+        // 1. Remove DB records pointing to non-existent models
+        $this->cleanupOrphans($force);
+
+        // 2. Remove DB records that are duplicates
         $this->cleanupMediaDuplicates($force);
+
+        // 3. Remove Files that are no longer referenced by ANY DB record
+        // (This naturally cleans up files from step 1 & 2)
         $this->cleanupUnreferencedAssets($force);
 
-        if (!$force) {
-            $this->info('Dry run completed. Review the list above before running with --force.');
+        if (! $force) {
+            $this->info('Dry run completed. Review the list above.');
         } else {
             $this->info('Cleanup completed.');
         }
     }
 
     /**
-     * Deduplicate media records in the database.
+     * Remove Media records where the parent (imageable) no longer exists.
      */
+    private function cleanupOrphans($force)
+    {
+        $this->info('--- Checking for orphaned media records (deleted parents) ---');
+
+        // List all your morphable models here
+        $morphables = [
+            \App\Models\Clue::class,
+            \App\Models\Sector::class,
+            \App\Models\Scene::class,
+            \App\Models\Character::class,
+            \App\Models\Animation::class,
+            \App\Models\Sound::class,
+            \App\Models\Music::class,
+        ];
+
+        $mediaTable = (new Media)->getTable(); // Likely 'mediax' based on your dump
+
+        foreach ($morphables as $modelClass) {
+            // Create instance to get the specific table name (e.g., 'sounds', 'scenes')
+            $parentInstance = new $modelClass;
+            $parentTable    = $parentInstance->getTable();
+
+            // Find Media where:
+            // 1. Type matches this model
+            // 2. The ID does NOT exist in the parent table
+            $orphans = Media::where('imageable_type', $modelClass)
+                ->whereNotExists(function ($query) use ($parentTable, $mediaTable) {
+                    $query->select(DB::raw(1))
+                        ->from($parentTable)
+                        ->whereColumn($parentTable . '.id', $mediaTable . '.imageable_id');
+                })
+                ->get();
+
+            if ($orphans->isEmpty()) {
+                continue;
+            }
+
+            foreach ($orphans as $orphan) {
+                $this->warn("Orphan Found: Media #{$orphan->id} points to missing {$modelClass} #{$orphan->imageable_id}");
+
+                if ($force) {
+                    $this->error("DELETING Media ID: {$orphan->id}");
+                    $orphan->delete();
+                } else {
+                    $this->line("WOULD DELETE Media ID: {$orphan->id}");
+                }
+            }
+        }
+    }
+
     private function cleanupMediaDuplicates($force)
     {
         $this->info('--- Checking for duplicate media records ---');
 
-        // Group by type+imageable_type+imageable_id
-        $duplicates = Media::select('type', 'imageable_type', 'imageable_id', DB::raw('count(*) as count'))
+        $duplicates = Media::query()
+            ->select('type', 'imageable_type', 'imageable_id', DB::raw('count(*) as count'))
             ->groupBy('type', 'imageable_type', 'imageable_id')
             ->having('count', '>', 1)
             ->get();
 
         if ($duplicates->isEmpty()) {
             $this->info('No duplicate media records found.');
-            return;
         }
 
         foreach ($duplicates as $duplicate) {
@@ -71,40 +113,35 @@ class CleanupAssets extends Command
                 ->orderBy('id', 'desc')
                 ->get();
 
-            // Keep the first one, delete the others
             $keep = $records->shift();
-            
+
             $this->warn("Duplicate group: {$duplicate->imageable_type} #{$duplicate->imageable_id} ({$duplicate->type}) - Found {$duplicate->count} records.");
-            $this->line("Keeping Media ID: {$keep->id} (Created: {$keep->created_at})");
+            $this->line("Keeping Media ID: {$keep->id}");
 
             foreach ($records as $record) {
                 if ($force) {
-                    $this->error("DELETING Media ID: {$record->id} (Path: {$record->filepad})");
+                    $this->error("DELETING Media ID: {$record->id}");
                     $record->delete();
                 } else {
-                    $this->line("WOULD DELETE Media ID: {$record->id} (Path: {$record->filepad})");
+                    $this->line("WOULD DELETE Media ID: {$record->id}");
                 }
             }
         }
     }
 
-    /**
-     * Delete files from storage that are not referenced in the database.
-     */
     private function cleanupUnreferencedAssets($force)
     {
         $this->info('--- Scanning storage for unreferenced assets ---');
 
-        // 1. Get all referenced paths from Media
         $mediaPaths = Media::pluck('filepad')->toArray();
 
-        // 2. Get all referenced paths from Configs
         $configPaths = [];
         Config::all()->each(function ($config) use (&$configPaths) {
             $val = $config->value;
-            if (!$val) return;
+            if (! $val) {
+                return;
+            }
 
-            // Try to decode if it's JSON
             $decoded = json_decode($val, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 $configPaths = array_merge($configPaths, $this->extractPathsFromArray($decoded));
@@ -115,44 +152,37 @@ class CleanupAssets extends Command
 
         $referencedPaths = array_unique(array_merge($mediaPaths, $configPaths));
 
-        // Normalize referenced paths: trim slashes and ensure they are searchable
+        // Normalize
         $normalizedReferences = [];
         foreach ($referencedPaths as $path) {
-            $p = ltrim($path, '/');
+            $p                        = ltrim($path, '/');
             $normalizedReferences[$p] = true;
-            // Also add version with 3d/ prefix if it doesn't have it, and vice versa
             if (str_starts_with($p, 'glb/') || str_starts_with($p, 'fbx/')) {
                 $normalizedReferences['3d/' . $p] = true;
             }
+
             if (str_starts_with($p, '3d/')) {
                 $normalizedReferences[substr($p, 3)] = true;
             }
+
         }
 
-        // 3. Define target directories to scan
         $directories = [
-            '3d/fbx',
-            '3d/glb',
-            'artwork/sector',
-            'artwork/scene',
-            'artwork/character',
-            'artwork/clue',
-            'artwork/animation', 
+            'audio/sfx', 'audio/music', '3d/fbx', '3d/glb',
+            'artwork/sector', 'artwork/scene', 'artwork/character', 'artwork/clue', 'artwork/animation',
         ];
 
-        $disk = Storage::disk('public');
+        $disk          = Storage::disk('public');
         $filesToDelete = [];
 
         foreach ($directories as $directory) {
-            if (!$disk->exists($directory)) {
+            if (! $disk->exists($directory)) {
                 continue;
             }
 
-            $allFiles = $disk->allFiles($directory);
-
-            foreach ($allFiles as $file) {
+            foreach ($disk->allFiles($directory) as $file) {
                 $f = ltrim($file, '/');
-                if (!isset($normalizedReferences[$f])) {
+                if (! isset($normalizedReferences[$f])) {
                     $filesToDelete[] = $file;
                 }
             }
@@ -175,9 +205,6 @@ class CleanupAssets extends Command
         }
     }
 
-    /**
-     * Recursively extract strings from an array that might be paths.
-     */
     private function extractPathsFromArray($array)
     {
         $paths = [];
@@ -187,6 +214,7 @@ class CleanupAssets extends Command
             } elseif (is_array($item)) {
                 $paths = array_merge($paths, $this->extractPathsFromArray($item));
             }
+
         }
         return $paths;
     }

@@ -18,9 +18,10 @@ useStageManager(areaRef);
     <div class="walk-area" ref="areaRef">
         <div class="stage-container" :style="stageStyle">
             <background-image />
-            <threejs-scene    />
-            <gateway-layer    />
-            <dialog-layer     />
+            <threejs-scene>
+                <gateway-layer />
+                <dialog-layer />
+            </threejs-scene>
         </div>
     </div>
 </template>

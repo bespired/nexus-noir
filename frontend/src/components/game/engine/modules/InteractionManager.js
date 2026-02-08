@@ -126,7 +126,33 @@ export class InteractionManager {
             }
             store.dispatch('game/loadScene', { sceneId: gw.target_scene_id });
         } else if (gw.type === 'trigger' && gw.action_id) {
-            store.dispatch('game/triggerAction', { actionId: gw.action_id });
+            // Check outcomes and triggers for a target character to pass as 'owner'
+            const outcome = gw.outcomes?.[0] || {};
+            const trigger = gw.triggers?.[0] || {};
+            const data = gw.data || {};
+
+            const targetCharId = outcome.target_character_id ||
+                outcome.character_id ||
+                outcome.target_character ||
+                trigger.target_character_id ||
+                trigger.character_id ||
+                trigger.target_character ||
+                data.target_character_id ||
+                data.character_id ||
+                gw.target_character_id ||
+                gw.character_id ||
+                gw.target_character;
+
+            console.log(`[ACTION] Triggering with Owner Context:`, {
+                actionId: gw.action_id,
+                targetCharId,
+                gateway: JSON.parse(JSON.stringify(gw))
+            });
+
+            store.dispatch('game/triggerAction', {
+                actionId: gw.action_id,
+                ownerId: targetCharId
+            });
         }
     }
 

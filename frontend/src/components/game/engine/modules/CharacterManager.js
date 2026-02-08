@@ -34,6 +34,7 @@ export class CharacterManager {
         console.log(`[CHAR] Spawning Player: ${personage.name}`, personage);
         const character = await this.loadCharacter(url, personage);
         this.player = character;
+        this.player.id = personage.id; // Ensure ID is mapped for lookAt logic
 
         const sceneScale = this.engine.store.state.game.currentScene?.data?.character_scale ||
             this.engine.store.state.game.currentScene?.character_scale ||
@@ -52,6 +53,79 @@ export class CharacterManager {
         this.player.play('idle');
 
         return this.player;
+    }
+
+    async spawnNPCs(npcConfigs) {
+        // Clear existing NPCs
+        this.npcs.forEach(npc => this.engine.scene.remove(npc.mesh));
+        this.npcs.clear();
+
+        if (!npcConfigs || !Array.isArray(npcConfigs) || npcConfigs.length === 0) {
+            console.log('[CHAR] No NPCs to spawn for this scene.');
+            return;
+        }
+
+        console.log(`[CHAR] Spawning ${npcConfigs.length} NPCs...`, npcConfigs);
+        const allChars = this.engine.store.state.game.characters;
+
+        for (const config of npcConfigs) {
+            // Use loose equality as IDs might be strings from JSON but numbers in store (or vice versa)
+            const resolvedCharId = config.character_id || config.personage_id;
+            const charData = allChars.find(c => c.id == resolvedCharId);
+
+            if (!charData) {
+                console.warn(`[CHAR] Character data not found for NPC config:`, config, `(ID: ${config.character_id})`);
+                console.log(`[CHAR] Available character IDs:`, allChars.map(c => c.id));
+                continue;
+            }
+
+            const glb = charData.media?.find(m => m.filepad?.endsWith('.glb')) || charData.threefile;
+            const url = glb ? `/storage/${glb.filepad || 'glb/' + glb}` : null;
+            if (!url) continue;
+
+            const npc = await this.loadCharacter(url, charData);
+            npc.id = charData.id;
+            npc.slug = charData.slug || charData.name.toLowerCase().replace(/ /g, '-');
+
+            const sceneScale = this.engine.store.state.game.currentScene?.data?.character_scale ||
+                this.engine.store.state.game.currentScene?.character_scale ||
+                1.5;
+
+            npc.scale = sceneScale;
+            npc.mesh.scale.multiplyScalar(sceneScale);
+            npc.speed = 1.0 * sceneScale;
+
+            npc.mesh.position.set(config.x, config.y, config.z);
+            npc.mesh.rotation.y = THREE.MathUtils.degToRad(config.direction || 0);
+
+            this.engine.scene.add(npc.mesh);
+            npc.play('idle');
+            this.npcs.set(charData.id, npc);
+            console.log(`[CHAR] Spawned NPC: ${charData.name} at`, config);
+        }
+    }
+
+    getCharacter(idOrSlug) {
+        if (!idOrSlug) return null;
+        const lookup = String(idOrSlug).toLowerCase();
+
+        if (lookup === 'player') return this.player;
+
+        // Try simple ID match (using Map)
+        if (this.npcs.has(idOrSlug)) return this.npcs.get(idOrSlug);
+
+        // Try numeric ID match
+        const numericId = parseInt(idOrSlug);
+        if (!isNaN(numericId) && this.npcs.has(numericId)) return this.npcs.get(numericId);
+
+        // Try loose search (id, slug, name)
+        for (const npc of this.npcs.values()) {
+            if (String(npc.id) === String(idOrSlug)) return npc;
+            if (npc.slug && npc.slug.toLowerCase() === lookup) return npc;
+            // Fallback for character objects that might have been indexed differently
+        }
+
+        return null;
     }
 
     async loadCharacter(url, data) {
@@ -76,9 +150,9 @@ export class CharacterManager {
                 gltf.animations.forEach(clip => {
                     const name = clip.name.toLowerCase();
                     let key = null;
-                    if (name.includes('walk')) key = 'walk';
-                    else if (name.includes('idle')) key = 'idle';
-                    else if (name.includes('talk')) key = 'talk';
+                    if (name.includes('walk') || name.includes('run')) key = 'walk';
+                    else if (name.includes('idle') || name.includes('stand')) key = 'idle';
+                    else if (name.includes('talk') || name.includes('speak') || name.includes('dialogue')) key = 'talk';
 
                     if (key) {
                         this.engine.animations.filterFingerTracks(clip);
@@ -156,18 +230,12 @@ export class CharacterManager {
             const diff = targetY - currentY;
 
             // Thresholds: 0.5m down (MAX_DROP), 0.5m up (MAX_RISE)
-            // This allows for stairs and ramps while preventing "teleporting" 
-            // to floors far above/below when walking on edges.
             const threshold = 0.5;
 
             if (Math.abs(diff) < threshold) {
                 char.mesh.position.y = targetY;
             } else {
-                // If the "best" floor is too far away, we only snap to it if it's 
-                // the ONLY option and we're somehow way off (e.g. initial spawn).
-                // But generally, we stick to the current level to avoid "falling".
                 if (walkableIntersects.length === 1 && Math.abs(diff) < 2.0) {
-                    // Fallback for larger ramps if no other floor is nearby
                     char.mesh.position.y = targetY;
                 }
             }
@@ -216,15 +284,19 @@ export class CharacterManager {
         }
     }
 
-    walkPlayerTo(path, onArrival = null) {
-        if (!this.player || !path) {
-            console.warn('[CHAR] Walk aborted: Invalid path or no player.');
+    walkCharacterTo(char, path, onArrival = null) {
+        if (!char || !path) {
+            console.warn('[CHAR] Walk aborted: Invalid path or no character.');
             return;
         }
-        this.player.path = Array.isArray(path) ? path : [path];
-        if (this.player.path.length === 0) return;
-        this.player.pathIndex = 0;
-        this.player.isWalking = true;
-        this.player.onArrival = onArrival;
+        char.path = Array.isArray(path) ? path : [path];
+        if (char.path.length === 0) return;
+        char.pathIndex = 0;
+        char.isWalking = true;
+        char.onArrival = onArrival;
+    }
+
+    walkPlayerTo(path, onArrival = null) {
+        this.walkCharacterTo(this.player, path, onArrival);
     }
 }

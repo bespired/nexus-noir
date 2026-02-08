@@ -231,12 +231,11 @@ export default {
             dispatch('loadScene', { sceneId: state.configs.opening_scene })
         },
 
-        triggerAction({ commit }, { actionId }) {
-            console.log(`[STORE] Triggering Action: ${actionId}`);
+        triggerAction({ commit }, payload) {
+            const { actionId, ownerId } = payload;
+            console.log(`[STORE] Triggering Action: ${actionId} (Owner: ${ownerId})`);
             commit('DEBUGGER_INFO', `ACTION TRIGGERED: ${actionId}`);
-            // This can be intercepted by a Dialogue/Action module in the engine
-            // or by any component watching state.lastTriggeredActionId
-            commit('SET_LAST_TRIGGERED_ACTION_ID', actionId);
+            commit('SET_LAST_TRIGGERED_ACTION_ID', { actionId, ownerId });
         }
     }
 }
