@@ -31,9 +31,9 @@ gives you
 
 #### Install Nexus Noir assets
 
-Download zip (50Mb).
+Download zip (61Mb).
 
-https://drive.google.com/file/d/1IqEePYljQjZFl_BmHobh4M2ygna-62lX/view?usp=drivesdk
+https://drive.google.com/file/d/1dFSVMweeL8ByYi5Z8o14yJAv_icXz0gR/view?usp=drivesdk
 
 Put it in the backup folder.
 Then run
