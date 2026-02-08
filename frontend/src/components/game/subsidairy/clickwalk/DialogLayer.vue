@@ -2,12 +2,19 @@
 import { ref, computed, watch, onMounted, inject } from 'vue';
 import { useStore } from 'vuex';
 
-const store = useStore();
+const store  = useStore();
 const engine = inject('engine');
 
 const activeDialog = computed(() => store.state.game.activeDialog);
-const currentNode = computed(() => activeDialog.value?.currentNode);
-const currentChoices = computed(() => currentNode.value?.choices || currentNode.value?.answers || []);
+const currentNode  = computed(() => activeDialog.value?.currentNode);
+const currentChoices = computed(() =>
+    currentNode.value?.choices || currentNode.value?.answers || []);
+
+const stage = computed(() => store.state.game.stage);
+const stagestyle = computed(() => `
+    width:  ${stage.value.width}px;
+    height: ${stage.value.height}px;
+`);
 
 const displayedText = ref('');
 const isTyping = ref(false);
@@ -15,11 +22,11 @@ let typingInterval = null;
 
 const startTyping = (text) => {
     if (!text) return;
-    
+
     clearInterval(typingInterval);
     displayedText.value = '';
     isTyping.value = true;
-    
+
     let index = 0;
     typingInterval = setInterval(() => {
         if (index < text.length) {
@@ -72,11 +79,11 @@ const closeDialog = () => {
 
 <template>
     <transition name="dialog-fade">
-        <div v-if="activeDialog" class="dialog-overlay">
+        <div v-if="activeDialog" class="dialog-overlay" :style="stagestyle">
             <div class="dialog-container">
                 <!-- Header / Portrait placeholder -->
                 <div class="dialog-header">
-                    <span class="signal-indicator">SIGNAL_ACTIVE</span>
+                    <!-- <span class="signal-indicator">SIGNAL_ACTIVE</span> -->
                     <h3 class="character-name">{{ activeDialog.characterName || activeDialog.title || 'ENCRYPTED_SIGNATURE' }}</h3>
                 </div>
 
@@ -89,8 +96,8 @@ const closeDialog = () => {
 
                 <!-- Choices -->
                 <div v-if="!isTyping" class="dialog-choices">
-                    <div 
-                        v-for="(choice, index) in currentChoices" 
+                    <div
+                        v-for="(choice, index) in currentChoices"
                         :key="index"
                         class="choice-item"
                         @click="handleChoice(choice)"
@@ -100,7 +107,7 @@ const closeDialog = () => {
                     </div>
 
                     <!-- Fallback / Close if no choices -->
-                    <div 
+                    <div
                         v-if="currentChoices.length === 0"
                         class="choice-item close"
                         @click="closeDialog"
@@ -121,28 +128,25 @@ const closeDialog = () => {
 
 <style scoped>
 .dialog-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 35%; /* Bottom portion of the screen */
-    background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 70%, transparent 100%);
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    padding-bottom: 40px;
     z-index: 1000;
     pointer-events: auto; /* Catch clicks */
+    align-content: center;
 }
 
 .dialog-container {
     width: 80%;
     max-width: 900px;
     color: #fff;
+    background: linear-gradient(to top,
+        rgba(0, 0, 0, 0.70) 0%, rgba(0, 0, 0, 0.25) 70%, transparent 100%);
     font-family: 'Wallace', 'Courier New', Courier, monospace;
     display: flex;
     flex-direction: column;
     gap: 15px;
+    padding: 20px;
+    margin-left: auto;
+    margin-right: auto;
+    transform: translateY(50%);
 }
 
 .dialog-header {
@@ -173,7 +177,7 @@ const closeDialog = () => {
 }
 
 .dialog-text {
-    font-size: 1.2rem;
+    font-size: 1.5vw;
     line-height: 1.5;
     margin: 0;
     letter-spacing: 0.05em;
@@ -196,6 +200,7 @@ const closeDialog = () => {
     cursor: pointer;
     display: flex;
     gap: 15px;
+    align-items: anchor-center;
     padding: 8px 15px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid transparent;
@@ -214,7 +219,7 @@ const closeDialog = () => {
 }
 
 .choice-text {
-    font-size: 0.95rem;
+    font-size: 1.25vw;
     letter-spacing: 0.1em;
     text-transform: uppercase;
 }

@@ -3,9 +3,10 @@ import { computed } from 'vue';
 import { useStore } from 'vuex';
 
 const store = useStore();
-const gateways  = computed(() => store.state.game.currentScene?.['2d_gateways'] || []);
-const showDebug = computed(() => store.state.game.debug);
+const gateways  = computed(() =>
+    store.state.game.currentScene?.['2d_gateways'] || []);
 
+const showDebug = computed(() => store.state.game.debug);
 const inventory = computed(() => store.state.game.inventory || []);
 
 const stage = computed(() => store.state.game.stage);
@@ -42,7 +43,10 @@ const active = (gw) => {
 </script>
 
 <template>
-    <div class="area-layer" :class="{hidden:!showDebug}" :style="stagestyle">
+    <div class="area-layer"
+        :class="{hidden:!showDebug}"
+        :style="stagestyle"
+    >
         <div
             v-for="(gw, index) in gateways"
             class="gateway-rect"
