@@ -101,7 +101,7 @@ const nextScene = () => {
 </style>
 
 <template>
-    <div class="titles-container" @click="nextScene" >
+    <div class="titles-container" @click="nextScene" data-sfx-click="sfx-button">
         <h1 class="line-anim delay-8 red pulse">Nexus Noir</h1>
 
         <p class="line-anim delay-1">

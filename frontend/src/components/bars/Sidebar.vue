@@ -8,17 +8,19 @@ const store = useStore();
 const { t } = useI18n();
 
 const navItems = computed(() => [
-    { path: '/emanator',   svg: 'about',     icon: 'pi pi-info-circle', label: t('common.sidebar.game'),         title: t('common.sidebar.game')        },
-    { path: '/',           svg: 'dashboard', icon: 'pi pi-chart-bar',   label: t('common.sidebar.dashboard'),    title: t('common.sidebar.dashboard')    },
-    { path: '/sectors',    svg: 'map',       icon: 'pi pi-map',         label: t('common.sidebar.sectors'),      title: t('common.sidebar.sectors')      },
-    { path: '/scenes',     svg: 'scene',     icon: 'pi pi-images',      label: t('common.sidebar.scenes'),       title: t('common.sidebar.scenes')       },
-    { path: '/actions',    svg: 'behavior',  icon: 'pi pi-bolt',        label: t('common.sidebar.behavior'),     title: t('common.sidebar.behavior')     },
-    { path: '/dialogs',    svg: 'dialogue',  icon: 'pi pi-comments',    label: t('common.sidebar.dialogues'),    title: t('common.sidebar.dialogues')    },
-    { path: '/characters', svg: 'personage', icon: 'pi pi-users',       label: t('common.sidebar.characters'),   title: t('common.sidebar.characters')   },
-    { path: '/vehicles',   svg: 'vehicle',   icon: 'pi pi-car',         label: t('common.sidebar.vehicles'),     title: t('common.sidebar.vehicles')     },
-    { path: '/animations', svg: 'animation', icon: 'pi pi-users',       label: t('common.sidebar.animations'),   title: t('common.sidebar.animations')   },
-    { path: '/clues',      svg: 'clue',      icon: 'pi pi-search',      label: t('common.sidebar.clues'),        title: t('common.sidebar.clues')        },
-    { path: '/notes',      svg: 'note',      icon: 'pi pi-file-edit',   label: t('common.sidebar.notes'),        title: t('common.sidebar.notes')        },
+    { path: '/emanator',   svg: 'about',     icon: 'pi pi-info-circle', label: t('common.sidebar.game'),         title: t('common.sidebar.game')       },
+    { path: '/',           svg: 'dashboard', icon: 'pi pi-chart-bar',   label: t('common.sidebar.dashboard'),    title: t('common.sidebar.dashboard')  },
+    { path: '/sectors',    svg: 'map',       icon: 'pi pi-map',         label: t('common.sidebar.sectors'),      title: t('common.sidebar.sectors')    },
+    { path: '/scenes',     svg: 'scene',     icon: 'pi pi-images',      label: t('common.sidebar.scenes'),       title: t('common.sidebar.scenes')     },
+    { path: '/actions',    svg: 'behavior',  icon: 'pi pi-bolt',        label: t('common.sidebar.behavior'),     title: t('common.sidebar.behavior')   },
+    { path: '/dialogs',    svg: 'dialogue',  icon: 'pi pi-comments',    label: t('common.sidebar.dialogues'),    title: t('common.sidebar.dialogues')  },
+    { path: '/characters', svg: 'personage', icon: 'pi pi-users',       label: t('common.sidebar.characters'),   title: t('common.sidebar.characters') },
+    { path: '/vehicles',   svg: 'vehicle',   icon: 'pi pi-car',         label: t('common.sidebar.vehicles'),     title: t('common.sidebar.vehicles')   },
+    { path: '/animations', svg: 'animation', icon: 'pi pi-users',       label: t('common.sidebar.animations'),   title: t('common.sidebar.animations') },
+    { path: '/music',      svg: 'music',     icon: 'pi pi-users',       label: t('common.sidebar.music'),        title: t('common.sidebar.music')      },
+    { path: '/sounds',     svg: 'sound',     icon: 'pi pi-users',       label: t('common.sidebar.sounds'),       title: t('common.sidebar.sounds')     },
+    { path: '/clues',      svg: 'clue',      icon: 'pi pi-search',      label: t('common.sidebar.clues'),        title: t('common.sidebar.clues')      },
+    { path: '/notes',      svg: 'note',      icon: 'pi pi-file-edit',   label: t('common.sidebar.notes'),        title: t('common.sidebar.notes')      },
 ]);
 
 const bottomItem = computed(() => [

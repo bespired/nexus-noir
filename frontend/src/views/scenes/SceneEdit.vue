@@ -14,6 +14,7 @@ const { t } = useI18n();
 const sceneId = route.params.id;
 const scene = ref(null);
 const sectors = ref([]);
+const musics = ref([]);
 const loading = ref(true);
 const saving = ref(false);
 const deleting = ref(false);
@@ -29,16 +30,19 @@ const sceneTypes = ref([
 
 const fetchInitialData = async () => {
     try {
-        const [sceneRes, sectorsRes] = await Promise.all([
+        const [sceneRes, sectorsRes, musicsRes] = await Promise.all([
             fetch(`/api/scenes/${sceneId}`),
-            fetch('/api/sectors')
+            fetch('/api/sectors'),
+            fetch('/api/musics')
         ]);
 
         if (!sceneRes.ok) throw new Error('Failed to fetch scene');
         if (!sectorsRes.ok) throw new Error('Failed to fetch sectors');
+        if (!musicsRes.ok) throw new Error('Failed to fetch musics');
 
         scene.value = await sceneRes.json();
         sectors.value = await sectorsRes.json();
+        musics.value = await musicsRes.json();
     } catch (error) {
         console.error(error);
         toast.add({
@@ -66,7 +70,8 @@ const handleSave = async () => {
                 title: scene.value.title,
                 description: scene.value.description,
                 sector_id: scene.value.sector_id,
-                type: scene.value.type
+                type: scene.value.type,
+                music_id: scene.value.music_id
             })
         });
 
@@ -360,20 +365,32 @@ onMounted(fetchInitialData);
                     <div class="field">
                         <label>{{ t('scenes.edit.label_sector') }}</label>
                         <div class="duo-fields">
-                        <div class="sector-field">
-                            <Select
-                                v-model="scene.sector_id"
-                                :options="sectors"
-                                optionLabel="name"
-                                optionValue="id"
-                                class="noir-select flex-grow"
-                                :placeholder="t('scenes.edit.label_sector')"
-                                showClear
-                            />
-                            <Button :label="t('scenes.edit.btn_sector')" severity="info" class="sector-btn" @click="router.push(`/sectors/${scene.sector_id}/edit`)" :disabled="!scene.sector_id" />
+                            <div class="sector-field">
+                                <Select
+                                    v-model="scene.sector_id"
+                                    :options="sectors"
+                                    optionLabel="name"
+                                    optionValue="id"
+                                    class="noir-select flex-grow"
+                                    :placeholder="t('scenes.edit.label_sector')"
+                                    showClear
+                                />
+                                <Button :label="t('scenes.edit.btn_sector')" severity="info" class="sector-btn" @click="router.push(`/sectors/${scene.sector_id}/edit`)" :disabled="!scene.sector_id" />
+                            </div>
                         </div>
+                    </div>
 
-                        </div>
+                    <div class="field">
+                        <label>SCENE MUSIC</label>
+                        <Select
+                            v-model="scene.music_id"
+                            :options="musics"
+                            optionLabel="name"
+                            optionValue="id"
+                            class="noir-select w-full"
+                            placeholder="SELECT MUSIC TRACK"
+                            showClear
+                        />
                     </div>
 
                     <div class="field">

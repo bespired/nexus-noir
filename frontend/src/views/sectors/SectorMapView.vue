@@ -30,19 +30,18 @@ const isPanning = ref(false);
 const panStart = ref({ x: 0, y: 0 });
 const panOffsetStart = ref({ x: 0, y: 0 });
 
-const sizex = ref(100.0);
-const sizey = ref(100.0);
+const displayDimensions = ref({ width: 0, height: 0, left: 0, top: 0 });
 
 const setZoom = (value) => {
     zoom.value = Math.max(0.2, Math.min(5, value));
-    updateWrapperSize();
 };
 
 const fetchMapData = async () => {
     try {
-        const [sectorsRes, configRes] = await Promise.all([
+        const [sectorsRes, configRes, dimRes] = await Promise.all([
             fetch('/api/sectors'),
-            fetch('/api/configs/map_backdrop')
+            fetch('/api/configs/map_backdrop'),
+            fetch('/api/configs/map_dimensions')
         ]);
 
         if (!sectorsRes.ok) throw new Error('Failed to fetch sectors');
@@ -63,8 +62,6 @@ const fetchMapData = async () => {
             mapBackground.value = configData?.value || '';
         }
 
-        // Fetch dimensions
-        const dimRes = await fetch('/api/configs/map_dimensions');
         if (dimRes.ok) {
             const dimData = await dimRes.json();
             if (dimData?.value) {
@@ -97,14 +94,13 @@ const hasMoved       = ref(false);
 const startPos       = ref({ x: 0, y: 0 });
 
 const startDrag = (event, sector) => {
-    // Prevent native dragging
     event.preventDefault();
+    event.stopPropagation();
 
     draggingSector.value = sector;
     hasMoved.value = false;
     startPos.value = { x: event.clientX, y: event.clientY };
 
-    // Calculate offset relative to the thumb's top-left in pixels
     const rect = event.currentTarget.getBoundingClientRect();
     dragOffset.value = {
         x: event.clientX - rect.left,
@@ -132,7 +128,6 @@ const onPanning = (event) => {
         x: panOffsetStart.value.x + dx,
         y: panOffsetStart.value.y + dy
     };
-    updateWrapperSize();
 };
 
 const stopPan = () => {
@@ -142,7 +137,7 @@ const stopPan = () => {
 };
 
 const onDragging = (event) => {
-    if (!draggingSector.value || !canvas.value) return;
+    if (!draggingSector.value || !mapWrapper.value) return;
 
     const deltaX = event.clientX - startPos.value.x;
     const deltaY = event.clientY - startPos.value.y;
@@ -151,22 +146,11 @@ const onDragging = (event) => {
         hasMoved.value = true;
     }
 
-    const rect = canvas.value.getBoundingClientRect();
-
-    let factorX = sizex.value / mapDimensions.value.width;
-    let factorY = sizey.value / mapDimensions.value.height;
-    let factor  = Math.max(factorX, factorY);
-
-    // We want the new (dims.x * factor) to be roughly (mouseX - canvasLeft - dragOffsetX + thumbWidth/2)
-    // Actually, since getSectorStyle uses transform: translate(-50%, -50%), dims.x * factor is the CENTER.
-    // In startDrag, dragOffset.x = mouseX - thumbLeft (where thumbLeft is center - halfWidth).
-
-    // Simpler: let's calculate new center in pixels relative to canvas
-    // We adjust by dragOffset to keep the thumb pinned where we clicked it.
-    // dragOffset was (mouseX - thumbLeft) in startDrag.
-    // thumbLeft = visualCenter.x - visualWidth/2
-    const visualWidth = (draggingSector.value.thumb_dimensions?.width || 150) * factor;
-    const visualHeight = (draggingSector.value.thumb_dimensions?.height || 100) * factor;
+    const rect = mapWrapper.value.getBoundingClientRect();
+    
+    // Calculate position in pixels relative to mapWrapper
+    const visualWidth = (draggingSector.value.thumb_dimensions?.width || 150) * (displayDimensions.value.width / mapDimensions.value.width);
+    const visualHeight = (draggingSector.value.thumb_dimensions?.height || 100) * (displayDimensions.value.height / mapDimensions.value.height);
 
     const targetCenterX = event.clientX - rect.left - dragOffset.value.x + (visualWidth / 2);
     const targetCenterY = event.clientY - rect.top - dragOffset.value.y + (visualHeight / 2);
@@ -175,8 +159,9 @@ const onDragging = (event) => {
         draggingSector.value.thumb_dimensions = { x: 0, y: 0, width: 150, height: 100 };
     }
 
-    draggingSector.value.thumb_dimensions.x = Math.round(targetCenterX / factor);
-    draggingSector.value.thumb_dimensions.y = Math.round(targetCenterY / factor);
+    // Convert pixels to coord system (same as original map dimensions)
+    draggingSector.value.thumb_dimensions.x = Math.round((targetCenterX / displayDimensions.value.width) * mapDimensions.value.width);
+    draggingSector.value.thumb_dimensions.y = Math.round((targetCenterY / displayDimensions.value.height) * mapDimensions.value.height);
 };
 
 const stopDrag = () => {
@@ -212,20 +197,27 @@ const saveSectorPosition = async (sector) => {
 const getSectorStyle = (sector) => {
     const dims = sector.thumb_dimensions || { x: 50, y: 50, width: 150, height: 100 };
 
-    let factorX = sizex.value / mapDimensions.value.width
-    let factorY = sizey.value / mapDimensions.value.height
+    // Position as percentage of the map wrapper
+    const leftPx = (dims.x / mapDimensions.value.width) * 100;
+    const topPx  = (dims.y / mapDimensions.value.height) * 100;
 
-    let factor  = Math.max(factorX, factorY)
+    // Width/Height scaled to the container
+    const factorX = displayDimensions.value.width / mapDimensions.value.width;
+    const factorY = displayDimensions.value.height / mapDimensions.value.height;
+    
+    // We use Math.max(factorX, factorY) if we want uniform scaling, but here we can just scale by container size
+    const width = (dims.width || 150) * factorX;
+    const height = (dims.height || 100) * factorY;
 
-    // All coordinates are now relative %
     return {
         position: 'absolute',
-        left: `${dims.x * factor }px`,
-        top: `${dims.y * factor}px`,
-        width: `${dims.width * factor|| 150}px`,
-        height: `${dims.height * factor|| 100}px`,
+        left: `${leftPx}%`,
+        top: `${topPx}%`,
+        width: `${width}px`,
+        height: `${height}px`,
         cursor: 'move',
-        transform: 'translate(-50%, -50%)', // Center the thumb on the coordinate
+        transform: 'translate(-50%, -50%)',
+        zIndex: draggingSector.value === sector ? 100 : 10
     };
 };
 
@@ -248,7 +240,6 @@ const handleBack = () => {
 };
 
 const onSectorCreated = (newSector) => {
-    // Add default dimensions if missing
     if (!newSector.thumb_dimensions) {
         newSector.thumb_dimensions = { x: 50, y: 50, width: 150, height: 100 };
     }
@@ -270,7 +261,6 @@ const updateBackdrop = async () => {
         const formData = new FormData();
         formData.append('image', backdropFile.value);
 
-        // First, get dimensions of the image
         const img = new Image();
         const objectUrl = URL.createObjectURL(backdropFile.value);
 
@@ -282,7 +272,6 @@ const updateBackdrop = async () => {
             img.src = objectUrl;
         });
 
-        // Upload image
         const res = await fetch('/api/configs/upload-backdrop', {
             method: 'POST',
             body: formData
@@ -294,7 +283,6 @@ const updateBackdrop = async () => {
         mapBackground.value = data.value;
         mapDimensions.value = dims;
 
-        // Save dimensions to config
         await fetch('/api/configs/map_dimensions', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -314,22 +302,16 @@ const updateBackdrop = async () => {
 const updateWrapperSize = () => {
     if (!canvas.value) return;
 
-    const contW = canvas.value?.clientWidth || 0;
-    const contH = canvas.value?.clientHeight || 0;
-
-    sizex.value = contW;
-    sizey.value = contH;
+    const contW = canvas.value.clientWidth;
+    const contH = canvas.value.clientHeight;
 
     if (!contW || !contH) return;
 
-    const imgW = mapDimensions.value.width;
-    const imgH = mapDimensions.value.height;
-    const imgAR = imgW / imgH;
+    const imgAR = mapDimensions.value.width / mapDimensions.value.height;
     const contAR = contW / contH;
 
     let displayW, displayH;
 
-    // "Contain" logic to prevent deformation (matching user request)
     if (contAR > imgAR) {
         displayH = contH;
         displayW = contH * imgAR;
@@ -338,10 +320,12 @@ const updateWrapperSize = () => {
         displayH = contW / imgAR;
     }
 
-    // Apply zoom and pan
-    const finalW = displayW * zoom.value;
-    const finalH = displayH * zoom.value;
-
+    displayDimensions.value = {
+        width: displayW,
+        height: displayH,
+        left: (contW - displayW) / 2,
+        top: (contH - displayH) / 2
+    };
 };
 
 const onBackdropLoad = () => {
@@ -397,78 +381,79 @@ onUnmounted(() => {
             </div>
         </Dialog>
 
-        <div class="map-container">
+        <div class="map-container" ref="canvas">
             <div v-if="loading" class="loading-overlay">
                 LOADING ARCHIVE DATA...
             </div>
-        </div>
 
-    </div>
-    <div class="sector-map-view" ref="canvas"
-            :style="`background-image: url(${backgroundUrl});`">
-        <div class="map-size">{{sizex}}, {{sizey}} </div>
+            <div v-else class="map-viewport" @mousedown.self="startPan">
+                <div 
+                    class="map-wrapper" 
+                    ref="mapWrapper"
+                    :style="{
+                        width: displayDimensions.width + 'px',
+                        height: displayDimensions.height + 'px',
+                        left: displayDimensions.left + 'px',
+                        top: displayDimensions.top + 'px',
+                        transform: `scale(${zoom}) translate(${panOffset.x}px, ${panOffset.y}px)`
+                    }"
+                >
+                    <img 
+                        :src="backgroundUrl" 
+                        class="map-backdrop" 
+                        @load="onBackdropLoad"
+                        draggable="false"
+                    />
 
-        <div
-            v-for="sector in sectors"
-            :key="sector.id"
-            class="map-sector-thumb"
-            :style="getSectorStyle(sector)"
-            @mousedown="startDrag($event, sector)"
-        >
-                <div class="thumb-inner" draggable="false">
-                    <div class="thumb-image-box" draggable="false">
-                        <img v-if="getThumbUrl(sector)"
-                            :src="getThumbUrl(sector)"
-                            class="thumb-img" draggable="false" />
-                        <div v-else class="thumb-placeholder">{ NO DATA }</div>
+                    <div
+                        v-for="sector in sectors"
+                        :key="sector.id"
+                        class="map-sector-thumb"
+                        :style="getSectorStyle(sector)"
+                        @mousedown="startDrag($event, sector)"
+                    >
+                        <div class="thumb-inner" draggable="false">
+                            <div class="thumb-image-box" draggable="false">
+                                <img v-if="getThumbUrl(sector)"
+                                    :src="getThumbUrl(sector)"
+                                    class="thumb-img" draggable="false" />
+                                <div v-else class="thumb-placeholder">{ NO DATA }</div>
+                            </div>
+                            <div class="sector-id">SEC-{{ sector.id }}</div>
+                            <div class="sector-name" @click="openSector(sector)">{{ sector.name }}</div>
+                        </div>
                     </div>
-                    <div class="sector-id">SEC-{{ sector.id }}</div>
-                    <div class="sector-name" @click="openSector(sector)">{{ sector.name }}</div>
                 </div>
+            </div>
         </div>
-
-
     </div>
 </template>
 
 <style scoped>
 .sector-map-view {
-    display: flex;
-    position: relative;
-    flex-direction: column;
-    height: calc(100vh - 180px);
-    padding: 1.5rem;
-    background-color: #05070a;
-    background-size: cover;
-    border-radius: 10px;
-    /*overflow: hidden;*/
-    overflow: auto;
-}
-
-.map-size {
-    position: absolute;
-    right: 0;
-    top: 0;
-    color: green;
+    display: none; /* Removed old container from bottom of file */
 }
 
 .map-container {
     flex: 1;
     position: relative;
-    overflow: hidden; /* Changed from auto to hide clipped parts of the cover */
+    overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.05);
     background-color: #000;
-    cursor: grab;
+    height: calc(100vh - 180px);
+    border-radius: 10px;
 }
 
-.map-container.is-panning {
-    cursor: grabbing;
+.map-viewport {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: auto;
 }
 
 .map-wrapper {
-    /* Style is mostly handled by :style="wrapperStyle" */
-    overflow: hidden;
-    line-height: 0;
+    position: absolute;
+    transform-origin: 0 0;
 }
 
 .map-backdrop {
@@ -477,24 +462,15 @@ onUnmounted(() => {
     display: block;
     user-select: none;
     pointer-events: none;
-    object-fit: contain; /* Prevent deformation */
-}
-
-.map-sectors-layer {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
 }
 
 .map-sector-thumb {
-    /*pointer-events: auto;*/
     user-select: none;
     transition: transform 0.2s, box-shadow 0.2s;
-    z-index: 10;
 }
 
 .map-sector-thumb:hover {
-    transform: translate(-50%, -50%) scale(1.05) !important; /* Adjusted for center transform */
+    transform: translate(-50%, -50%) scale(1.05) !important;
     z-index: 50;
 }
 
@@ -533,12 +509,6 @@ onUnmounted(() => {
     color: #374151;
 }
 
-.thumb-label {
-    display: flex;
-    flex-direction: column;
-    padding: 0.4rem;
-}
-
 .sector-id {
     margin-top: -0.5rem;
     font-size: 0.5rem;
@@ -560,21 +530,6 @@ onUnmounted(() => {
     }
 }
 
-.tech-dot {
-    position: absolute;
-    top: -3px;
-    right: -3px;
-    width: 6px;
-    height: 6px;
-    background: #4b5563;
-    border-radius: 50%;
-}
-
-.tech-dot--active {
-    background: #ef4444;
-    box-shadow: 0 0 5px #ef4444;
-}
-
 .loading-overlay {
     position: absolute;
     inset: 0;
@@ -587,45 +542,8 @@ onUnmounted(() => {
     letter-spacing: 2px;
 }
 
-.zoom-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: rgba(0, 0, 0, 0.3);
-    padding: 0 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-}
-
-.zoom-percentage {
-    font-size: 0.7rem;
-    color: var(--color-noir-muted);
-    min-width: 2.5rem;
-    text-align: center;
-}
-
-.zoom-btn {
-    padding: 0.25rem !important;
-    width: 2rem !important;
-}
-
-.backdrop-btn {
-    border: 1px solid var(--color-noir-accent) !important;
-    background-color: rgba(59, 130, 246, 0.1) !important;
-    color: var(--color-noir-accent) !important;
-}
-
-.add-sector-btn {
-    background-color: var(--color-noir-warning) !important;
-    color: #000 !important;
-}
-
 .backdrop-modal-content {
     padding-top: 1rem;
-}
-
-.backdrop-modal-content .field {
-    margin-bottom: 2rem;
 }
 
 .noir-file-input {

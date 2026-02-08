@@ -134,6 +134,26 @@ const routes = [
         component: () => import('../views/animations/AnimationEdit.vue')
     },
     {
+        path: '/music',
+        name: 'music',
+        component: () => import('../views/audio/MusicIndex.vue')
+    },
+    {
+        path: '/music/:id/edit',
+        name: 'music-edit',
+        component: () => import('../views/audio/MusicEdit.vue')
+    },
+    {
+        path: '/sounds',
+        name: 'sounds',
+        component: () => import('../views/audio/SoundIndex.vue')
+    },
+    {
+        path: '/sounds/:id/edit',
+        name: 'sound-edit',
+        component: () => import('../views/audio/SoundEdit.vue')
+    },
+    {
         path: '/notes',
         name: 'notes',
         component: () => import('../views/notes/NotesIndex.vue'),

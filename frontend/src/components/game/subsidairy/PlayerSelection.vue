@@ -60,7 +60,7 @@ const getGlbUrl = (character) => {
 
         <div v-else-if="currentCharacter" class="selector-content">
             <!-- Left Arrow -->
-            <div class="nav-control" @click="prevCharacter">
+            <div class="nav-control" @click="prevCharacter" data-sfx-click="sfx-select">
                 <span class="nav-arrow">&lt;</span>
             </div>
 
@@ -105,7 +105,7 @@ const getGlbUrl = (character) => {
             </div>
 
             <!-- Right Arrow -->
-            <div class="nav-control" @click="nextCharacter">
+            <div class="nav-control" @click="nextCharacter" data-sfx-click="sfx-select">
                 <span class="nav-arrow">&gt;</span>
             </div>
         </div>

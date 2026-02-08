@@ -13,6 +13,8 @@ use App\Http\Controllers\SectorController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\AnimationController;
+use App\Http\Controllers\MusicController;
+use App\Http\Controllers\SoundController;
 
 
 Route::get('/user', function (Request $request) {
@@ -22,6 +24,8 @@ Route::get('/user', function (Request $request) {
 Route::apiResource('actions', ActionController::class);
 Route::apiResource('characters', CharacterController::class);
 Route::apiResource('animations', AnimationController::class);
+Route::apiResource('musics', MusicController::class);
+Route::apiResource('sounds', SoundController::class);
 
 Route::apiResource('clues', ClueController::class);
 Route::apiResource('dialogs', DialogController::class);

@@ -19,6 +19,7 @@ class Scene extends Model
         '3d_spawnpoints',
         'thumb_dimensions',
         'data',
+        'music_id',
     ];
 
     protected $casts = [
@@ -31,6 +32,11 @@ class Scene extends Model
     public function sector(): BelongsTo
     {
         return $this->belongsTo(Sector::class);
+    }
+
+    public function music(): BelongsTo
+    {
+        return $this->belongsTo(Music::class);
     }
 
     public function media(): \Illuminate\Database\Eloquent\Relations\MorphMany

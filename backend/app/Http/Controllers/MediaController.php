@@ -15,7 +15,7 @@ class MediaController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|extensions:jpeg,png,jpg,gif,glb,fbx|max:10240',
+            'file' => 'required|file|extensions:jpeg,png,jpg,gif,glb,fbx,ogg,wav,mp3|max:131072',
             'imageable_id' => 'required|integer',
             'imageable_type' => 'required|string',
             'title' => 'nullable|string',
@@ -30,6 +30,12 @@ class MediaController extends Controller
             if (in_array($extension, ['glb', 'fbx'])) {
                 $type = '3d';
                 $folder = "3d/{$extension}";
+            } elseif ($extension === 'ogg' || ($extension === 'mp3' && str_contains($imageableType, 'Music'))) {
+                $type = 'music';
+                $folder = 'audio/music';
+            } elseif ($extension === 'wav' || ($extension === 'mp3' && str_contains($imageableType, 'Sound'))) {
+                $type = 'sfx';
+                $folder = 'audio/sfx';
             } else {
                 $type = '2d';
                 // Detect destination folder from class name
@@ -52,7 +58,7 @@ class MediaController extends Controller
                 if (Storage::disk('public')->exists($oldMedia->filepad)) {
                     Storage::disk('public')->delete($oldMedia->filepad);
                 }
-                $oldMedia->delete();
+                Media::destroy($oldMedia->id);
             }
 
             // Generate a filename

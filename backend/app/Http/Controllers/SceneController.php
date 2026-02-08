@@ -12,7 +12,7 @@ class SceneController extends Controller
      */
     public function index()
     {
-        $scenes = \App\Models\Scene::with(['media', 'sector'])->get();
+        $scenes = \App\Models\Scene::with(['media', 'sector', 'music.media'])->get();
 
         return \App\Http\Resources\SceneResource::collection($scenes);
     }
@@ -27,6 +27,7 @@ class SceneController extends Controller
             '2d_gateways' => 'nullable|array',
             '3d_spawnpoints' => 'nullable|array',
             'data' => 'nullable|array',
+            'music_id' => 'nullable|exists:musics,id',
         ]);
 
         $scene = \App\Models\Scene::create($validated);
@@ -39,7 +40,7 @@ class SceneController extends Controller
      */
     public function show(string $id)
     {
-        return \App\Models\Scene::with(['media', 'sector'])->findOrFail($id);
+        return \App\Models\Scene::with(['media', 'sector', 'music.media'])->findOrFail($id);
     }
 
     /**
@@ -58,6 +59,7 @@ class SceneController extends Controller
             '3d_spawnpoints' => 'nullable|array',
             'thumb_dimensions' => 'nullable|array',
             'data' => 'nullable|array',
+            'music_id' => 'nullable|exists:musics,id',
         ]);
 
         $scene->update($validated);

@@ -2,10 +2,12 @@
 import { onMounted, onUnmounted, ref, computed, watch, shallowRef, nextTick } from 'vue';
 import { useStore } from 'vuex';
 import { NexusEngine } from '../../engine/NexusEngine';
+import { useSFXManager } from '../../composables/useSFXManager';
 
 const store = useStore();
 const canvasRef = ref(null);
 const engine = shallowRef(null);
+const { playSoundByTag } = useSFXManager();
 
 const init = async () => {
     if (!canvasRef.value) return;
@@ -111,6 +113,11 @@ const handleCanvasMouseMove = (event) => {
 const handleCanvasClick = (event) => {
     if (engine.value) {
         engine.value.interactions.handleMouseClick(event);
+        
+        // Manual trigger for footsteps if we are in walk mode
+        if (cursor.value === 'walk') {
+            playSoundByTag('sfx-walk');
+        }
     }
 };
 

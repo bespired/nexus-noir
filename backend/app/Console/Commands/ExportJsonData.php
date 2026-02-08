@@ -46,6 +46,8 @@ class ExportJsonData extends Command
         $this->exportTable(\App\Models\Media::class, 'mediax.json');
         $this->exportTable(\App\Models\Animation::class, 'animations.json');
         $this->exportTable(\App\Models\AnimationCharacter::class, 'animation_character.json');
+        $this->exportTable(\App\Models\Music::class, 'musics.json');
+        $this->exportTable(\App\Models\Sound::class, 'sounds.json');
 
         $this->info('JSON export completed successfully.');
     }

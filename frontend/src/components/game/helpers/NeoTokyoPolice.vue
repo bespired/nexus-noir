@@ -12,9 +12,13 @@
             <template v-if="type === 'error'">
                 <text x="20" y="98" class="text-en text-16">{{ label }}</text>
             </template>
-            <template v-if="type !== 'loading'">
+            <template v-if="type === 'error' || type === 'no-scene'">
                 <text x="20" y="116" class="text-en text-16">?PRE BLACKOUT INFORMATION?</text>
                 <text x="20" y="132" class="text-en text-16">CAN'T PROCEED</text>
+            </template>
+            <template v-if="type === 'audio'">
+                <text x="20" y="116" class="text-en text-16">?INTERACTION REQUIRED?</text>
+                <text x="20" y="132" class="text-en text-16">TO INITIALIZE AUDIO NEURAL LINK</text>
             </template>
 
             <text x="0" y="164" class="text-en text-10">NT POLICE DEPT</text>
@@ -64,6 +68,7 @@ const mainLabel = computed(() => {
     if (props.type === 'no-scene') { return 'ERROR: 032A' }
     if (props.type === 'loading')  { return `LOADING ${props.loaded}%` }
     if (props.type === 'error')    { return 'ERROR: 099X' }
+    if (props.type === 'audio')    { return 'START' }
     return label
 });
 

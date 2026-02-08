@@ -22,7 +22,11 @@ const handleClick = (event) => {
 </script>
 
 <template>
-    <div class="click-button" :class="buttonType" @click="handleClick">
+    <div class="click-button"
+        :class="buttonType"
+        @click="handleClick"
+        data-sfx-click="sfx-button"
+    >
         <slot>
             <span v-if="icon" :class="{ label }">{{ icon }}</span>
             <span>{{ label }}</span>

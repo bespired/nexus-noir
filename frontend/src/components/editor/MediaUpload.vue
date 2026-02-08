@@ -86,8 +86,6 @@ const checkForBones = async (file) => {
 };
 
 const handleUpload = async () => {
-    if (!selectedFile.value) return;
-
     uploading.value = true;
 
     let metadata = {};
@@ -119,7 +117,9 @@ const handleUpload = async () => {
             }
         });
 
-        if (!response.ok) throw new Error('Upload failed');
+        if (!response.ok) {
+            throw new Error('Upload failed: ' + response.status);
+        }
 
         const data = await response.json();
         toast.add({
