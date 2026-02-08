@@ -264,16 +264,28 @@ export class CharacterManager {
                 if (char.state !== 'walk') {
                     char.state = 'walk';
                     char.play('walk');
+
+                    // If it's the player, start the walking sound
+                    if (char === this.player && this.engine.playSoundByTag) {
+                        this.engine.playSoundByTag('sfx-walk', { loop: true, unique: true, volume: 0.6 });
+                    }
                 }
             } else {
                 if (char.pathIndex < char.path.length - 1) {
                     char.pathIndex++;
                 } else {
+                    const wasWalking = char.isWalking;
                     char.isWalking = false;
                     char.state = 'idle';
                     char.play('idle');
                     char.path = [];
                     char.pathIndex = 0;
+
+                    // If it's the player and they were walking, stop the sound
+                    if (char === this.player && wasWalking && this.engine.stopSoundByTag) {
+                        this.engine.stopSoundByTag('sfx-walk');
+                    }
+
                     if (char.onArrival) {
                         const cb = char.onArrival;
                         char.onArrival = null;

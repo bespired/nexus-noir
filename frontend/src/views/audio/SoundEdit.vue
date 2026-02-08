@@ -28,6 +28,7 @@ const triggerOptions = ref([
     'sfx-leave',
     'sfx-over',
     'sfx-walk',
+    'sfx-discover',
     'sfx-spinner',
     'sfx-door'
 ]);
@@ -161,7 +162,7 @@ onMounted(async () => {
                                 <Button v-else label="UPLOAD FILE" text @click="showUpload = true" />
                             </div>
                         </div>
-                        
+
                         <div v-if="audioUrl" class="audio-player-container">
                             <i class="pi pi-bolt audio-big-icon"></i>
                             <audio controls :src="audioUrl" class="noir-audio-player"></audio>
@@ -186,10 +187,10 @@ onMounted(async () => {
                     </div>
                     <div class="field">
                         <label class="noir-label">SFX TRIGGER (EVENT BINDING)</label>
-                        <Select 
-                            v-model="sound.trigger" 
-                            :options="triggerOptions" 
-                            class="noir-select" 
+                        <Select
+                            v-model="sound.trigger"
+                            :options="triggerOptions"
+                            class="noir-select"
                             placeholder="SELECT TRIGGER EVENT"
                             showClear
                         />

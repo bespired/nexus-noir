@@ -33,22 +33,77 @@ export function useSFXManager() {
         }
     };
 
-    const playSoundByTag = (tag) => {
+    const activeSounds = new Map(); // Stores currently playing Audio instances by tag
+
+    const playSoundByTag = (tag, options = {}) => {
         if (!tag) return;
         const normalizedTag = tag.toLowerCase();
         const audio = sfxMap.get(normalizedTag);
 
         if (audio) {
             console.log(`[SFX] Playing sound for tag: "${normalizedTag}"`);
-            // Clone the audio to allow overlapping playback of the same sound
+
+            // If already playing and we don't want multiple, stop previous
+            if (options.unique && activeSounds.has(normalizedTag)) {
+                stopSoundByTag(normalizedTag);
+            }
+
             const soundClone = audio.cloneNode();
-            soundClone.volume = 1.0;
+            soundClone.volume = options.volume !== undefined ? options.volume : 1.0;
+            soundClone.loop = !!options.loop;
+
             soundClone.play().catch(e => {
                 console.warn(`[SFX] Play failed for tag "${normalizedTag}":`, e);
             });
+
+            // Store for stopping later
+            if (!activeSounds.has(normalizedTag)) {
+                activeSounds.set(normalizedTag, []);
+            }
+            activeSounds.get(normalizedTag).push(soundClone);
+
+            // Cleanup when ended (if not looping)
+            if (!options.loop) {
+                soundClone.onended = () => {
+                    const instances = activeSounds.get(normalizedTag);
+                    if (instances) {
+                        const idx = instances.indexOf(soundClone);
+                        if (idx > -1) instances.splice(idx, 1);
+                        if (instances.length === 0) activeSounds.delete(normalizedTag);
+                    }
+                };
+            }
+
+            return soundClone;
         } else {
             console.warn(`[SFX] No sound mapped for tag: "${normalizedTag}"`);
         }
+    };
+
+    const stopSoundByTag = (tag) => {
+        if (!tag) return;
+        const normalizedTag = tag.toLowerCase();
+        const instances = activeSounds.get(normalizedTag);
+
+        if (instances && instances.length > 0) {
+            console.log(`[SFX] Stopping sound for tag: "${normalizedTag}" (${instances.length} instances)`);
+            instances.forEach(audio => {
+                audio.pause();
+                audio.currentTime = 0;
+            });
+            activeSounds.delete(normalizedTag);
+        }
+    };
+
+    const stopAllSounds = () => {
+        console.log(`[SFX] Stopping all sounds...`);
+        activeSounds.forEach((instances) => {
+            instances.forEach(audio => {
+                audio.pause();
+                audio.currentTime = 0;
+            });
+        });
+        activeSounds.clear();
     };
 
     const handleGlobalClick = (event) => {
@@ -73,6 +128,8 @@ export function useSFXManager() {
     });
 
     return {
-        playSoundByTag
+        playSoundByTag,
+        stopSoundByTag,
+        stopAllSounds
     };
 }

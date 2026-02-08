@@ -7,6 +7,7 @@ import { DebugManager } from './modules/DebugManager';
 import { PathfindingManager } from './modules/PathfindingManager';
 import { ActionManager } from './modules/ActionManager';
 import { DialogManager } from './modules/DialogManager';
+import { DiscoveryManager } from './modules/DiscoveryManager';
 
 /**
  * NexusEngine
@@ -47,6 +48,7 @@ export class NexusEngine {
         this.debug = new DebugManager(this);
         this.actions = new ActionManager(this);
         this.dialogs = new DialogManager(this);
+        this.discovery = new DiscoveryManager(this);
 
         this.animate = this.animate.bind(this);
     }
@@ -65,6 +67,7 @@ export class NexusEngine {
 
     cleanup() {
         this.stop();
+        if (this.stopAllSounds) this.stopAllSounds();
         this.debug.cleanup();
         this.renderer.dispose();
         this.scene.traverse(object => {
@@ -118,6 +121,7 @@ export class NexusEngine {
         this.interactions.update(delta);
         this.actions.update(delta);
         this.dialogs.update(delta);
+        this.discovery.update(delta);
         this.debug.update(delta);
 
         this.renderer.render(this.scene, this.camera);

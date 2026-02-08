@@ -77,6 +77,17 @@ export class DialogManager {
         const nextNode = state.allNodes?.find(n => n.id === targetId);
         if (nextNode) {
             this.currentNode = nextNode;
+
+            // Check for discovery actions on the new node
+            const action = nextNode.action || nextNode.data?.action;
+            const clueId = nextNode.clue_id || nextNode.data?.clue_id || nextNode.action_value || nextNode.actionValue;
+
+            if (action === 'give-clue' && clueId) {
+                if (this.engine.discovery) {
+                    this.engine.discovery.discover(clueId);
+                }
+            }
+
             this.engine.store.commit('game/SET_DATA', {
                 key: 'activeDialog',
                 data: {

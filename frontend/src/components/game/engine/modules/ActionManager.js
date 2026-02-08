@@ -107,10 +107,25 @@ export class ActionManager {
             case 'start_talk':
             case 'start_dialogue':
                 return this.handleTalk(step);
+            case 'give_clue':
+                return this.handleGiveClue(step);
             default:
                 console.warn(`[ACTION] Unknown step type: ${type}`);
                 return Promise.resolve();
         }
+    }
+
+    handleGiveClue(step) {
+        const data = step.data || {};
+        const clueId = data.clue_id || data.id || data.action_value || step.clue_id || step.id || step.action_value;
+
+        if (clueId) {
+            console.log(`[ACTION] Trigger Discovery: ${clueId}`);
+            if (this.engine.discovery) {
+                this.engine.discovery.discover(clueId);
+            }
+        }
+        return Promise.resolve();
     }
 
     handleWalkTo(step) {

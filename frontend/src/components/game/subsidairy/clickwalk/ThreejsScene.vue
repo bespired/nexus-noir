@@ -7,7 +7,7 @@ import { useSFXManager } from '../../composables/useSFXManager';
 const store = useStore();
 const canvasRef = ref(null);
 const engine = shallowRef(null);
-const { playSoundByTag } = useSFXManager();
+const { playSoundByTag, stopSoundByTag, stopAllSounds } = useSFXManager();
 
 // Provide engine to children (like DialogLayer)
 provide('engine', engine);
@@ -17,6 +17,9 @@ const init = async () => {
 
     // 1. Initialize Engine
     engine.value = new NexusEngine(canvasRef.value, store);
+    engine.value.playSoundByTag = playSoundByTag;
+    engine.value.stopSoundByTag = stopSoundByTag;
+    engine.value.stopAllSounds = stopAllSounds;
     engine.value.start();
 
     // 2. Initial Data Load
@@ -140,7 +143,9 @@ const handleCanvasClick = (event) => {
         
         // Manual trigger for footsteps if we are in walk mode
         if (cursor.value === 'walk') {
-            playSoundByTag('sfx-walk');
+            // Note: Continuous walk sound is now handled by CharacterManager state changes,
+            // but we can trigger the FIRST one here if needed, or just let the state handle it.
+            // playSoundByTag('sfx-walk', { loop: true, unique: true });
         }
     }
 };
