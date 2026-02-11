@@ -1,8 +1,11 @@
-# nexus-noir-creator
+# nexus-noir
+
+`git clone https://github.com/bespired/nexus-noir.git`
+
 
 Start your docker.
 
-`cd nexus-noir-creator`
+`cd nexus-noir`
 
 #### Get the stack ready:
 
@@ -16,12 +19,12 @@ then:
 
 gives you
 
-	 ✔ Network nexus-noir-creator_cyber-noir-network  Created
-	 ✔ Container nexus-noir-creator-mailpit-1         Started
-	 ✔ Container nexus-noir-creator-mysql-1           Started
-	 ✔ Container nexus-noir-creator-backend-1         Started
-	 ✔ Container nexus-noir-creator-redis-1           Started
-	 ✔ Container nexus-noir-creator-nginx-1           Started
+	 ✔ Network nexus-noir_cyber-noir-network  Created
+	 ✔ Container nexus-noir-mailpit-1         Started
+	 ✔ Container nexus-noir-mysql-1           Started
+	 ✔ Container nexus-noir-backend-1         Started
+	 ✔ Container nexus-noir-redis-1           Started
+	 ✔ Container nexus-noir-nginx-1           Started
 
 #### Get Laravel
 `docker compose exec backend composer install`
