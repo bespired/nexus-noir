@@ -3,9 +3,14 @@
     {{ mappedText }}
   </span>
 </template>
+
 <style>
-.nexus-blocky { letter-spacing: .7em }
+.nexus-blocky {
+  font-family: NexusNoir;
+  letter-spacing: .7em
+}
 </style>
+
 <script setup>
 import { computed } from 'vue';
 

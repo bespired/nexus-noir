@@ -8,6 +8,7 @@ export class InteractionManager {
     }
 
     handleMouseMove(event) {
+        if (this.engine.store.state.game.penfieldActive) return;
         const { xPercent, yPercent } = this.getPercents(event);
         const gw = this.getGatewayAtPosition(xPercent, yPercent);
 
@@ -33,6 +34,7 @@ export class InteractionManager {
     }
 
     handleMouseClick(event) {
+        if (this.engine.store.state.game.penfieldActive) return;
         const { xPercent, yPercent } = this.getPercents(event);
 
         // 1. Raycast to find floor point (always needed for move targets)

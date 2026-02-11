@@ -14,6 +14,7 @@ const { t } = useI18n();
         <nexus-font type="slant" label="Nexus Runners" />
         <p>{{ t('about.of_the') }}</p>
         <nexus-font type="blocky" label="NEO TOKYO POLICE DEP" />
+
     </div>
 </template>
 

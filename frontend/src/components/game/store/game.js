@@ -77,7 +77,8 @@ export default {
                 height: 0,
                 scale: 1, // Useful for high-DPI or zoom
                 aspectRatio: 1218 / 832
-            }
+            },
+            penfieldActive: false
         }
     },
     mutations: {
@@ -148,6 +149,9 @@ export default {
         },
         SET_CURSOR(state, cursor) {
             state.cursor = cursor;
+        },
+        SET_PENFIELD_ACTIVE(state, active) {
+            state.penfieldActive = active;
         }
     },
 
@@ -236,6 +240,12 @@ export default {
             console.log(`[STORE] Triggering Action: ${actionId} (Owner: ${ownerId})`);
             commit('DEBUGGER_INFO', `ACTION TRIGGERED: ${actionId}`);
             commit('SET_LAST_TRIGGERED_ACTION_ID', { actionId, ownerId });
+        },
+
+        togglePenfield({ commit, state }, active) {
+            const newState = active !== undefined ? active : !state.penfieldActive;
+            commit('SET_PENFIELD_ACTIVE', newState);
+            commit('DEBUGGER_INFO', `PENFIELD ${newState ? 'ACTIVE' : 'INACTIVE'}`);
         }
     }
 }

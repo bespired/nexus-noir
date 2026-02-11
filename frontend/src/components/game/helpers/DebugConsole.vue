@@ -26,34 +26,49 @@ const inventoryClues = computed(() => {
 
 const consoleMode = computed(() => debugView.value === 'console')
 const inventoryMode = computed(() => debugView.value === 'inventory')
+const isFolded = ref(false);
 </script>
 <template>
-    <div class="debug-console">
+    <div class="debug-console" :class="{ folded: isFolded }">
         <div class="debug-header mb-2">
-            <div class="debug-tabs">
-                <button @click="debugView = 'console'" :class="{active: consoleMode }">
-                    CONSOLE
-                </button>
-                <button @click="debugView = 'inventory'" :class="{active: inventoryMode}">
-                    INVENTORY ({{ inventoryClues.length }})
-                </button>
-            </div>
-            <button @click="toggleDebug" :class="{active: debugMode}" class="toggle-btn">
-                {{ debugMode ? 'HIDE HELPERS' : 'SHOW HELPERS' }} <i class="pi pi-eye" />
+            <button @click="isFolded = !isFolded" class="fold-btn">
+                <i :class="isFolded ? 'pi pi-chevron-down' : 'pi pi-chevron-up'" />
             </button>
-        </div>
-        <div v-if="debugView === 'console'" class="console-output">
-            <div v-for="(line, idx) in debugInfo" :key="idx" class="console-line">
-                {{ line }}
+
+            <div class="debug-tabs">
+                <template v-if="!isFolded">
+                    <button @click="debugView = 'console'" :class="{active: consoleMode }">
+                        CONSOLE
+                    </button>
+                    <button @click="debugView = 'inventory'" :class="{active: inventoryMode}">
+                        INVENTORY ({{ inventoryClues.length }})
+                    </button>
+                    <button @click="store.dispatch('game/togglePenfield')" :class="{active: store.state.game.penfieldActive}" class="toggle-btn">
+                        {{ store.state.game.penfieldActive ? 'OFF' : 'PENFIELD' }} <i class="pi pi-cog" />
+                    </button>
+                    <button @click="toggleDebug" :class="{active: debugMode}" class="toggle-btn">
+                        {{ debugMode ? 'HIDE HELPERS' : 'SHOW HELPERS' }} <i class="pi pi-eye" />
+                    </button>
+                </template>
+                <div v-else class="folded-label">DEBUG CONSOLE</div>
             </div>
+
         </div>
-        <div v-else class="inventory-output">
-            <div v-if="inventoryClues.length === 0" class="empty-inv">
-                NO CLUES COLLECTED
+
+        <div v-if="!isFolded" class="debug-content">
+            <div v-if="debugView === 'console'" class="console-output">
+                <div v-for="(line, idx) in debugInfo" :key="idx" class="console-line">
+                    {{ line }}
+                </div>
             </div>
-            <div v-for="clue in inventoryClues" :key="clue.id" class="clue-item">
-                <div class="clue-title">{{ clue.title }}</div>
-                <div class="clue-desc">{{ clue.description }}</div>
+            <div v-else class="inventory-output">
+                <div v-if="inventoryClues.length === 0" class="empty-inv">
+                    NO CLUES COLLECTED
+                </div>
+                <div v-for="clue in inventoryClues" :key="clue.id" class="clue-item">
+                    <div class="clue-title">{{ clue.title }}</div>
+                    <div class="clue-desc">{{ clue.description }}</div>
+                </div>
             </div>
         </div>
     </div>
@@ -77,9 +92,14 @@ const inventoryMode = computed(() => debugView.value === 'inventory')
     pointer-events: auto;
     z-index: 9999;
     min-width: 300px;
-    max-width: 400px;
+    max-width: 500px;
     font-weight: 300;
     letter-spacing: -0.5px;
+    transition: min-width 0.3s ease;
+}
+
+.debug-console.folded {
+    min-width: 150px;
 }
 
 .debug-header {
@@ -90,9 +110,37 @@ const inventoryMode = computed(() => debugView.value === 'inventory')
     padding-bottom: 8px;
 }
 
+.folded .debug-header {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
 .debug-tabs {
     display: flex;
     gap: 4px;
+    align-items: center;
+}
+
+.folded-label {
+    color: var(--neon-mint);
+    padding: 4px 8px;
+    font-weight: bold;
+}
+
+.fold-btn {
+    background: transparent;
+    border: 1px solid var(--neon-mint4);
+    color: var(--neon-mint);
+    cursor: pointer;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    .pi { font-size: 10px }
+}
+
+.fold-btn:hover {
+    background: var(--neon-mint1);
 }
 
 .debug-tabs button,
@@ -104,14 +152,17 @@ const inventoryMode = computed(() => debugView.value === 'inventory')
     font-size: 9px;
     cursor: pointer;
     text-transform: uppercase;
-    min-width: 110px;
+    min-width: 80px;
     display: flex;
     align-items: center;
     margin-left: 8px;
 
     .pi {
-        margin-left: 3px
+        margin-left: 3px;
+        margin-right: -3px;
+        font-size: 11px;
     }
+
 }
 
 .debug-tabs button.active {

@@ -52,6 +52,7 @@ const toggleLanguage = () => {
     background-color: var(--color-noir-bg);
     color: var(--color-noir-text);
     overflow: hidden;
+    user-select: none;
 }
 
 .main-wrapper {

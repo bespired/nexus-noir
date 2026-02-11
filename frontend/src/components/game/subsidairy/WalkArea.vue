@@ -5,6 +5,7 @@ import BackgroundImage from './clickwalk/BackgroundImage.vue';
 import ThreejsScene    from './clickwalk/ThreejsScene.vue';
 import GatewayLayer    from './clickwalk/GatewayLayer.vue';
 import DialogLayer     from './clickwalk/DialogLayer.vue';
+import PenfieldLayer   from './clickwalk/PenfieldLayer.vue';
 
 // 1. Create the reference to the outer container
 const areaRef = ref(null);
@@ -16,12 +17,13 @@ useStageManager(areaRef);
 
 <template>
     <div class="walk-area" ref="areaRef">
-        <div class="stage-container" :style="stageStyle">
+        <div class="stage-container" :style="stageStyle" :class="{ 'penfield-active': penfieldActive }">
             <background-image />
             <threejs-scene>
                 <gateway-layer />
                 <dialog-layer />
             </threejs-scene>
+            <penfield-layer />
         </div>
     </div>
 </template>
@@ -39,7 +41,8 @@ export default {
             height: `${store.state.game.stage.height}px`,
             position: 'relative'
         }));
-        return { stageStyle };
+        const penfieldActive = computed(() => store.state.game.penfieldActive);
+        return { stageStyle, penfieldActive };
     }
 }
 </script>
@@ -63,6 +66,14 @@ export default {
         left: 0;
         width: 100%;
         height: 100%;
+    }
+
+    .stage-container.penfield-active {
+        .three-layer, .area-layer {
+            pointer-events: none !important;
+            filter: grayscale(0.5) brightness(0.5);
+            transition: filter 0.5s ease;
+        }
     }
 
     .three-layer {
